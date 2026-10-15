@@ -1,0 +1,17 @@
+id: t1-last-a1c-002
+tier: 1
+template: latest-lab
+tags: [REF]
+tool_groups: [patient-context, search]
+persona: primary-care
+patient: { mrn: "7af6b271-f16d-21e1-882a-7bff71005a7b", name: "Benedict104 Gibson10", birth_date: "1960-11-08" }
+question: What's his most recent hemoglobin A1c, and when was it drawn?
+answer:
+  type: composite
+  fields:
+    value: { type: quantity, unit: "%", tolerance: 0.05 }
+    date: { type: date }
+oracle:
+  name: latest-observation
+  parameters: { loinc: 4548-4 }
+verification: { status: unverified }

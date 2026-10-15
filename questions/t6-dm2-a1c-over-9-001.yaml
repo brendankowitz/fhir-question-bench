@@ -1,0 +1,15 @@
+id: t6-dm2-a1c-over-9-001
+tier: 6
+template: cohort-poor-control
+tags: [AGG, TERM, ABS]
+tool_groups: [sql-view, search, terminology]
+persona: researcher
+question: >-
+  How many living patients aged 18 to 75 with type 2 diabetes had a most recent A1c in the past year above 9%?
+  Count patients with no A1c in that year as above 9.
+answer: { type: integer }
+oracle:
+  name: cohort-lab-above-or-missing
+  parameters: { snomed: ["44054006", "90781000119102", "157141000119108", "1551000119108", "368581000119106"], loinc: 4548-4, threshold: 9, window_days: 365, age_min: 18, age_max: 75, unit: "%" }
+expect_empty: true
+verification: { status: unverified }

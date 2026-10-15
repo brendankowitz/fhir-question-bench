@@ -1,0 +1,17 @@
+id: t4-ever-statin-001
+tier: 4
+template: ever-on-class
+tags: [TERM, TEMP]
+tool_groups: [patient-context, search, terminology]
+persona: primary-care
+patient: { mrn: "3c0e60c4-176e-2c4c-3b85-b46be390cf5e", name: "Bebe406 Simonis280", birth_date: "1964-11-05" }
+question: Has she ever been on a statin? If so, when was the first one ordered?
+answer:
+  type: composite
+  fields:
+    ever: { type: boolean }
+    first: { type: date, nullable: true }
+oracle:
+  name: ever-on-medication
+  parameters: { rxnorm: ["314231", "312961", "617310", "617311", "859747", "859751", "904475"] }
+verification: { status: unverified }

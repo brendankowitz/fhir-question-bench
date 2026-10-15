@@ -1,0 +1,13 @@
+id: t2-meds-started-year-001
+tier: 2
+template: meds-started-window
+tags: [TEMP, REF]
+tool_groups: [patient-context, search]
+persona: pharmacist
+patient: { mrn: "bca1691f-8839-1d66-ed01-471134d55738", name: "Cole117 Corwin846", birth_date: "1944-10-11" }
+question: Which medications were newly ordered for him in the past year? Give RxNorm codes.
+answer: { type: set }
+oracle:
+  name: medications-started-within
+  parameters: { window_days: 365 }
+verification: { status: unverified }

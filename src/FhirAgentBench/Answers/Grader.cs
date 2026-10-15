@@ -36,9 +36,9 @@ public static class Grader
         return spec.Type switch
         {
             AnswerType.Integer => g.GetDecimal() == a.GetDecimal(),
-            AnswerType.Decimal => Math.Abs(g.GetDecimal() - a.GetDecimal()) <= spec.Tolerance,
+            AnswerType.Decimal => WithinTolerance(g.GetDecimal(), a.GetDecimal(), spec.Tolerance),
             AnswerType.Quantity => UnitsEqual(Text(a, "unit"), Text(g, "unit"))
-                && Math.Abs(g.GetProperty("value").GetDecimal() - a.GetProperty("value").GetDecimal()) <= spec.Tolerance,
+                && WithinTolerance(g.GetProperty("value").GetDecimal(), a.GetProperty("value").GetDecimal(), spec.Tolerance),
             AnswerType.Date => a.GetString() == g.GetString(),
             AnswerType.Code => Text(a, "system") == Text(g, "system") && Text(a, "code") == Text(g, "code"),
             AnswerType.Identifier => Text(a, "system") == Text(g, "system") && Text(a, "value") == Text(g, "value"),
@@ -49,6 +49,9 @@ public static class Grader
             _ => throw new ArgumentOutOfRangeException(nameof(spec), spec.Type, "Unknown answer type."),
         };
     }
+
+    private static bool WithinTolerance(decimal gold, decimal agent, decimal tolerance) =>
+        agent >= gold - tolerance && agent <= gold + tolerance;
 
     private static string Text(JsonElement value, string name) => value.GetProperty(name).GetString()!;
 

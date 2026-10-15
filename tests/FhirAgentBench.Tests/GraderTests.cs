@@ -131,6 +131,16 @@ public sealed class GraderTests
     }
 
     [Fact]
+    public void ExtremeNumber_IsWrongAndDoesNotOverflow()
+    {
+        var decimalSpec = new AnswerSpec { Type = AnswerType.Decimal, Tolerance = 0.1m };
+        const string extreme = "-79228162514264337593543950335";
+
+        Assert.Equal(GradeStatus.Wrong, Grader.Grade(decimalSpec, Answer.Of(1m, []), Agent("{\"status\":\"answered\",\"answer\":" + extreme + "}")));
+        Assert.Equal(GradeStatus.Wrong, Grader.Grade(Quantity, Answer.Of(new { value = 1m, unit = "%" }, []), Agent("{\"status\":\"answered\",\"answer\":{\"value\":" + extreme + ",\"unit\":\"%\"}}")));
+    }
+
+    [Fact]
     public void Composite_MissingFieldKey_IsFormatInvalid()
     {
         var spec = new AnswerSpec

@@ -9,7 +9,7 @@ public static class AnswerJson
         JsonDocument document;
         try
         {
-            document = JsonDocument.Parse(json.TrimStart('﻿'));
+            document = JsonDocument.Parse(json.TrimStart('\uFEFF'));
         }
         catch (JsonException ex)
         {
@@ -32,7 +32,13 @@ public static class AnswerJson
                 _ => throw new FormatException($"answer.json 'status' must be 'answered' or 'insufficient_data', not '{status}'."),
             };
 
-            JsonElement? value = root.TryGetProperty("answer", out var a) && a.ValueKind != JsonValueKind.Null ? a.Clone() : null;
+            var hasAnswer = root.TryGetProperty("answer", out var a);
+            if (parsedStatus == AnswerStatus.Answered && !hasAnswer)
+            {
+                throw new FormatException("answer.json with status 'answered' must include an 'answer' property (null if there is no such result).");
+            }
+
+            JsonElement? value = hasAnswer && a.ValueKind != JsonValueKind.Null ? a.Clone() : null;
             var evidence = root.TryGetProperty("evidence", out var e) && e.ValueKind == JsonValueKind.Array
                 ? e.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToList()
                 : [];

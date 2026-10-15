@@ -16,9 +16,9 @@ public static partial class AnswerShape
         return spec.Type switch
         {
             AnswerType.Integer => v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out _),
-            AnswerType.Decimal => v.ValueKind == JsonValueKind.Number,
+            AnswerType.Decimal => v.ValueKind == JsonValueKind.Number && v.TryGetDecimal(out _),
             AnswerType.Quantity => v.ValueKind == JsonValueKind.Object
-                && v.TryGetProperty("value", out var q) && q.ValueKind == JsonValueKind.Number
+                && v.TryGetProperty("value", out var q) && q.ValueKind == JsonValueKind.Number && q.TryGetDecimal(out _)
                 && v.TryGetProperty("unit", out var u) && u.ValueKind == JsonValueKind.String,
             AnswerType.Date => v.ValueKind == JsonValueKind.String && DatePattern().IsMatch(v.GetString()!),
             AnswerType.Code => HasStrings(v, "system", "code"),
@@ -27,7 +27,7 @@ public static partial class AnswerShape
                 && v.EnumerateArray().All(i => i.ValueKind == JsonValueKind.String || HasStrings(i, "system", "code")),
             AnswerType.Boolean => v.ValueKind is JsonValueKind.True or JsonValueKind.False,
             AnswerType.Composite => v.ValueKind == JsonValueKind.Object
-                && spec.Fields.All(f => Conforms(f.Value, Field(v, f.Key))),
+                && spec.Fields.All(f => v.TryGetProperty(f.Key, out _) && Conforms(f.Value, Field(v, f.Key))),
             _ => throw new ArgumentOutOfRangeException(nameof(spec), spec.Type, "Unknown answer type."),
         };
     }

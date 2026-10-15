@@ -116,9 +116,51 @@ public sealed class GraderTests
     }
 
     [Fact]
+    public void Parse_AnsweredWithoutAnswerProperty_Throws()
+    {
+        Assert.Throws<FormatException>(() => AnswerJson.Parse("""{"status":"answered"}"""));
+    }
+
+    [Fact]
+    public void OutOfRangeNumber_IsFormatInvalid()
+    {
+        var decimalSpec = new AnswerSpec { Type = AnswerType.Decimal, Tolerance = 0.1m };
+
+        Assert.Equal(GradeStatus.FormatInvalid, Grader.Grade(decimalSpec, Answer.Of(1m, []), Agent("""{"status":"answered","answer":1e300}""")));
+        Assert.Equal(GradeStatus.FormatInvalid, Grader.Grade(Quantity, Answer.Of(new { value = 1m, unit = "%" }, []), Agent("""{"status":"answered","answer":{"value":1e300,"unit":"%"}}""")));
+    }
+
+    [Fact]
+    public void Composite_MissingFieldKey_IsFormatInvalid()
+    {
+        var spec = new AnswerSpec
+        {
+            Type = AnswerType.Composite,
+            Fields = new Dictionary<string, AnswerSpec>
+            {
+                ["ever"] = new() { Type = AnswerType.Boolean },
+                ["first"] = new() { Type = AnswerType.Date, Nullable = true },
+            },
+        };
+        var gold = Answer.Of(new { ever = false, first = (string?)null }, []);
+
+        Assert.Equal(GradeStatus.FormatInvalid, Grader.Grade(spec, gold, Agent("""{"status":"answered","answer":{"ever":false}}""")));
+        Assert.Equal(GradeStatus.Correct, Grader.Grade(spec, gold, Agent("""{"status":"answered","answer":{"ever":false,"first":null}}""")));
+    }
+
+    [Fact]
+    public void Set_CodedItemsAreTrimmed()
+    {
+        var spec = new AnswerSpec { Type = AnswerType.Set };
+        var gold = Answer.Of(new[] { new { system = "http://x", code = "1" } }, []);
+
+        Assert.Equal(GradeStatus.Correct, Grader.Grade(spec, gold, Agent("""{"status":"answered","answer":[{"system":"http://x ","code":" 1"}]}""")));
+    }
+
+    [Fact]
     public void Parse_AcceptsLeadingByteOrderMark()
     {
-        var answer = AnswerJson.Parse("﻿" + """{"status":"answered","answer":true}""");
+        var answer = AnswerJson.Parse("\uFEFF" + """{"status":"answered","answer":true}""");
 
         Assert.Equal(AnswerStatus.Answered, answer.Status);
     }

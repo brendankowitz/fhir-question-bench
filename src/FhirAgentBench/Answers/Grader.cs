@@ -59,6 +59,6 @@ public static class Grader
         array.EnumerateArray()
             .Select(item => item.ValueKind == JsonValueKind.String
                 ? item.GetString()!.Trim()
-                : $"{Text(item, "system")}|{Text(item, "code")}")
+                : $"{Text(item, "system").Trim()}|{Text(item, "code").Trim()}")
             .ToHashSet(StringComparer.Ordinal);
 }

@@ -5,6 +5,67 @@
 **Scope:** 1,000 original, professionally relevant questions over synthetic FHIR
 folders, with executable answer keys and auditable supporting evidence.
 
+## User-directed delivery update: reviewed increments and operational tasks
+
+On 2026-10-15 UTC, the user requested Astra review, expansion from the initial
+20-item engineering slice to 100 questions, evaluation and fixes, then expansion
+by 100 questions per iteration until 1,000. The last 100 items are operational.
+This update supersedes the original read-only-only scope and 1,000-question
+category allocation below; the original allocation remains research history,
+not the active dataset quota.
+
+The active target is **900 patient/cohort question-answering items plus 100
+operational items**. Proposed primary-family counts for the first 900 are:
+orientation/navigation 70; exact retrieval 90; longitudinal/temporal 130;
+medication/allergy 110; terminology 160; cohorts/aggregates 130;
+research phenotypes 70; quality/provenance 50; missing evidence/abstention 40;
+professional synthesis 50. These sum to 900. Difficulty/persona/source-layer
+cross-tabs must be rebalanced and frozen before the relevant batch is evaluated;
+the original 1,000-item cross-tabs are not simultaneously binding.
+
+Delivery totals are 20, 100, 200, 300, 400, 500, 600, 700, 800, 900, and 1,000.
+At each gate, inspect new items and the cumulative set, evaluate the runnable
+agent arms, review failures, fix the dataset/harness/tools as appropriate, and
+rerun affected cases plus a fixed regression panel before adding the next batch.
+Astra reviews the initial implementation and consequential subsequent changes.
+No unresolved important correctness or evidence-integrity finding may silently
+carry into the next gate. Expert review and paid-run approvals remain separate
+gates; generated volume does not satisfy either.
+
+The final operational batch is proposed as 25 de-identification tasks, 25 FML
+transform tasks, 25 SQL-on-FHIR ViewDefinition tasks, and 25 validation tasks.
+Each is an **execute-and-verify** episode, not a question about what command to
+run. Supply explicit configuration/maps/views/profiles and required capabilities
+equally across arms. Verify actual capability support before scheduling runs.
+Do not imply the current three-tool MCP prototype exposes these operations.
+
+Operational gold includes deterministic artifact/invariant checks:
+
+- **De-identification:** configured identifier transformations, removal of
+  specified synthetic identifiers, consistent reference rewriting, and preserved
+  required relationships. Passing the fixture is not a general HIPAA or
+  re-identification-risk certification.
+- **FML:** expected mapped fields, relationships, cardinalities, diagnostics, and
+  failed-input handling; do not rely only on successful process exit.
+- **SQL-on-FHIR:** exact typed rows, multiplicity, null behavior, complete input
+  coverage, and ordering only when explicitly specified; do not compare CSV
+  strings as a proxy for equivalent data.
+- **Validation:** independently expected rule/profile violations and severity,
+  with conformant and intentionally invalid cases. A validator must not grade
+  its own diagnostics as truth.
+
+Source folders remain immutable. Writes are restricted to a fresh per-episode
+output/scratch location, with explicit source-integrity checks and artifact path
+validation. Destructive edits, external writes, and real patient data remain out
+of scope. Gold artifact checks and operational success rates are reported
+separately from question-answering accuracy, not blended into a misleading score.
+
+Repeated evaluation makes those cases development/adaptive evaluation material.
+Do not claim the original 800-item sealed-test design remains untouched if its
+answers or failures guide fixes. Maintain an exposure ledger and versioned
+evaluation snapshots; any genuinely sealed final subset must remain uninspected
+until preregistration and its one-time final run.
+
 ## 1. Intent and the claim worth testing
 
 Doctors, nurses, advanced practitioners, specialists, and researchers need more

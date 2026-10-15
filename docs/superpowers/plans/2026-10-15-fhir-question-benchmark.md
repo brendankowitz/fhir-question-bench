@@ -19,6 +19,29 @@ Foundry/OpenAI and Azure identity clients.
 commands already implemented or run. Do not begin implementation until design
 approval. Each task is a reviewable milestone, not a claimed completed feature.
 
+## Active execution update
+
+The user's latest direction supersedes the original big-bang release sequence:
+finish the 20-item engineering slice; obtain **Astra (`gpt-6-astra`) review**;
+fix important findings; expand to 100 and evaluate; then expand by 100 only after
+each evaluation/fix/regression gate, through 1,000. No question-generation or
+evaluation run is implied by a plan update.
+
+Use 900 question-answering items plus a final 100 operational items. See the
+design's delivery update for revised QA quotas, proposed 25/25/25/25 operational
+split, source/output separation, and independent artifact grading. Extend
+question/response contracts for operations before generating that final batch.
+Do not force operations into a scalar QA grader.
+
+For every batch, record corpus/question/gold/config/tool hashes, exposure state,
+actual model/version, arm availability, review findings, fixes, and rerun results.
+Keep failed/blocked denominator slots. Repeatedly inspected items are adaptive
+development evaluation, not an untouched sealed test. Update dataset-audit
+expectations and split/cross-tab rules before scaling; the original 1,000-QA
+matrix and 800-item sealed allocation below are historical proposed defaults.
+The user has not authorized unlimited inference spending or waived independent
+clinical review requirements.
+
 ## Global constraints
 
 - Exactly 1,000 accepted question instances: 100 development, 100 validation,

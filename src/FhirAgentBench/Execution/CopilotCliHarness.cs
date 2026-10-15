@@ -13,11 +13,8 @@ public sealed class CopilotCliHarness(Profile profile, string corpusDataDirector
             McpConfig.Write(profile, corpusDataDirectory, mcpConfig);
         }
 
-        var environment = new Dictionary<string, string>
-        {
-            ["COPILOT_HOME"] = Directory.CreateDirectory(Path.Combine(request.AttemptDirectory, "copilot-home")).FullName,
-            [CopilotArguments.TokenVariable] = token,
-        };
+        var copilotHome = Directory.CreateDirectory(Path.Combine(request.AttemptDirectory, "copilot-home")).FullName;
+        var environment = CopilotEnvironment.Build(profile, copilotHome, token);
         ProcessResult result;
         try
         {

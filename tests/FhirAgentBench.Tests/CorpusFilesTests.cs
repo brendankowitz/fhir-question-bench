@@ -165,6 +165,31 @@ public sealed class CorpusFilesTests : IDisposable
     }
 
     [Fact]
+    public void Guard_Snapshot_RejectsGithubDirectory()
+    {
+        var data = CopyFixtureData();
+        Directory.CreateDirectory(Path.Combine(data, ".github"));
+
+        var ex = Assert.Throws<InvalidDataException>(() => CorpusGuard.Snapshot(data));
+
+        Assert.Contains(".github", ex.Message);
+    }
+
+    [Fact]
+    public async Task Fetch_RejectsZipEntriesUnderGithub()
+    {
+        var zipBytes = BuildZip(("a.json", "{}"), ("synthea/.github/copilot-instructions.json", "{}"));
+        var corpus = new CorpusDefinition("t", DateTimeOffset.UnixEpoch, "s", "https://example.org/c.zip",
+            Convert.ToHexStringLower(SHA256.HashData(zipBytes)), _root);
+        using var http = new HttpClient(new StaticHandler(zipBytes));
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => CorpusFetcher.FetchAsync(corpus, http));
+
+        Assert.Contains(".github", ex.Message);
+        Assert.False(Directory.Exists(corpus.DataDirectory));
+    }
+
+    [Fact]
     public async Task Fetch_RejectsHashMismatch()
     {
         var zipBytes = BuildZip(("a.json", "{}"));

@@ -31,39 +31,36 @@ public static class ProcessRunner
             info.ArgumentList.Add(argument);
         }
 
+        info.Environment.Clear();
         foreach (var (name, value) in environment)
         {
             info.Environment[name] = value;
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        using var process = Process.Start(info) ?? throw new InvalidOperationException($"Could not start '{fileName}'.");
-        process.StandardInput.Close();
         await using var stdout = File.Create(stdoutPath);
         await using var stderr = File.Create(stderrPath);
-        var copyOut = process.StandardOutput.BaseStream.CopyToAsync(stdout, CancellationToken.None);
-        var copyErr = process.StandardError.BaseStream.CopyToAsync(stderr, CancellationToken.None);
-
-        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutSource.CancelAfter(timeout);
-        var timedOut = false;
+        var stopwatch = Stopwatch.StartNew();
+        using var process = Process.Start(info) ?? throw new InvalidOperationException($"Could not start '{fileName}'.");
+        using var tree = ProcessTree.Attach(process);
+        using var copyCancellation = new CancellationTokenSource();
+        Task copies = Task.CompletedTask;
         try
         {
-            await process.WaitForExitAsync(timeoutSource.Token).ConfigureAwait(false);
+            process.StandardInput.Close();
+            copies = Task.WhenAll(
+                process.StandardOutput.BaseStream.CopyToAsync(stdout, copyCancellation.Token),
+                process.StandardError.BaseStream.CopyToAsync(stderr, copyCancellation.Token));
+
+            var timedOut = await WaitForExitAsync(process, timeout, cancellationToken).ConfigureAwait(false);
+            tree.Terminate();
+            await WaitForPipesAsync(copies, fileName, cancellationToken).ConfigureAwait(false);
+            return new ProcessResult(timedOut ? -1 : process.ExitCode, timedOut, stopwatch.Elapsed);
         }
-        catch (OperationCanceledException)
+        finally
         {
-            await KillTreeAsync(process, fileName, Task.WhenAll(copyOut, copyErr)).ConfigureAwait(false);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-
-            timedOut = true;
+            tree.Terminate();
+            await SettleCopiesAsync(copies, copyCancellation).ConfigureAwait(false);
         }
-
-        await Task.WhenAll(copyOut, copyErr).ConfigureAwait(false);
-        return new ProcessResult(timedOut ? -1 : process.ExitCode, timedOut, stopwatch.Elapsed);
     }
 
     public static async Task<string> CaptureAsync(string fileName, IReadOnlyList<string> arguments, CancellationToken cancellationToken = default)
@@ -85,26 +82,48 @@ public static class ProcessRunner
         return output.Trim();
     }
 
+    private static async Task<bool> WaitForExitAsync(Process process, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(timeout);
+        try
+        {
+            await process.WaitForExitAsync(timeoutSource.Token).ConfigureAwait(false);
+            return false;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return true;
+        }
+    }
+
     // Descendants inherit the redirected pipes, so the copies only finish once the whole tree is gone.
-    private static async Task KillTreeAsync(Process process, string fileName, Task pipesClosed)
+    private static async Task WaitForPipesAsync(Task copies, string fileName, CancellationToken cancellationToken)
     {
         try
         {
-            process.Kill(entireProcessTree: true);
-        }
-        catch (InvalidOperationException)
-        {
-        }
-
-        await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
-        try
-        {
-            await pipesClosed.WaitAsync(s_treeExitGrace).ConfigureAwait(false);
+            await copies.WaitAsync(s_treeExitGrace, cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
             throw new InvalidOperationException(
-                $"Child processes of '{fileName}' were still running {s_treeExitGrace.TotalSeconds:0} seconds after the process tree was killed; the attempt cannot be trusted.");
+                $"Child processes of '{fileName}' were still holding its output {s_treeExitGrace.TotalSeconds:0} seconds after the process tree was terminated; the attempt cannot be trusted.");
+        }
+    }
+
+    private static async Task SettleCopiesAsync(Task copies, CancellationTokenSource copyCancellation)
+    {
+        if (!copies.IsCompleted)
+        {
+            await copyCancellation.CancelAsync().ConfigureAwait(false);
+        }
+
+        try
+        {
+            await copies.ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException)
+        {
         }
     }
 }

@@ -55,6 +55,10 @@ public sealed class CopilotHarnessTests : IDisposable
         return path;
     }
 
+    private static Dictionary<string, string> FullEnvironment() =>
+        Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>()
+            .ToDictionary(e => (string)e.Key, e => (string)(e.Value ?? string.Empty));
+
     private CopilotCliHarness HarnessFor(string executable, params (string Name, McpServer Server)[] servers) =>
         new(Shell(servers) with { Executable = executable }, @"C:\corpus\data", Token);
 
@@ -128,7 +132,7 @@ public sealed class CopilotHarnessTests : IDisposable
     {
         var stdout = Path.Combine(_directory, "out.txt");
 
-        var result = await ProcessRunner.RunAsync("dotnet", ["--version"], new Dictionary<string, string>(), _directory, stdout, Path.Combine(_directory, "err.txt"), TimeSpan.FromMinutes(1));
+        var result = await ProcessRunner.RunAsync("dotnet", ["--version"], FullEnvironment(), _directory, stdout, Path.Combine(_directory, "err.txt"), TimeSpan.FromMinutes(1));
 
         Assert.Equal(0, result.ExitCode);
         Assert.False(result.TimedOut);
@@ -142,7 +146,7 @@ public sealed class CopilotHarnessTests : IDisposable
             ? ("cmd", new[] { "/c", "ping -n 30 127.0.0.1 > nul" })
             : ("sh", new[] { "-c", "sleep 30" });
 
-        var result = await ProcessRunner.RunAsync(file, args, new Dictionary<string, string>(), _directory,
+        var result = await ProcessRunner.RunAsync(file, args, FullEnvironment(), _directory,
             Path.Combine(_directory, "out.txt"), Path.Combine(_directory, "err.txt"), TimeSpan.FromSeconds(2));
 
         Assert.True(result.TimedOut);
@@ -155,12 +159,153 @@ public sealed class CopilotHarnessTests : IDisposable
         var grandchild = WriteScript("grandchild", "ping -n 6 127.0.0.1 > nul\r\necho late> late.txt\r\n", "sleep 5\necho late > late.txt\n");
         var parent = WriteScript("parent", $"cmd /c \"{grandchild}\"\r\n", $"\"{grandchild}\"\n");
 
-        var result = await ProcessRunner.RunAsync(parent, [], new Dictionary<string, string>(), _directory,
+        var result = await ProcessRunner.RunAsync(parent, [], FullEnvironment(), _directory,
             Path.Combine(_directory, "out.txt"), Path.Combine(_directory, "err.txt"), TimeSpan.FromSeconds(1));
         await Task.Delay(TimeSpan.FromSeconds(8));
 
         Assert.True(result.TimedOut);
         Assert.False(File.Exists(Path.Combine(_directory, "late.txt")));
+    }
+
+    [Fact]
+    public async Task ProcessRunner_NormalExit_WithBackgroundGrandchild_ReturnsAndKillsIt()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var grandchild = WriteScript("grandchild", "ping -n 8 127.0.0.1 > nul\r\necho late> late.txt\r\n", "");
+        var parent = WriteScript("parent", $"start \"\" /b cmd /c \"{grandchild}\"\r\nexit /b 0\r\n", "");
+
+        var result = await ProcessRunner.RunAsync(parent, [], FullEnvironment(), _directory,
+            Path.Combine(_directory, "out.txt"), Path.Combine(_directory, "err.txt"), TimeSpan.FromMinutes(1));
+        await Task.Delay(TimeSpan.FromSeconds(10));
+
+        Assert.False(result.TimedOut);
+        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.Duration < TimeSpan.FromSeconds(10));
+        Assert.False(File.Exists(Path.Combine(_directory, "late.txt")));
+    }
+
+    [Fact]
+    public async Task ProcessRunner_Timeout_KillsOrphanedGrandchild()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var grandchild = WriteScript("grandchild", "ping -n 6 127.0.0.1 > nul\r\necho late> late.txt\r\n", "");
+        var middle = WriteScript("middle", $"start \"\" /b cmd /c \"{grandchild}\"\r\nexit /b 0\r\n", "");
+        var root = WriteScript("root", $"start \"\" /b cmd /c \"{middle}\"\r\nping -n 30 127.0.0.1 > nul\r\n", "");
+
+        var result = await ProcessRunner.RunAsync(root, [], FullEnvironment(), _directory,
+            Path.Combine(_directory, "out.txt"), Path.Combine(_directory, "err.txt"), TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(8));
+
+        Assert.True(result.TimedOut);
+        Assert.False(File.Exists(Path.Combine(_directory, "late.txt")));
+    }
+
+    [Fact]
+    public async Task ProcessRunner_UsesExactlyTheGivenEnvironment()
+    {
+        var fake = WriteScript(
+            "env",
+            "if defined FAB_DUMMY_SECRET echo leaked> leak.txt\r\nif defined FAB_GIVEN echo given> given.txt\r\n",
+            "[ -z \"$FAB_DUMMY_SECRET\" ] || echo leaked > leak.txt\n[ -z \"$FAB_GIVEN\" ] || echo given > given.txt\n");
+        var environment = FullEnvironment().Where(e => e.Key != "FAB_DUMMY_SECRET").ToDictionary(e => e.Key, e => e.Value);
+        environment["FAB_GIVEN"] = "1";
+        Environment.SetEnvironmentVariable("FAB_DUMMY_SECRET", "s3cret");
+        try
+        {
+            await ProcessRunner.RunAsync(fake, [], environment, _directory,
+                Path.Combine(_directory, "out.txt"), Path.Combine(_directory, "err.txt"), TimeSpan.FromMinutes(1));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("FAB_DUMMY_SECRET", null);
+        }
+
+        Assert.True(File.Exists(Path.Combine(_directory, "given.txt")));
+        Assert.False(File.Exists(Path.Combine(_directory, "leak.txt")));
+    }
+
+    [Fact]
+    public async Task Harness_ChildSeesOnlyAllowlistedEnvironment()
+    {
+        var fake = WriteScript(
+            "fake-env",
+            "if defined GH_TOKEN echo x> gh.txt\r\nif defined FAB_DUMMY_SECRET echo x> secret.txt\r\nif defined PATH echo x> path.txt\r\nif defined COPILOT_GITHUB_TOKEN echo x> token.txt\r\nif defined FAB_REFERENCED echo x> referenced.txt\r\n",
+            "[ -z \"$GH_TOKEN\" ] || echo x > gh.txt\n[ -z \"$FAB_DUMMY_SECRET\" ] || echo x > secret.txt\n[ -z \"$PATH\" ] || echo x > path.txt\n[ -z \"$COPILOT_GITHUB_TOKEN\" ] || echo x > token.txt\n[ -z \"$FAB_REFERENCED\" ] || echo x > referenced.txt\n");
+        var server = ("fhir", new McpServer("${FAB_REFERENCED}", ["mcp"], ["x"]));
+        var request = RequestWithWorkspace();
+        Environment.SetEnvironmentVariable("GH_TOKEN", "gh-leak");
+        Environment.SetEnvironmentVariable("FAB_DUMMY_SECRET", "s3cret");
+        Environment.SetEnvironmentVariable("FAB_REFERENCED", "tool");
+        try
+        {
+            await HarnessFor(fake, server).RunAsync(request);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GH_TOKEN", null);
+            Environment.SetEnvironmentVariable("FAB_DUMMY_SECRET", null);
+            Environment.SetEnvironmentVariable("FAB_REFERENCED", null);
+        }
+
+        Assert.False(File.Exists(Path.Combine(request.WorkspaceDirectory, "gh.txt")));
+        Assert.False(File.Exists(Path.Combine(request.WorkspaceDirectory, "secret.txt")));
+        Assert.True(File.Exists(Path.Combine(request.WorkspaceDirectory, "path.txt")));
+        Assert.True(File.Exists(Path.Combine(request.WorkspaceDirectory, "token.txt")));
+        Assert.True(File.Exists(Path.Combine(request.WorkspaceDirectory, "referenced.txt")));
+    }
+
+    [Theory]
+    [InlineData("COPILOT_GITHUB_TOKEN")]
+    [InlineData("GH_TOKEN")]
+    [InlineData("GITHUB_TOKEN")]
+    public void McpConfig_RefusesCredentialVariables(string name)
+    {
+        var profile = Shell(("fhir", new McpServer("tool", ["--key", "${" + name + "}"], ["x"])));
+
+        var ex = Assert.Throws<InvalidDataException>(() => McpConfig.Write(profile, "/data", Path.Combine(_directory, "mcp.json")));
+
+        Assert.Contains(name, ex.Message);
+        Assert.Contains("'p'", ex.Message);
+    }
+
+    [Fact]
+    public async Task ResolveToken_WithoutEnvironmentOrGh_SaysWhatToDo()
+    {
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => HarnessFactory.ResolveTokenAsync(_ => null, Path.Combine(_directory, "no-such-gh")));
+
+        Assert.Contains("COPILOT_GITHUB_TOKEN", ex.Message);
+        Assert.Contains("gh auth login", ex.Message);
+    }
+
+    [Fact]
+    public async Task ResolveToken_PrefersEnvironment()
+    {
+        var token = await HarnessFactory.ResolveTokenAsync(name => name == "GH_TOKEN" ? "abc" : null, "no-such-gh");
+
+        Assert.Equal("abc", token);
+    }
+
+    [Theory]
+    [InlineData("copilot.cmd")]
+    [InlineData(@"C:\tools\COPILOT.BAT")]
+    public async Task HarnessFactory_RejectsShellScriptExecutable(string executable)
+    {
+        var profile = Shell() with { Executable = executable };
+        var corpus = new CorpusDefinition("c", DateTimeOffset.UnixEpoch, "mrn", "url", "sha", _directory);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => HarnessFactory.CreateAsync(
+            profile, corpus, OracleRegistry.CreateDefault(), new OracleContext(Fixture.Index, Fixture.Now, Fixture.MrnSystem)));
+
+        Assert.Contains("copilot.exe", ex.Message);
     }
 
     [Fact]
@@ -171,7 +316,7 @@ public sealed class CopilotHarnessTests : IDisposable
             : ("sh", new[] { "-c", "sleep 30" });
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ProcessRunner.RunAsync(file, args, new Dictionary<string, string>(), _directory,
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ProcessRunner.RunAsync(file, args, FullEnvironment(), _directory,
             Path.Combine(_directory, "out.txt"), Path.Combine(_directory, "err.txt"), TimeSpan.FromMinutes(5), cts.Token));
     }
 

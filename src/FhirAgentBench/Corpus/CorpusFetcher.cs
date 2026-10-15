@@ -72,6 +72,14 @@ public static class CorpusFetcher
         var root = Path.GetFullPath(dataDirectory) + Path.DirectorySeparatorChar;
         var planned = new List<(ZipArchiveEntry Entry, string Target)>();
         var seen = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
+        var github = archive.Entries.FirstOrDefault(e =>
+            e.FullName.Split('/', '\\').Any(segment => segment.Equals(".github", StringComparison.OrdinalIgnoreCase)));
+        if (github is not null)
+        {
+            throw new InvalidDataException(
+                $"Corpus zip entry '{github.FullName}' is under '.github'; Copilot would load it as trusted configuration.");
+        }
+
         var candidates = archive.Entries.Where(e =>
             (RawName(e).EndsWith(".json", StringComparison.OrdinalIgnoreCase) || RawName(e).EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase))
             && !e.FullName.StartsWith("__MACOSX/", StringComparison.Ordinal)

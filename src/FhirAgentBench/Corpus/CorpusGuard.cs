@@ -11,7 +11,17 @@ public sealed class CorpusGuard
         _hashes = hashes;
     }
 
-    public static CorpusGuard Snapshot(string dataDirectory) => new(dataDirectory, Read(dataDirectory));
+    public static CorpusGuard Snapshot(string dataDirectory)
+    {
+        var github = Path.Combine(dataDirectory, ".github");
+        if (Directory.Exists(github) || File.Exists(github))
+        {
+            throw new InvalidDataException(
+                $"Corpus data contains '{github}'; Copilot would load it as trusted configuration. Remove it and re-fetch the corpus.");
+        }
+
+        return new CorpusGuard(dataDirectory, Read(dataDirectory));
+    }
 
     public IReadOnlyList<string> Changes()
     {

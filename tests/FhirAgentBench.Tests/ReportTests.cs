@@ -21,6 +21,83 @@ public sealed class ReportTests
         Assert.Equal(expected, McNemar.ExactTwoSided(onlyA, onlyB), precision: 12);
     }
 
+    [Theory]
+    [InlineData(300, 450, 4.8084382427580576e-08)]
+    [InlineData(500, 600, 0.0028195449914364275)]
+    public void McNemar_LargeCounts_MatchExactFractionReference(int onlyA, int onlyB, double expected)
+    {
+        var actual = McNemar.ExactTwoSided(onlyA, onlyB);
+
+        Assert.InRange(Math.Abs(actual - expected) / expected, 0, 1e-9);
+    }
+
+    [Fact]
+    public void Markdown_ShowsScoredDenominatorAndHarnessErrorWarning()
+    {
+        var summary = RunReport.Summarize("r", "p", [G("a", 1, 1, GradeStatus.Correct), G("b", 1, 1, GradeStatus.HarnessError), G("c", 2, 1, GradeStatus.HarnessError)]);
+
+        var markdown = RunReport.ToMarkdown(summary);
+
+        Assert.Contains("Accuracy 100.0% over 1 scored of 3 attempts.", markdown);
+        Assert.Contains("WARNING: 2 harness errors excluded; re-run before comparing", markdown);
+    }
+
+    [Fact]
+    public void Markdown_WithoutHarnessErrors_HasNoWarning()
+    {
+        var markdown = RunReport.ToMarkdown(RunReport.Summarize("r", "p", [G("a", 1, 1, GradeStatus.Wrong)]));
+
+        Assert.DoesNotContain("WARNING", markdown);
+    }
+
+    [Fact]
+    public void Markdown_StatusTableListsEveryStatusInEnumOrderWithShare()
+    {
+        var markdown = RunReport.ToMarkdown(RunReport.Summarize("r", "p", [G("a", 1, 1, GradeStatus.Correct), G("b", 1, 1, GradeStatus.Wrong)]));
+
+        var order = Enum.GetValues<GradeStatus>().Select(s => markdown.IndexOf($"| {s} |", StringComparison.Ordinal)).ToList();
+        Assert.All(order, index => Assert.True(index >= 0));
+        Assert.Equal(order.OrderBy(i => i), order);
+        Assert.Contains("| Correct | 1 | 50.0% |", markdown);
+        Assert.Contains("| TurnLimit | 0 | 0.0% |", markdown);
+    }
+
+    [Fact]
+    public void Markdown_TiersAreSortedAndAllErroredTierShowsNotAvailable()
+    {
+        var summary = RunReport.Summarize("r", "p", [G("a", 7, 1, GradeStatus.HarnessError), G("b", 2, 1, GradeStatus.Correct), G("c", 1, 1, GradeStatus.Wrong)]);
+
+        var markdown = RunReport.ToMarkdown(summary);
+
+        Assert.Contains("| T7 | n/a |", markdown);
+        Assert.True(markdown.IndexOf("| T1 |", StringComparison.Ordinal) < markdown.IndexOf("| T2 |", StringComparison.Ordinal));
+        Assert.True(markdown.IndexOf("| T2 |", StringComparison.Ordinal) < markdown.IndexOf("| T7 |", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PairedMarkdown_ReportsDroppedPairsAndLabelsPValue()
+    {
+        var a = new[] { G("q1", 1, 1, GradeStatus.Correct), G("q2", 1, 1, GradeStatus.HarnessError) };
+        var b = new[] { G("q1", 1, 1, GradeStatus.Wrong), G("q2", 1, 1, GradeStatus.Correct) };
+
+        var markdown = RunReport.ToMarkdown(RunReport.Summarize("r1", "pa", a), RunReport.Summarize("r2", "pb", b), RunReport.Compare(a, b));
+
+        Assert.Contains("(1 of 2 attempt pairs dropped for harness errors)", markdown);
+        Assert.Contains("exact McNemar (check; repeats treated as independent pairs) p = 1.000", markdown);
+    }
+
+    [Fact]
+    public void PairedMarkdown_PrintsSmallPValueAsBound()
+    {
+        var a = Enumerable.Range(0, 12).Select(i => G($"q{i}", 1, 1, GradeStatus.Correct)).ToList();
+        var b = Enumerable.Range(0, 12).Select(i => G($"q{i}", 1, 1, GradeStatus.Wrong)).ToList();
+
+        var markdown = RunReport.ToMarkdown(RunReport.Summarize("r1", "pa", a), RunReport.Summarize("r2", "pb", b), RunReport.Compare(a, b));
+
+        Assert.Contains("p = <0.001", markdown);
+        Assert.DoesNotContain("attempt pairs dropped", markdown);
+    }
+
     [Fact]
     public void McNemar_RejectsNegativeCounts()
     {

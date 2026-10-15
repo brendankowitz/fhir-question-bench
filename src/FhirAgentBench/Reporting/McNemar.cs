@@ -13,13 +13,21 @@ public static class McNemar
             return 1.0;
         }
 
-        var term = Math.Pow(0.5, n);
-        var tail = 0.0;
-        for (var i = 0; i <= Math.Min(onlyA, onlyB); i++)
+        var logFactorial = new double[n + 1];
+        for (var i = 2; i <= n; i++)
         {
-            tail += term;
-            term = term * (n - i) / (i + 1);
+            logFactorial[i] = logFactorial[i - 1] + Math.Log(i);
         }
+
+        var logHalfPowerN = n * Math.Log(0.5);
+        var logTerms = new double[Math.Min(onlyA, onlyB) + 1];
+        for (var i = 0; i < logTerms.Length; i++)
+        {
+            logTerms[i] = logFactorial[n] - logFactorial[i] - logFactorial[n - i] + logHalfPowerN;
+        }
+
+        var max = logTerms.Max();
+        var tail = Math.Exp(max) * logTerms.Sum(t => Math.Exp(t - max));
 
         return Math.Min(1.0, 2 * tail);
     }

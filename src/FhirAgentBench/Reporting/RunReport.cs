@@ -26,7 +26,7 @@ public static class RunReport
             grades.Count,
             grades.GroupBy(g => g.Status).ToDictionary(g => g.Key, g => g.Count()),
             AccuracyOf(scored),
-            scored.GroupBy(g => g.Tier).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => AccuracyOf(g.ToList())));
+            grades.GroupBy(g => g.Tier).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => TierAccuracy(g.ToList())));
     }
 
     public static PairedComparison Compare(IReadOnlyList<GradeRecord> a, IReadOnlyList<GradeRecord> b)
@@ -48,24 +48,35 @@ public static class RunReport
 
     public static string ToMarkdown(RunSummary summary)
     {
+        var harnessErrors = summary.ByStatus.GetValueOrDefault(GradeStatus.HarnessError);
+        var scored = summary.Attempts - harnessErrors;
         var text = new StringBuilder();
         text.AppendLine(CultureInfo.InvariantCulture, $"## {summary.ProfileId} ({summary.RunId})");
         text.AppendLine();
-        text.AppendLine(CultureInfo.InvariantCulture, $"Accuracy: **{Percent(summary.Accuracy)}** over {summary.Attempts} attempts (harness errors excluded).");
-        text.AppendLine();
-        text.AppendLine("| Status | Attempts |");
-        text.AppendLine("|---|---|");
-        foreach (var (status, count) in summary.ByStatus.OrderBy(s => s.Key))
+        text.AppendLine(CultureInfo.InvariantCulture, $"Accuracy {Percent(summary.Accuracy)} over {scored} scored of {summary.Attempts} attempts.");
+        if (harnessErrors > 0)
         {
-            text.AppendLine(CultureInfo.InvariantCulture, $"| {status} | {count} |");
+            text.AppendLine();
+            text.AppendLine(CultureInfo.InvariantCulture, $"WARNING: {harnessErrors} harness errors excluded; re-run before comparing");
+        }
+
+        text.AppendLine();
+        text.AppendLine("| Status | Attempts | Share |");
+        text.AppendLine("|---|---|---|");
+        foreach (var status in Enum.GetValues<GradeStatus>())
+        {
+            var count = summary.ByStatus.GetValueOrDefault(status);
+            var share = summary.Attempts == 0 ? 0 : count / (double)summary.Attempts;
+            text.AppendLine(CultureInfo.InvariantCulture, $"| {status} | {count} | {Percent(share)} |");
         }
 
         text.AppendLine();
         text.AppendLine("| Tier | Accuracy |");
         text.AppendLine("|---|---|");
-        foreach (var (tier, accuracy) in summary.AccuracyByTier)
+        foreach (var (tier, accuracy) in summary.AccuracyByTier.OrderBy(t => t.Key))
         {
-            text.AppendLine(CultureInfo.InvariantCulture, $"| T{tier} | {Percent(accuracy)} |");
+            var shown = double.IsNaN(accuracy) ? "n/a" : Percent(accuracy);
+            text.AppendLine(CultureInfo.InvariantCulture, $"| T{tier} | {shown} |");
         }
 
         return text.ToString();
@@ -79,7 +90,13 @@ public static class RunReport
         text.AppendLine(CultureInfo.InvariantCulture, $"## Paired: {a.ProfileId} vs {b.ProfileId}");
         text.AppendLine();
         text.AppendLine(CultureInfo.InvariantCulture, $"{comparison.Pairs} pairs. Both correct {comparison.BothCorrect}, only {a.ProfileId} {comparison.OnlyA}, only {b.ProfileId} {comparison.OnlyB}, both wrong {comparison.BothWrong}.");
-        text.AppendLine(CultureInfo.InvariantCulture, $"Accuracy difference ({a.ProfileId} − {b.ProfileId}): {Percent(comparison.AccuracyDifference)}. Exact McNemar p = {comparison.McNemarP:0.000}. Phase 0 sample sizes are descriptive, not conclusive.");
+        var dropped = a.Attempts - comparison.Pairs;
+        if (dropped > 0)
+        {
+            text.AppendLine(CultureInfo.InvariantCulture, $"({dropped} of {a.Attempts} attempt pairs dropped for harness errors)");
+        }
+
+        text.AppendLine(CultureInfo.InvariantCulture, $"Accuracy difference ({a.ProfileId} − {b.ProfileId}): {Percent(comparison.AccuracyDifference)}. exact McNemar (check; repeats treated as independent pairs) p = {PValue(comparison.McNemarP)}. Phase 0 sample sizes are descriptive, not conclusive.");
         return text.ToString();
     }
 
@@ -118,6 +135,14 @@ public static class RunReport
 
     private static double AccuracyOf(IReadOnlyList<GradeRecord> grades) =>
         grades.Count == 0 ? 0 : grades.Count(g => g.Status == GradeStatus.Correct) / (double)grades.Count;
+
+    private static double TierAccuracy(IReadOnlyList<GradeRecord> grades)
+    {
+        var scored = grades.Where(g => g.Status != GradeStatus.HarnessError).ToList();
+        return scored.Count == 0 ? double.NaN : AccuracyOf(scored);
+    }
+
+    private static string PValue(double p) => p < 0.001 ? "<0.001" : p.ToString("0.000", CultureInfo.InvariantCulture);
 
     private static string Percent(double value) => value.ToString("0.0%", CultureInfo.InvariantCulture);
 }

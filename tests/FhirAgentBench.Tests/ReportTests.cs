@@ -218,12 +218,35 @@ public sealed class ReportTests
         Assert.Contains("100.0%", markdown);
     }
 
-    private static RunSnapshot Snapshot(string runId, string manifest, string questions) =>
-        new(runId, "p", "ph", "c", manifest, ["q1"], questions, "lock", 1, null, null, DateTimeOffset.UnixEpoch);
+    private static RunSnapshot Snapshot(string runId, string manifest, string questions, string? goldLock = "lock") =>
+        new(runId, "p", "ph", "c", manifest, ["q1"], questions, goldLock, 1, null, null, DateTimeOffset.UnixEpoch);
 
     [Fact]
-    public void RequireComparable_AcceptsSameInputs() =>
-        RunReport.RequireComparable(Snapshot("a", "m1", "q1"), Snapshot("b", "m1", "q1"));
+    public void RequireComparable_AcceptsSameInputs_WithoutWarnings() =>
+        Assert.Empty(RunReport.RequireComparable(Snapshot("a", "m1", "q1"), Snapshot("b", "m1", "q1")));
+
+    [Fact]
+    public void RequireComparable_RefusesDifferentGoldLock_NamingBothValues()
+    {
+        var error = Assert.Throws<InvalidOperationException>(
+            () => RunReport.RequireComparable(Snapshot("a", "m1", "q1", "lock-a"), Snapshot("b", "m1", "q1", "lock-b")));
+
+        Assert.Contains("lock-a", error.Message);
+        Assert.Contains("lock-b", error.Message);
+    }
+
+    [Theory]
+    [InlineData(null, "lock")]
+    [InlineData("lock", null)]
+    [InlineData(null, null)]
+    public void RequireComparable_AllowsUnknownGoldLock_WithWarning(string? lockA, string? lockB)
+    {
+        var warnings = RunReport.RequireComparable(Snapshot("a", "m1", "q1", lockA), Snapshot("b", "m1", "q1", lockB));
+
+        var warning = Assert.Single(warnings);
+        Assert.Contains("gold lock", warning);
+        Assert.Contains("not recorded", warning);
+    }
 
     [Fact]
     public void RequireComparable_RefusesDifferentCorpus_NamingBothValues()

@@ -14,7 +14,11 @@ answers better when you change its tools (e.g. the `cli-on-fhir` MCP), skills, p
     dotnet run --project src/FhirAgentBench.Cli -- corpus fetch corpora/synthea-sample-v1
     dotnet run --project src/FhirAgentBench.Cli -- corpus verify corpora/synthea-sample-v1
     dotnet run --project src/FhirAgentBench.Cli -- admit --corpus corpora/synthea-sample-v1 --set question-sets/phase0.txt
-    dotnet run --project src/FhirAgentBench.Cli -- run --profile profiles/b0-oracle.yaml --corpus corpora/synthea-sample-v1 --set question-sets/phase0.txt --repeats 1 --runs-dir %TEMP%\fab-b0
+    dotnet run --project src/FhirAgentBench.Cli -- run --profile profiles/b0-oracle.yaml --corpus corpora/synthea-sample-v1 --set question-sets/phase0.txt --repeats 1 --runs-dir <B0-RUNS-DIR>
+
+Replace `<B0-RUNS-DIR>` with an absolute path outside the repository, written for your shell:
+`"$env:TEMP\fab-b0"` in PowerShell, `"$TEMP/fab-b0"` in bash, `%TEMP%\fab-b0` in cmd. A form your shell
+does not expand (e.g. `%TEMP%` in PowerShell) becomes a literal folder inside the repository, full of gold.
 
 `admit` checks computed gold against `questions/gold.lock.json`. Pass `--update-lock` only to bootstrap
 the lock for new questions or to accept intentional gold changes.
@@ -30,8 +34,8 @@ are the gold answers, and an agent run must never be able to browse them.
 - `fab admit`: recompute gold for a question set and check it against the answer spec and gold lock.
 - `fab run`: run a profile over a question set, then grade and summarise it.
 - `fab report <run-dir> [<compare-run-dir>]`: summarise a run, or compare two runs pairwise (exact
-  McNemar). Runs can only be compared when their `run.json` records the same corpus manifest and
-  question hashes.
+  McNemar). Runs can only be compared when their `run.json` records the same corpus manifest,
+  question and gold-lock hashes (a run without a gold-lock hash is compared with a warning).
 
 Before any attempt, `fab run` refuses to start if the corpus does not match its manifest, if any
 question's gold has drifted from (or is missing in) `questions/gold.lock.json`, or, for Copilot
@@ -42,8 +46,12 @@ profiles, if the Copilot CLI is older than 1.0.96.
 - Run folders: `%LOCALAPPDATA%\fab\runs\<run-id>` by default; override with `fab run --runs-dir`.
   Each holds `run.json` (profile, corpus, question and gold-lock hashes, harness version),
   `attempts.jsonl`, `grades.jsonl` and `attempts/<question>/r<n>/`.
-- Agent workspaces: `%LOCALAPPDATA%\fab\ws\<guid>`, one per attempt, deleted afterwards. Both live
-  outside the repository so agents cannot browse questions, gold or other runs.
+- Agent workspaces: `%LOCALAPPDATA%\fab\ws\<guid>`, one per attempt, deleted afterwards.
+
+Keeping both outside the repository is a mitigation, not isolation: it keeps questions, gold and other
+runs out of the agent's working directory, but the agent's shell runs with your full user rights and
+the prompt names the corpus path, so a determined agent could still find them. An OS-level sandbox for
+attempts is a planned follow-up.
 
 ## Copilot CLI runs
 

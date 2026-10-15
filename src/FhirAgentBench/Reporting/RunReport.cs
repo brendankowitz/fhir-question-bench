@@ -46,9 +46,24 @@ public static class RunReport
         return new PairedComparison(pairs.Count, bothCorrect, onlyA, onlyB, pairs.Count - bothCorrect - onlyA - onlyB, difference, McNemar.ExactTwoSided(onlyA, onlyB));
     }
 
-    public static void RequireComparable(RunSnapshot a, RunSnapshot b)
+    /// <summary>
+    /// Throws if the runs used different corpus, questions or gold lock. Returns warnings for inputs a run did not record
+    /// (runs made before the gold-lock hash was added), which cannot be checked.
+    /// </summary>
+    public static IReadOnlyList<string> RequireComparable(RunSnapshot a, RunSnapshot b)
     {
+        var warnings = new List<string>();
         var differences = new List<string>();
+        if (a.GoldLockSha256 is null || b.GoldLockSha256 is null)
+        {
+            warnings.Add(
+                $"WARNING: gold lock hash unknown ({a.RunId}: {a.GoldLockSha256 ?? "not recorded"}, {b.RunId}: {b.GoldLockSha256 ?? "not recorded"}); cannot confirm both runs were graded against the same gold.");
+        }
+        else if (a.GoldLockSha256 != b.GoldLockSha256)
+        {
+            differences.Add($"gold lock {a.GoldLockSha256} vs {b.GoldLockSha256}");
+        }
+
         if (a.CorpusManifestSha256 != b.CorpusManifestSha256)
         {
             differences.Add($"corpus manifest {a.CorpusManifestSha256} vs {b.CorpusManifestSha256}");
@@ -64,6 +79,8 @@ public static class RunReport
             throw new InvalidOperationException(
                 $"Runs {a.RunId} and {b.RunId} cannot be compared: they used different inputs ({string.Join("; ", differences)}).");
         }
+
+        return warnings;
     }
 
     public static string ToMarkdown(RunSummary summary)

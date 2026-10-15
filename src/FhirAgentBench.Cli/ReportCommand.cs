@@ -22,7 +22,11 @@ internal static class ReportCommand
             }
 
             var (snapshotB, summaryB, gradesB) = await LoadAsync(secondDirectory, cancellationToken);
-            RunReport.RequireComparable(snapshotA, snapshotB);
+            foreach (var warning in RunReport.RequireComparable(snapshotA, snapshotB))
+            {
+                Console.Error.WriteLine(warning);
+            }
+
             Console.WriteLine(RunReport.ToMarkdown(summaryA, summaryB, RunReport.Compare(gradesA, gradesB)));
             return 0;
         });

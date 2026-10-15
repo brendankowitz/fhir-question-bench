@@ -17,18 +17,7 @@ public sealed class ImmunizationHistoryOracle : IOracle
         var cvx = parameters.GetStrings("cvx").ToHashSet(StringComparer.Ordinal);
         var from = context.WindowStart(parameters);
 
-        var matching = new List<TimedEvent>();
-        foreach (var immunization in context.Corpus.ForPatient(context.PatientKey(question.Patient), "Immunization"))
-        {
-            if (FhirElements.String(immunization, "status") == "completed"
-                && FhirElements.String(immunization, "occurrenceDateTime") is { } occurrence
-                && FhirTime.Parse(occurrence) is var when
-                && Events.IsInWindow(context, when, from)
-                && FhirElements.HasCoding(immunization, "vaccineCode", FhirElements.Cvx, cvx))
-            {
-                matching.Add(new TimedEvent(immunization, when));
-            }
-        }
+        var matching = Immunizations.Completed(context, context.PatientKey(question.Patient), cvx, from);
 
         return Events.Summarize(context, returns, matching);
     }

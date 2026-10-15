@@ -73,42 +73,18 @@ public sealed class LatestObservationOracle : IOracle
         var names = question.Oracle.Parameters.GetMap("components");
 
         var panels = Observations.InWindowWithCode(context, patient, loincs, from)
-            .Select(o => new Panel(o.Resource, o.When, ComponentValues(o.Resource, names)))
+            .Select(o => new Panel(o.Resource, o.When, Observations.ComponentQuantities(o.Resource, names)))
             .Where(p => p.Parts.Count == names.Count);
         if (Observations.NewestFirst(panels).FirstOrDefault() is not { } latest)
         {
             return Answer.Of(null, []);
         }
 
-        var answer = new Dictionary<string, object>(latest.Parts) { ["date"] = FhirTime.ToDate(latest.When) };
+        var answer = latest.Parts.ToDictionary(part => part.Key, part => (object)new { value = part.Value.Value, unit = part.Value.Unit });
+        answer["date"] = FhirTime.ToDate(latest.When);
         return Answer.Of(answer, [latest.Key]);
     }
 
-    private static Dictionary<string, object> ComponentValues(JsonElement observation, IReadOnlyDictionary<string, string> names)
-    {
-        var parts = new Dictionary<string, object>();
-        if (!observation.TryGetProperty("component", out var components) || components.ValueKind != JsonValueKind.Array)
-        {
-            return parts;
-        }
-
-        var owner = CorpusIndex.KeyOf(observation);
-        foreach (var (name, loinc) in names)
-        {
-            foreach (var component in components.EnumerateArray())
-            {
-                if (FhirElements.HasCoding(component, "code", FhirElements.Loinc, new HashSet<string> { loinc })
-                    && Observations.Quantity(component, owner) is { } quantity)
-                {
-                    parts[name] = new { value = quantity.Value, unit = quantity.Unit };
-                    break;
-                }
-            }
-        }
-
-        return parts;
-    }
-
-    private sealed record Panel(JsonElement Resource, DateTimeOffset When, Dictionary<string, object> Parts)
+    private sealed record Panel(JsonElement Resource, DateTimeOffset When, Dictionary<string, (decimal Value, string Unit)> Parts)
         : TimedObservation(Resource, When);
 }

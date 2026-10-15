@@ -107,6 +107,32 @@ internal static class Observations
         return (value.GetDecimal(), unit);
     }
 
+    public static Dictionary<string, (decimal Value, string Unit)> ComponentQuantities(
+        JsonElement observation, IReadOnlyDictionary<string, string> loincsByName)
+    {
+        var parts = new Dictionary<string, (decimal Value, string Unit)>();
+        if (!observation.TryGetProperty("component", out var components) || components.ValueKind != JsonValueKind.Array)
+        {
+            return parts;
+        }
+
+        var owner = CorpusIndex.KeyOf(observation);
+        foreach (var (name, loinc) in loincsByName)
+        {
+            foreach (var component in components.EnumerateArray())
+            {
+                if (FhirElements.HasCoding(component, "code", FhirElements.Loinc, new HashSet<string> { loinc })
+                    && Quantity(component, owner) is { } quantity)
+                {
+                    parts[name] = quantity;
+                    break;
+                }
+            }
+        }
+
+        return parts;
+    }
+
     public static ValidObservation InUnit(ValidObservation observation, string? unit)
     {
         if (unit is null || observation.Unit == unit)

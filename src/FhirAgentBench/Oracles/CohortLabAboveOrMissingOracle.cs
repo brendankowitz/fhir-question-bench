@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FhirAgentBench.Answers;
 using FhirAgentBench.Corpus;
 using FhirAgentBench.Questions;
@@ -25,7 +24,8 @@ public sealed class CohortLabAboveOrMissingOracle : IOracle
         foreach (var patient in context.Corpus.OfType("Patient"))
         {
             var key = CorpusIndex.KeyOf(patient);
-            if (!IsAliveAndInAgeRange(patient, context.Now, ageMin, ageMax)
+            if (!Patients.IsLiving(patient, context.Now)
+                || !Patients.IsInAgeRange(patient, context.Now, ageMin, ageMax)
                 || !Conditions.HasActive(context, key, conditions))
             {
                 continue;
@@ -40,26 +40,5 @@ public sealed class CohortLabAboveOrMissingOracle : IOracle
         }
 
         return Answer.Of(counted.Count, counted);
-    }
-
-    private static bool IsAliveAndInAgeRange(JsonElement patient, DateTimeOffset now, int ageMin, int ageMax)
-    {
-        if (FhirElements.String(patient, "deceasedDateTime") is { } died && FhirTime.Parse(died) <= now)
-        {
-            return false;
-        }
-
-        if (patient.TryGetProperty("deceasedBoolean", out var deceased) && deceased.ValueKind == JsonValueKind.True)
-        {
-            return false;
-        }
-
-        if (FhirElements.String(patient, "birthDate") is not { } birthDate)
-        {
-            return false;
-        }
-
-        var age = FhirTime.AgeInYears(birthDate, now);
-        return age >= ageMin && age <= ageMax;
     }
 }

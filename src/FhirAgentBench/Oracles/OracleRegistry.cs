@@ -28,6 +28,8 @@ public sealed class OracleRegistry
         new ProcedureHistoryOracle(),
         new EncounterQueryOracle(),
         new AllergyCheckOracle(),
+        new ClinicalCalculationOracle(),
+        new CohortCountOracle(),
         new UnanswerableOracle(),
     ]);
 

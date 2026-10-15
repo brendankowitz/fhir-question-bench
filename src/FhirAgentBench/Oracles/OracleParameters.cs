@@ -35,6 +35,13 @@ public sealed class OracleParameters(IReadOnlyDictionary<string, object> values)
                 pair => pair.Value as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a map of names to codes."))
             : throw new InvalidDataException($"Oracle parameter '{name}' must be a map.");
 
+    public OracleParameters GetNested(string name) =>
+        Get(name) is Dictionary<object, object> map
+            ? new OracleParameters(map.ToDictionary(
+                pair => pair.Key as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a map keyed by names."),
+                pair => pair.Value))
+            : throw new InvalidDataException($"Oracle parameter '{name}' must be a map.");
+
     public IReadOnlyList<string> GetStrings(string name) =>
         Get(name) is List<object> list
             ? list.Select(item => item as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a list of values.")).ToList()

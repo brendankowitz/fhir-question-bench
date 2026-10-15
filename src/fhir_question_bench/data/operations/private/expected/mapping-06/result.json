@@ -1,0 +1,1 @@
+{"code":{"coding":[{"code":"active-marker","display":"Owned synthetic active marker","system":"urn:ops:derived"}]},"id":"a","resourceType":"Observation","status":"final","subject":{"reference":"Patient/a"},"valueBoolean":true}

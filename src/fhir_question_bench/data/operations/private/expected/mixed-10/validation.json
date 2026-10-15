@@ -1,0 +1,1 @@
+{"issue":[{"code":"value","expression":["Observation.status"],"severity":"error"},{"code":"code-invalid","expression":["Observation.code"],"severity":"error"}],"resourceType":"OperationOutcome"}

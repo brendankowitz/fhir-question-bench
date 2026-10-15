@@ -1,0 +1,1 @@
+{"active":true,"address":[{"city":"Fictional","country":"US","line":["100 Imaginary Street"],"postalCode":"12345","state":"ZZ"}],"birthDate":"1930-02-28","id":"a","identifier":[{"system":"urn:ops:record-number","value":"SYN-a"}],"name":[{"family":"Synthetic","given":["Person","A"]}],"resourceType":"Patient","telecom":[{"system":"email","value":"synthetic-a@example.invalid"}]}

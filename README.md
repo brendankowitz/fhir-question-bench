@@ -328,3 +328,104 @@ version/tool-name integration, real MCP handshake and representative search
 behavior, tool build/source identity, actual model/usage schema, and approved
 spending. Independent Astra review of this bounded offline milestone comes
 before live evaluation; clinical acceptance and live budget approval remain separate.
+
+## Operational tasks (separate offline track)
+
+Exactly **50 unverified operational tasks** live under
+`src/fhir_question_bench/data/operations/`: 10 de-identification, 10
+StructureMap transforms, 10 SQL-on-FHIR v2 ViewDefinition materializations,
+10 resource/profile validation, and 10 mixed/owned-terminology operations.
+Each category has two tasks at each tier 1–5. These are generated adaptive
+development fixtures, **not professionally verified tasks or measured agent
+performance**. There are no live runs or claims of specialist-tool support.
+
+```powershell
+python -m pytest tests/test_operations.py -q
+python -m fhir_question_bench operations-audit
+```
+
+The audit checks the independent operations manifest and implementation hashes,
+recomputes all 50 private expected outputs, requires the whole-output grader to
+accept gold, and rejects six constructed wrong outputs per task. It does not
+change `verification_status`. `--operations-root <path>` overrides the operations
+tree independently of the QA `--data-root`.
+
+### Public inputs, private gold, and output contracts
+
+`operations/agent/tasks.json` contains realistic prompts, tiers, capabilities
+that could help (not assertions of native support), ordered operation steps,
+input inventories and versioned output contracts. Inputs include owned synthetic
+records/Bundles, policy JSON, **R4 StructureMap JSON** (the chosen mapping-language
+representation, not a general textual FML parser), ViewDefinitions,
+StructureDefinition differentials and a version-pinned owned terminology Bundle.
+`operations/private/expected/<task-id>/` contains expected JSON artifacts. It must
+never be exposed to an evaluated agent, nor may the Python reference/grader code
+be mounted into that agent's boundary.
+
+Export a single task without gold:
+
+```python
+from pathlib import Path
+from fhir_question_bench.operations import prepare_operation
+
+prepare_operation("mixed-08", Path("prepared-operations/mixed-08"))
+```
+
+This copies only the selected public inputs and `task.json` into a new directory.
+Private grading uses `load_expected`, `recompute_task`, `grade_artifacts` and
+`grade_output_tree` from `fhir_question_bench.operations`; operational success
+is distinct from scalar QA accuracy. The collector hashes the **entire** output
+tree and rejects undeclared files (including logs/raw copies), empty extra
+directories, escaping/noncanonical paths, links/reparse points and hardlinks.
+It has an 8 MiB output budget. It is trusted offline collection, not race-free
+hostile-process containment.
+
+Contracts enforce exact artifact inventories, IDs, required/forbidden fields,
+preserved relationships and allowed loss, typed table values, nulls and row
+multiplicity, and validation severity/code/FHIRPath-expression tuples.
+Only declared arrays are order-insensitive **multisets**; other arrays retain
+order. JSON object key order is irrelevant. JSON numbers compare numerically,
+never as booleans or numeric strings. Declared aware timestamps compare as
+instants with **zero-second tolerance**; dates and all other strings are exact.
+Issue diagnostic prose may vary; issue codes, severity, expressions and coded
+constraint identities may not. No partial success, auxiliary artifacts, extra
+issues or undeclared generated IDs are accepted.
+
+### Reference semantics and limits
+
+`operations_reference.py` is deterministic, standard-library-only and independent
+of the tool under test. Tests cross-check hand-derived privacy, mapping,
+tabulation, validation and terminology cases. Its supported subset is explicit:
+
+- **De-identification:** recursive exact-key suppression, year-only birth dates,
+  fixed/per-patient clinical date offsets, exact supplied ID/alias/reference maps,
+  configured ZIP3 suppression and an owned auxiliary age topcode fixture.
+  These are Safe-Harbor-style rule exercises, **not HIPAA certification or a
+  de-identification-risk assessment**. One scoped policy deliberately preserves
+  `code.text`; unlisted public external references remain intact.
+- **StructureMap:** one group/source/target, nested rules, source min/max and
+  conditions, variables, copy/create/append/evaluate. Required-source failure
+  produces only an OperationOutcome, never a partial target.
+- **ViewDefinition:** resource/where, column, scalar/collection columns, nested
+  select, forEach/forEachOrNull, sibling cross products and unionAll. The FHIRPath
+  subset is navigation, literals, `$this`, `where`, `first`, `count`, `exists`,
+  `empty` and the fixture comparisons; unsupported expressions fail explicitly.
+- **Validation:** only supplied differential cardinality/choice, primitive and
+  complex-type shape, fixed/pattern values, constraints and pinned owned binding
+  rules, plus an explicit local-reference policy where requested. This is **not
+  base-R4 conformance, full profile/slicing validation or clinical acceptance**.
+  Conformant cases return one information/informational issue.
+- **Terminology:** owned versioned CodeSystem/ConceptMap/ValueSet mechanics for
+  `$translate`/`$validate-code`/`$expand`-style results: one-to-many and dependent
+  matches, missing-context abstention, inactive/mismatched-version rejection,
+  exact display checks and filtered/paged expansions. There is no licensed
+  SNOMED text or clinical equivalence claim. Expansion timestamps are fixed,
+  not the wall clock.
+
+To intentionally regenerate this owned release, run
+`python -m fhir_question_bench.operations_authoring`, then rerun tests/audit and
+review every change. Inputs, keys, implementation hashes or contract changes
+invalidate dependent comparison snapshots. The existing runner does **not**
+execute these tasks. Live execution remains blocked pending the independently
+verified descendant-covering read/write/private-gold/network boundary described
+above; no cloud or model calls are made by this track.

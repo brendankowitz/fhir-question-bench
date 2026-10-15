@@ -1,0 +1,1 @@
+{"parameter":[{"name":"result","valueBoolean":true},{"name":"match","part":[{"name":"equivalence","valueCode":"equivalent"},{"name":"concept","valueCoding":{"code":"x","display":"Owned destination X","system":"urn:ops:target","version":"1"}}]}],"resourceType":"Parameters"}

@@ -1,0 +1,1 @@
+{"code":{"coding":[{"code":"given-name-count","display":"Owned synthetic given-name count","system":"urn:ops:derived"}]},"id":"a","resourceType":"Observation","status":"final","subject":{"reference":"Patient/a"},"valueInteger":3}

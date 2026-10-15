@@ -77,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
 
     audit = subparsers.add_parser("audit", help="validate the provisional smoke dataset and recompute all gold")
     audit.add_argument("--out", type=Path)
+    operations_audit = subparsers.add_parser("operations-audit", help="offline whole-output audit of 50 operations")
+    operations_audit.add_argument("--operations-root", type=Path)
     prepare = subparsers.add_parser("prepare", help="export one question and agent-visible assets")
     prepare.add_argument("--question-id", required=True)
     prepare.add_argument("--out", type=Path, required=True)
@@ -99,6 +101,11 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     try:
+        if args.command == "operations-audit":
+            from .operations import OPERATIONS_ROOT, audit_operations
+
+            print(_json(audit_operations(args.operations_root or OPERATIONS_ROOT)))
+            return 0
         if args.command == "run":
             from .runner import run_benchmark
 

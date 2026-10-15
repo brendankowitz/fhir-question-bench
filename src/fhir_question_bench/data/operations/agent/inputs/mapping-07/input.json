@@ -1,0 +1,1 @@
+{"clinicalStatus":{"coding":[{"code":"active"}]},"code":{"text":"Owned finding"},"id":"c","resourceType":"Condition","subject":{"reference":"Patient/a"}}

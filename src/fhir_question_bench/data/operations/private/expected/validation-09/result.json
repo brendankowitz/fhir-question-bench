@@ -1,0 +1,1 @@
+{"issue":[{"code":"invariant","details":{"coding":[{"code":"subject-present","system":"urn:ops:constraint"}]},"expression":["Observation"],"severity":"warning"},{"code":"code-invalid","expression":["Observation.code"],"severity":"error"}],"resourceType":"OperationOutcome"}

@@ -1,0 +1,1 @@
+{"entry":[{"resource":{"active":true,"address":[{"country":"US","postalCode":"000","state":"ZZ"}],"age":90,"birthDate":"1930","id":"a","resourceType":"Patient"}},{"resource":{"active":true,"address":[{"postalCode":"987"}],"age":89,"birthDate":"1988","id":"b","resourceType":"Patient"}}],"id":"synthetic-folder","resourceType":"Bundle","type":"collection"}

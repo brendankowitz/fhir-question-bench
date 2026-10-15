@@ -1,0 +1,1 @@
+{"id":"owned-view","name":"OwnedView","resource":"Patient","resourceType":"ViewDefinition","select":[{"column":[{"name":"id","path":"id","type":"id"}]},{"column":[{"name":"given","path":"$this","type":"string"}],"forEach":"name.given"}],"status":"active","url":"urn:ops:view","version":"1"}

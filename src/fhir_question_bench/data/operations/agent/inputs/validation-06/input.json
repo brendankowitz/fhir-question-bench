@@ -1,0 +1,1 @@
+{"code":{"coding":[{"code":"a","display":"Owned signal A","system":"urn:ops:source","version":"1"}]},"effectiveDateTime":"2024-02-28T00:00:00Z","id":"o1","resourceType":"Observation","status":"final","subject":{"reference":"Patient/a"},"valueQuantity":{"unit":"g","value":"5"}}

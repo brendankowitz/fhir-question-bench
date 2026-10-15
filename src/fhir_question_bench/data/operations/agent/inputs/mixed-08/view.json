@@ -1,0 +1,1 @@
+{"id":"owned-view","name":"OwnedView","resource":"Observation","resourceType":"ViewDefinition","select":[{"column":[{"name":"id","path":"id","type":"id"},{"name":"subject","path":"subject.reference","type":"string"},{"name":"value","path":"valueQuantity.value","type":"decimal"}]}],"status":"active","url":"urn:ops:view","version":"1"}

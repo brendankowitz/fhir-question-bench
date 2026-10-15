@@ -1,0 +1,1 @@
+{"columns":[{"name":"patient_id","type":"id"},{"name":"active","type":"boolean"}],"rows":[{"active":true,"patient_id":"a"},{"active":false,"patient_id":"b"}]}

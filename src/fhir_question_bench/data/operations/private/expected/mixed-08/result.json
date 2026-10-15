@@ -1,0 +1,1 @@
+{"columns":[{"name":"id","type":"id"},{"name":"subject","type":"string"},{"name":"value","type":"decimal"}],"rows":[{"id":"anon-lab","subject":"Patient/anon","value":0}]}

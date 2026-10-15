@@ -1,1 +1,0 @@
-{"columns":[{"name":"id","type":"id"},{"name":"value","type":"decimal"},{"name":"unit","type":"string"}],"rows":[{"id":"o1","unit":"mg","value":0},{"id":"o2","unit":"mg","value":7.5},{"id":"o3","unit":"g","value":3},{"id":"o4","unit":null,"value":null}]}

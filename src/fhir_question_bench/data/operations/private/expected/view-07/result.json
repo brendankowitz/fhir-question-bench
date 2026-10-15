@@ -1,1 +1,0 @@
-{"columns":[{"name":"id","type":"id"},{"name":"given_names","type":"string"}],"rows":[{"given_names":["Person","A"],"id":"a"},{"given_names":[],"id":"b"}]}

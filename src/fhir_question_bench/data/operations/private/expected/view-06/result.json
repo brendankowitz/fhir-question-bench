@@ -1,1 +1,0 @@
-{"columns":[{"name":"id","type":"id"},{"name":"panel","type":"string"},{"name":"value","type":"decimal"}],"rows":[{"id":"o3","panel":"panel-a","value":2},{"id":"o3","panel":"panel-b","value":4},{"id":"o4","panel":"panel-a","value":2}]}

@@ -1,1 +1,0 @@
-{"issue":[{"code":"structure","expression":["Observation.value[x]"],"severity":"error"}],"resourceType":"OperationOutcome"}

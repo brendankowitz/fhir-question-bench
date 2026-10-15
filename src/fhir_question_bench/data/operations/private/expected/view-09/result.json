@@ -1,1 +1,0 @@
-{"columns":[{"name":"subject","type":"string"},{"name":"value","type":"decimal"},{"name":"unit","type":"string"}],"rows":[{"subject":"Patient/b","unit":"mg","value":2},{"subject":"Patient/a","unit":"mg","value":2},{"subject":"Patient/b","unit":"mg","value":2}]}

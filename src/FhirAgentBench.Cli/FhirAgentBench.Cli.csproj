@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>fab</AssemblyName>
+    <RootNamespace>FhirAgentBench.Cli</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+    <ProjectReference Include="..\FhirAgentBench\FhirAgentBench.csproj" />
+    <InternalsVisibleTo Include="FhirAgentBench.Tests" />
+  </ItemGroup>
+</Project>

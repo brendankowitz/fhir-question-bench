@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/FhirAgentBench.Cli/FhirAgentBench.Cli.csproj" />
     <Project Path="src/FhirAgentBench/FhirAgentBench.csproj" />
   </Folder>
   <Folder Name="/tests/">

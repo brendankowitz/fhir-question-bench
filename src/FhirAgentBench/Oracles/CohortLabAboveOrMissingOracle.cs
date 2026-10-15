@@ -16,10 +16,11 @@ public sealed class CohortLabAboveOrMissingOracle : IOracle
     {
         var parameters = question.Oracle.Parameters;
         var conditions = parameters.GetStrings("snomed").ToHashSet(StringComparer.Ordinal);
-        var loinc = parameters.GetString("loinc");
+        var loincs = parameters.GetStringOrList("loinc");
         var unit = parameters.GetString("unit");
-        var threshold = parameters.GetDecimal("threshold");
-        var from = context.Now.AddDays(-parameters.GetInt("window_days"));
+        var comparator = parameters.GetOptionalString("comparator") ?? "gt";
+        var meetsThreshold = Comparators.Create(question.Id, comparator, parameters.GetDecimal("threshold"));
+        var from = context.WindowStart(parameters);
         var ageMin = parameters.GetInt("age_min");
         var ageMax = parameters.GetInt("age_max");
 
@@ -33,12 +34,9 @@ public sealed class CohortLabAboveOrMissingOracle : IOracle
                 continue;
             }
 
-            var latest = Observations.Valid(context, key, loinc)
-                .Where(o => o.When > from)
-                .OrderByDescending(o => o.When)
-                .ThenBy(o => o.Key, StringComparer.Ordinal)
+            var latest = Observations.NewestFirst(Observations.Valid(context, key, loincs).Where(o => o.When > from))
                 .FirstOrDefault();
-            if (latest is null || Observations.InUnit(latest, loinc, unit).Value > threshold)
+            if (latest is null || meetsThreshold(Observations.InUnit(latest, unit).Value))
             {
                 counted.Add(key);
             }

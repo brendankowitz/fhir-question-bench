@@ -16,4 +16,7 @@ public sealed record OracleContext(CorpusIndex Corpus, DateTimeOffset Now, strin
             ?? throw new InvalidDataException($"No Patient with MRN '{patient.Mrn}' ({MrnSystem}) exists in the corpus.");
         return CorpusIndex.KeyOf(resource);
     }
+
+    public DateTimeOffset WindowStart(OracleParameters parameters) =>
+        parameters.GetOptionalInt("window_days") is { } days ? Now.AddDays(-days) : DateTimeOffset.MinValue;
 }

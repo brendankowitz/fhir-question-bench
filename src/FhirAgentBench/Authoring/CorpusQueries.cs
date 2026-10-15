@@ -18,7 +18,7 @@ public static class CorpusQueries
         var rows = new List<PatientRow>();
         foreach (var patient in context.Corpus.OfType("Patient"))
         {
-            var observations = Observations.Valid(context, CorpusIndex.KeyOf(patient), loinc).ToList();
+            var observations = Observations.Valid(context, CorpusIndex.KeyOf(patient), [loinc]).ToList();
             if (observations.Count == 0 || Mrn(patient, context.MrnSystem) is not { } mrn)
             {
                 continue;

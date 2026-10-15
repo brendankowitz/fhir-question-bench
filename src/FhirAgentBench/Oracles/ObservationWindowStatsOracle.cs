@@ -5,7 +5,7 @@ namespace FhirAgentBench.Oracles;
 
 public sealed class ObservationWindowStatsOracle : IOracle
 {
-    private static readonly HashSet<string> Statistics = ["count", "mean", "max", "min"];
+    private static readonly HashSet<string> Statistics = ["count", "mean", "max", "min", "change", "percent_change"];
 
     public string Name => "observation-window-stats";
 
@@ -15,33 +15,47 @@ public sealed class ObservationWindowStatsOracle : IOracle
         var statistic = parameters.GetString("statistic");
         if (!Statistics.Contains(statistic))
         {
-            throw new InvalidDataException($"Question '{question.Id}': statistic must be count, mean, max or min, not '{statistic}'.");
+            throw new InvalidDataException(
+                $"Question '{question.Id}': statistic must be count, mean, max, min, change or percent_change, not '{statistic}'.");
         }
 
-        var loinc = parameters.GetString("loinc");
+        var matches = parameters.GetOptionalString("comparator") is { } comparator
+            ? Comparators.Create(question.Id, comparator, parameters.GetDecimal("threshold"))
+            : _ => true;
         var unit = parameters.GetString("unit");
-        var from = context.Now.AddDays(-parameters.GetInt("window_days"));
-        var inWindow = Observations.Valid(context, context.PatientKey(question.Patient), loinc)
+        var from = context.WindowStart(parameters);
+        var readings = Observations.Valid(context, context.PatientKey(question.Patient), parameters.GetStringOrList("loinc"))
             .Where(o => o.When > from)
-            .Select(o => Observations.InUnit(o, loinc, unit))
+            .Select(o => Observations.InUnit(o, unit))
+            .Where(o => matches(o.Value))
             .ToList();
-        var evidence = inWindow.Select(o => o.Key);
+        var evidence = readings.Select(o => o.Key);
         if (statistic == "count")
         {
-            return Answer.Of(inWindow.Count, evidence);
+            return Answer.Of(readings.Count, evidence);
         }
 
-        if (inWindow.Count == 0)
+        if (readings.Count == 0 || (statistic is "change" or "percent_change" && readings.Count < 2))
         {
             return Answer.Of(null, []);
         }
 
         var value = statistic switch
         {
-            "mean" => Math.Round(inWindow.Average(o => o.Value), 2, MidpointRounding.AwayFromZero),
-            "max" => inWindow.Max(o => o.Value),
-            _ => inWindow.Min(o => o.Value),
+            "mean" => Round(readings.Average(o => o.Value)),
+            "max" => readings.Max(o => o.Value),
+            "min" => readings.Min(o => o.Value),
+            _ => Change(readings, statistic == "percent_change"),
         };
         return Answer.Of(value, evidence);
     }
+
+    private static decimal Change(List<ValidObservation> readings, bool asPercent)
+    {
+        var earliest = readings.OrderBy(o => o.When).ThenBy(o => o.Key, StringComparer.Ordinal).First().Value;
+        var latest = Observations.NewestFirst(readings).First().Value;
+        return Round(asPercent ? (latest - earliest) / earliest * 100m : latest - earliest);
+    }
+
+    private static decimal Round(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 }

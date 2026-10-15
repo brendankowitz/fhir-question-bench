@@ -9,6 +9,8 @@ public sealed class OracleParameters(IReadOnlyDictionary<string, object> values)
     public string GetString(string name) =>
         Get(name) as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a single value.");
 
+    public bool Has(string name) => values.ContainsKey(name);
+
     public string? GetOptionalString(string name) => values.TryGetValue(name, out var value) ? value as string : null;
 
     public decimal GetDecimal(string name) =>
@@ -20,6 +22,18 @@ public sealed class OracleParameters(IReadOnlyDictionary<string, object> values)
         int.TryParse(GetString(name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value
             : throw new InvalidDataException($"Oracle parameter '{name}' value '{GetString(name)}' is not an integer.");
+
+    public int? GetOptionalInt(string name) => Has(name) ? GetInt(name) : null;
+
+    public IReadOnlyList<string> GetStringOrList(string name) =>
+        Get(name) is string single ? [single] : GetStrings(name);
+
+    public IReadOnlyDictionary<string, string> GetMap(string name) =>
+        Get(name) is Dictionary<object, object> map
+            ? map.ToDictionary(
+                pair => pair.Key as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a map of names to codes."),
+                pair => pair.Value as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a map of names to codes."))
+            : throw new InvalidDataException($"Oracle parameter '{name}' must be a map.");
 
     public IReadOnlyList<string> GetStrings(string name) =>
         Get(name) is List<object> list

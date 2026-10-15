@@ -1,16 +1,45 @@
+using System.Text.RegularExpressions;
 using FhirAgentBench.Answers;
+using FhirAgentBench.Corpus;
 using FhirAgentBench.Oracles;
 
 namespace FhirAgentBench.Questions;
 
 public static class QuestionLoader
 {
-    public static IReadOnlyList<Question> LoadSet(string questionsDirectory, string setFile) =>
-        File.ReadLines(setFile)
+    private static readonly string[] ResourceTypes =
+    [
+        "Patient", "Observation", "Condition", "MedicationRequest", "MedicationStatement", "Medication",
+        "Encounter", "Procedure", "DiagnosticReport", "Immunization", "AllergyIntolerance", "CarePlan",
+        "Claim", "ExplanationOfBenefit", "Practitioner", "Organization", "Location", "Device",
+        "ImagingStudy", "DocumentReference", "Provenance",
+    ];
+
+    private static readonly Regex ForbiddenQuestionText = new(
+        @"https?://|urn:|(?<![A-Za-z])(?:" + string.Join("|", ResourceTypes) + @")/[A-Za-z0-9\-.]+",
+        RegexOptions.Compiled);
+
+    public static IReadOnlyList<Question> LoadSet(string questionsDirectory, string setFile)
+    {
+        var ids = File.ReadLines(setFile)
             .Select(line => line.Trim())
             .Where(line => line.Length > 0 && !line.StartsWith('#'))
-            .Select(id => Load(Path.Combine(questionsDirectory, id + ".yaml")))
             .ToList();
+
+        var duplicate = ids.GroupBy(id => id).FirstOrDefault(group => group.Count() > 1);
+        if (duplicate is not null)
+        {
+            throw new InvalidDataException($"'{setFile}' lists '{duplicate.Key}' more than once.");
+        }
+
+        return ids.Select(id =>
+        {
+            var path = Path.Combine(questionsDirectory, id + ".yaml");
+            return File.Exists(path)
+                ? Load(path)
+                : throw new InvalidDataException($"'{setFile}' lists '{id}' but '{path}' does not exist.");
+        }).ToList();
+    }
 
     public static Question Load(string path)
     {
@@ -26,21 +55,28 @@ public static class QuestionLoader
             throw new InvalidDataException($"'{path}': tier must be 1-7, not {dto.Tier}.");
         }
 
+        var text = Required(dto.Question, "question", path);
+        if (ForbiddenQuestionText.Match(text) is { Success: true } forbidden)
+        {
+            throw new InvalidDataException(
+                $"'{path}': question text must not contain a URL, urn or resource reference, found '{forbidden.Value}'.");
+        }
+
         return new Question
         {
             Id = dto.Id,
             Tier = dto.Tier,
             Template = Required(dto.Template, "template", path),
-            Tags = dto.Tags,
-            ToolGroups = dto.ToolGroups,
+            Tags = dto.Tags ?? [],
+            ToolGroups = dto.ToolGroups ?? [],
             Persona = Required(dto.Persona, "persona", path),
             Patient = dto.Patient is null
                 ? null
                 : new PatientContext(
                     Required(dto.Patient.Mrn, "patient.mrn", path),
                     Required(dto.Patient.Name, "patient.name", path),
-                    Required(dto.Patient.BirthDate, "patient.birth_date", path)),
-            Text = Required(dto.Question, "question", path),
+                    ValidDate(Required(dto.Patient.BirthDate, "patient.birth_date", path), "patient.birth_date", path)),
+            Text = text,
             Answer = ToSpec(dto.Answer ?? throw new InvalidDataException($"'{path}': answer is required."), "answer", path),
             Oracle = new OracleCall(
                 Required(dto.Oracle?.Name, "oracle.name", path),
@@ -53,11 +89,14 @@ public static class QuestionLoader
 
     private static AnswerSpec ToSpec(AnswerSpecDto dto, string name, string path)
     {
-        if (!Enum.TryParse<AnswerType>(dto.Type, ignoreCase: true, out var type))
+        var typeName = Enum.GetNames<AnswerType>()
+            .FirstOrDefault(n => string.Equals(n, dto.Type, StringComparison.OrdinalIgnoreCase));
+        if (typeName is null)
         {
             throw new InvalidDataException($"'{path}': {name} has unknown answer type '{dto.Type}'.");
         }
 
+        var type = Enum.Parse<AnswerType>(typeName);
         if (dto.Tolerance < 0)
         {
             throw new InvalidDataException($"'{path}': {name} tolerance must not be negative, not {dto.Tolerance}.");
@@ -84,6 +123,19 @@ public static class QuestionLoader
         };
     }
 
+    private static string ValidDate(string value, string name, string path)
+    {
+        try
+        {
+            FhirTime.Parse(value);
+            return value;
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            throw new InvalidDataException($"'{path}': {name} '{value}' is not a valid FHIR date.", ex);
+        }
+    }
+
     private static string Required(string? value, string name, string path) =>
         string.IsNullOrWhiteSpace(value) ? throw new InvalidDataException($"'{path}': {name} is required.") : value;
 
@@ -95,9 +147,9 @@ public static class QuestionLoader
 
         public string? Template { get; set; }
 
-        public List<string> Tags { get; set; } = [];
+        public List<string>? Tags { get; set; }
 
-        public List<string> ToolGroups { get; set; } = [];
+        public List<string>? ToolGroups { get; set; }
 
         public string? Persona { get; set; }
 

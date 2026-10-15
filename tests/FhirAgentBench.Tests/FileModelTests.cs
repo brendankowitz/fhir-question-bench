@@ -121,6 +121,124 @@ public sealed class FileModelTests : IDisposable
         Assert.Contains("unit", ex.Message);
     }
 
+    private string WriteRaw(string id, string questionText, string extra = "") => Write(
+        $"questions/{id}.yaml",
+        $"id: {id}\ntier: 1\ntemplate: t\npersona: nursing\n{extra}question: {questionText}\nanswer: {{ type: boolean }}\noracle: {{ name: unanswerable }}\n");
+
+    [Fact]
+    public void Question_EmptyTagsAndToolGroups_LoadAsEmpty()
+    {
+        var path = WriteRaw("e1", "Q?", "tags:\ntool_groups:\n");
+
+        var question = QuestionLoader.Load(path);
+
+        Assert.Empty(question.Tags);
+        Assert.Empty(question.ToolGroups);
+    }
+
+    [Fact]
+    public void Profile_EmptyCollections_LoadAsEmpty()
+    {
+        Write("prompts/default.md", "prompt");
+        var path = Write("profiles/e.yaml", "id: e\nharness: oracle\nbuiltin_tools:\nmcp_servers:\nprompt_template: ../prompts/default.md\n");
+        var withServer = Write("profiles/e2.yaml", "id: e2\nharness: oracle\nmcp_servers:\n  fhir:\n    command: x\n    args:\n    tools:\nprompt_template: ../prompts/default.md\n");
+
+        var profile = ProfileLoader.Load(path);
+
+        Assert.Empty(profile.McpServers);
+        Assert.Empty(profile.BuiltinTools);
+        var server = ProfileLoader.Load(withServer).McpServers["fhir"];
+        Assert.Empty(server.Args);
+        Assert.Empty(server.Tools);
+    }
+
+    [Fact]
+    public void QuestionSet_MissingQuestionFile_NamesSetAndId()
+    {
+        var set = Write("question-sets/m.txt", "ghost\n");
+
+        var ex = Assert.Throws<InvalidDataException>(() => QuestionLoader.LoadSet(Path.Combine(_directory, "questions"), set));
+        Assert.Contains("m.txt", ex.Message);
+        Assert.Contains("'ghost'", ex.Message);
+    }
+
+    [Fact]
+    public void QuestionSet_DuplicateId_IsRejected()
+    {
+        WriteQuestion("d1", "{ type: boolean }");
+        var set = Write("question-sets/d.txt", "d1\nd1\n");
+
+        var ex = Assert.Throws<InvalidDataException>(() => QuestionLoader.LoadSet(Path.Combine(_directory, "questions"), set));
+        Assert.Contains("more than once", ex.Message);
+    }
+
+    [Fact]
+    public void Corpus_BadNow_NamesFileAndField()
+    {
+        Write("corpora/c2/corpus.yaml", "id: c2\nnow: not-a-date\nmrn_system: s\nsource: { url: u, sha256: h }\n");
+
+        var ex = Assert.Throws<InvalidDataException>(() => CorpusDefinition.Load(Path.Combine(_directory, "corpora", "c2")));
+        Assert.Contains("corpus.yaml", ex.Message);
+        Assert.Contains("now", ex.Message);
+    }
+
+    [Fact]
+    public void OracleParameters_BadNumber_NamesParameterAndValue()
+    {
+        var path = Write("questions/n1.yaml", "id: n1\ntier: 1\ntemplate: t\npersona: nursing\nquestion: Q?\nanswer: { type: integer }\noracle: { name: x, parameters: { threshold: abc, days: 1.5 } }\n");
+        var parameters = QuestionLoader.Load(path).Oracle.Parameters;
+
+        var decimalEx = Assert.Throws<InvalidDataException>(() => parameters.GetDecimal("threshold"));
+        Assert.Contains("threshold", decimalEx.Message);
+        Assert.Contains("abc", decimalEx.Message);
+        var intEx = Assert.Throws<InvalidDataException>(() => parameters.GetInt("days"));
+        Assert.Contains("days", intEx.Message);
+    }
+
+    [Fact]
+    public void Question_BadBirthDate_IsRejected()
+    {
+        var path = WriteRaw("b1", "Q?", "patient: { mrn: M, name: N, birth_date: yesterday }\n");
+
+        var ex = Assert.Throws<InvalidDataException>(() => QuestionLoader.Load(path));
+        Assert.Contains("b1.yaml", ex.Message);
+        Assert.Contains("birth_date", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("99")]
+    [InlineData("integer, date")]
+    public void Question_NumericOrListAnswerType_IsRejected(string type)
+    {
+        var path = WriteQuestion("numtype", "{ type: \"" + type + "\" }");
+
+        var ex = Assert.Throws<InvalidDataException>(() => QuestionLoader.Load(path));
+        Assert.Contains("unknown answer type", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("See http://example.org/x")]
+    [InlineData("See https://example.org/x")]
+    [InlineData("Check urn:oid:1.2.3 please")]
+    [InlineData("Look at Patient/abc-123 now")]
+    [InlineData("Is MedicationRequest/m1 active")]
+    public void Question_TextWithIdentifiersOrUrls_IsRejected(string text)
+    {
+        var path = WriteRaw("leak", "\"" + text + "\"");
+
+        var ex = Assert.Throws<InvalidDataException>(() => QuestionLoader.Load(path));
+        Assert.Contains("leak.yaml", ex.Message);
+    }
+
+    [Fact]
+    public void Question_TextWithOrdinarySlashes_IsAccepted()
+    {
+        var path = WriteRaw("ok", "Was blood pressure 120/80 and/or higher?");
+
+        Assert.Equal("Was blood pressure 120/80 and/or higher?", QuestionLoader.Load(path).Text);
+    }
+
     [Fact]
     public void QuestionSet_SkipsBlankLinesAndComments()
     {

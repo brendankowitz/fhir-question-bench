@@ -11,9 +11,15 @@ public sealed class OracleParameters(IReadOnlyDictionary<string, object> values)
 
     public string? GetOptionalString(string name) => values.TryGetValue(name, out var value) ? value as string : null;
 
-    public decimal GetDecimal(string name) => decimal.Parse(GetString(name), CultureInfo.InvariantCulture);
+    public decimal GetDecimal(string name) =>
+        decimal.TryParse(GetString(name), NumberStyles.Number, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : throw new InvalidDataException($"Oracle parameter '{name}' value '{GetString(name)}' is not a decimal number.");
 
-    public int GetInt(string name) => int.Parse(GetString(name), CultureInfo.InvariantCulture);
+    public int GetInt(string name) =>
+        int.TryParse(GetString(name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : throw new InvalidDataException($"Oracle parameter '{name}' value '{GetString(name)}' is not an integer.");
 
     public IReadOnlyList<string> GetStrings(string name) =>
         Get(name) is List<object> list

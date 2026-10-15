@@ -15,11 +15,23 @@ public sealed record CorpusDefinition(
         var dto = Yaml.Read<CorpusDto>(path);
         return new CorpusDefinition(
             dto.Id ?? throw new InvalidDataException($"'{path}': id is required."),
-            FhirTime.Parse(dto.Now ?? throw new InvalidDataException($"'{path}': now is required.")),
+            ParseNow(dto.Now ?? throw new InvalidDataException($"'{path}': now is required."), path),
             dto.MrnSystem ?? throw new InvalidDataException($"'{path}': mrn_system is required."),
             dto.Source?.Url ?? throw new InvalidDataException($"'{path}': source.url is required."),
             dto.Source?.Sha256 ?? throw new InvalidDataException($"'{path}': source.sha256 is required."),
             Path.GetFullPath(corpusDirectory));
+    }
+
+    private static DateTimeOffset ParseNow(string value, string path)
+    {
+        try
+        {
+            return FhirTime.Parse(value);
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            throw new InvalidDataException($"'{path}': now '{value}' is not a valid FHIR date or dateTime.", ex);
+        }
     }
 
     private sealed class CorpusDto

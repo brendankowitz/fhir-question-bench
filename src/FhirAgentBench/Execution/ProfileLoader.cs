@@ -35,13 +35,13 @@ public static class ProfileLoader
             Model = dto.Model,
             ReasoningEffort = dto.ReasoningEffort,
             Executable = dto.Executable ?? "copilot",
-            BuiltinTools = dto.BuiltinTools,
-            McpServers = dto.McpServers.ToDictionary(
+            BuiltinTools = dto.BuiltinTools ?? [],
+            McpServers = (dto.McpServers ?? []).ToDictionary(
                 s => s.Key,
                 s => new McpServer(
-                    s.Value.Command ?? throw new InvalidDataException($"'{path}': mcp_servers.{s.Key}.command is required."),
-                    s.Value.Args,
-                    s.Value.Tools)),
+                    s.Value?.Command ?? throw new InvalidDataException($"'{path}': mcp_servers.{s.Key}.command is required."),
+                    s.Value.Args ?? [],
+                    s.Value.Tools ?? [])),
             PromptTemplatePath = prompt,
             MaxAiCredits = dto.MaxAiCredits ?? 30,
             TimeoutMinutes = dto.TimeoutMinutes ?? 20,
@@ -61,9 +61,9 @@ public static class ProfileLoader
 
         public string? Executable { get; set; }
 
-        public List<string> BuiltinTools { get; set; } = [];
+        public List<string>? BuiltinTools { get; set; }
 
-        public Dictionary<string, McpServerDto> McpServers { get; set; } = [];
+        public Dictionary<string, McpServerDto?>? McpServers { get; set; }
 
         public string? PromptTemplate { get; set; }
 
@@ -76,8 +76,8 @@ public static class ProfileLoader
     {
         public string? Command { get; set; }
 
-        public List<string> Args { get; set; } = [];
+        public List<string>? Args { get; set; }
 
-        public List<string> Tools { get; set; } = [];
+        public List<string>? Tools { get; set; }
     }
 }

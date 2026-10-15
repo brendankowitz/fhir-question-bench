@@ -11,7 +11,7 @@ public sealed class OracleParameters(IReadOnlyDictionary<string, object> values)
 
     public bool Has(string name) => values.ContainsKey(name);
 
-    public string? GetOptionalString(string name) => values.TryGetValue(name, out var value) ? value as string : null;
+    public string? GetOptionalString(string name) => Has(name) ? GetString(name) : null;
 
     public decimal GetDecimal(string name) =>
         decimal.TryParse(GetString(name), NumberStyles.Number, CultureInfo.InvariantCulture, out var value)

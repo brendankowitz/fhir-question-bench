@@ -328,6 +328,33 @@ public sealed class OracleExtensionTests : IDisposable
         Assert.Null(Stats(new() { ["loinc"] = "4548-4", ["window_days"] = "30", ["statistic"] = statistic, ["unit"] = "%" }).Value);
     }
 
+    [Fact]
+    public void WindowStats_PercentChangeFromZero_IsNull()
+    {
+        AddObservation("first", "4548-4", "2026-01-01T00:00:00Z", "0", "%");
+        AddObservation("last", "4548-4", "2026-01-10T00:00:00Z", "10", "%");
+
+        Assert.Null(Stats(new() { ["loinc"] = "4548-4", ["window_days"] = "30", ["statistic"] = "percent_change", ["unit"] = "%" }).Value);
+    }
+
+    [Theory]
+    [InlineData("return")]
+    [InlineData("unit")]
+    public void LatestObservation_NonScalarOptionalParameter_Throws(string name)
+    {
+        var ex = Assert.Throws<InvalidDataException>(() => Latest(new() { ["loinc"] = "4548-4", [name] = L("x") }));
+
+        Assert.Contains(name, ex.Message);
+    }
+
+    [Fact]
+    public void LatestObservation_NonScalarWindowDays_Throws()
+    {
+        var ex = Assert.Throws<InvalidDataException>(() => Latest(new() { ["loinc"] = "4548-4", ["window_days"] = L("30") }));
+
+        Assert.Contains("window_days", ex.Message);
+    }
+
     [Theory]
     [InlineData("gt", 2)]
     [InlineData("ge", 3)]

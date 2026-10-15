@@ -40,21 +40,26 @@ public sealed class ObservationWindowStatsOracle : IOracle
             return Answer.Of(null, []);
         }
 
-        var value = statistic switch
+        decimal? value = statistic switch
         {
             "mean" => Round(readings.Average(o => o.Value)),
             "max" => readings.Max(o => o.Value),
             "min" => readings.Min(o => o.Value),
             _ => Change(readings, statistic == "percent_change"),
         };
-        return Answer.Of(value, evidence);
+        return Answer.Of(value, value is null ? [] : evidence);
     }
 
-    private static decimal Change(List<ValidObservation> readings, bool asPercent)
+    private static decimal? Change(List<ValidObservation> readings, bool asPercent)
     {
         var earliest = readings.OrderBy(o => o.When).ThenBy(o => o.Key, StringComparer.Ordinal).First().Value;
         var latest = Observations.NewestFirst(readings).First().Value;
-        return Round(asPercent ? (latest - earliest) / earliest * 100m : latest - earliest);
+        if (!asPercent)
+        {
+            return Round(latest - earliest);
+        }
+
+        return earliest == 0 ? null : Round((latest - earliest) / earliest * 100m);
     }
 
     private static decimal Round(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);

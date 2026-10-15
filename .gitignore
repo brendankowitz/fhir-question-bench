@@ -18,3 +18,7 @@ gold-*.jsonl
 run-traces/
 runs/
 .test-work*/
+bin/
+obj/
+.vs/
+corpora/*/data/

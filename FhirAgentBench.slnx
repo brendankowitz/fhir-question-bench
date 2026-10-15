@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FhirAgentBench/FhirAgentBench.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FhirAgentBench.Tests/FhirAgentBench.Tests.csproj" />
+  </Folder>
+</Solution>

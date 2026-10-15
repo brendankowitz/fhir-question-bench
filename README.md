@@ -4,6 +4,7 @@ Clinician-voiced questions over a pinned FHIR corpus, for measuring whether an a
 answers better when you change its tools (e.g. the `cli-on-fhir` MCP), skills, prompt or model.
 
 - Design: `docs/superpowers/specs/2026-10-15-fhir-agent-bench-platform-design.md`
+- Oracle semantics and code crosswalks: `docs/questions/oracle-semantics.md`; second gold derivation: `tools/derive-gold/`
 - Research behind it: `docs/research/reports/FHIR agent bench revised plan.md`
 - Status: `question-sets/v1-100.txt` holds 100 questions (13 T1, 20 T2, 20 T3, 20 T4, 13 T5, 8 T6, 6 T7)
   across 17 oracles, including the 10 Phase 0 questions (`question-sets/phase0.txt`). Tiers are by mechanism

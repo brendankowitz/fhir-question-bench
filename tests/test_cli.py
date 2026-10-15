@@ -33,6 +33,8 @@ def test_cli_audit_prepare_recompute_and_offline_demo(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert (prepared / "question.json").exists()
     assert (prepared / "corpus" / "resources.ndjson").exists()
+    assert (prepared / "response-contract.json").exists()
+    assert (prepared / "selection-policies.json").exists()
     assert not list(prepared.rglob("*gold*"))
     repeated = tmp_path / "prepared-again"
     second = run_cli("prepare", "--question-id", "direct-001", "--out", str(repeated))

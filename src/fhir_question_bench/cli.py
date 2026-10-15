@@ -30,17 +30,24 @@ def _write(path: Path, text: str) -> None:
 
 def _read_gold(path: Path, question_id: str) -> GoldAnswer:
     text = path.read_text(encoding="utf-8")
-    for line in text.splitlines():
-        row = json.loads(line)
-        if row.get("question_id") == question_id:
-            return GoldAnswer.from_dict(row)
     try:
-        row = json.loads(text)
-    except json.JSONDecodeError as error:
-        raise ValueError(f"gold file does not contain question {question_id}") from error
-    if row.get("question_id") != question_id:
+        document = json.loads(text)
+    except json.JSONDecodeError:
+        document = []
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                document.append(json.loads(line))
+            except json.JSONDecodeError as error:
+                raise ValueError(f"invalid gold JSON on line {line_number}: {error}") from error
+    rows = document if isinstance(document, list) else [document]
+    for row in rows:
+        if isinstance(row, dict) and row.get("question_id") == question_id:
+            return GoldAnswer.from_dict(row)
+    if not rows:
         raise ValueError(f"gold file does not contain question {question_id}")
-    return GoldAnswer.from_dict(row)
+    raise ValueError(f"gold file does not contain question {question_id}")
 
 
 def _summary_markdown(title: str, rows: list[dict[str, Any]], label: str) -> str:
@@ -121,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"unknown question ID {args.question_id}")
             gold = _read_gold(args.gold, args.question_id)
             response = AgentResponse.from_dict(json.loads(args.response.read_text(encoding="utf-8")))
-            result = grade_response(question, gold, response, corpus)
+            result = grade_response(question, gold, response, corpus, args.data_root)
             _write(args.out, _json(result.as_dict()) + "\n")
             markdown = args.out.with_suffix(".md")
             _write(markdown, _summary_markdown("FHIR benchmark grading", [result.as_dict()], "response grading"))

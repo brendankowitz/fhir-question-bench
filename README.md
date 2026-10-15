@@ -17,9 +17,10 @@ validation.
   and wrong-patient distractors, and a scoped absence case.
 - The CodeSystem and ConceptMap are benchmark-owned synthetic mechanics only;
   they are not SNOMED CT, LOINC, RxNorm, or clinically authoritative mappings.
-- Questions, agent-visible FHIR/protocol/terminology, and the review ledger are
-  separate assets. Gold is recomputed from source bytes and is not committed in
-  the agent-visible preparation directory.
+- Questions, agent-visible FHIR/protocol/terminology, the versioned response
+  contract, selection/completeness policies, and the review ledger are separate
+  assets. Gold is recomputed from source bytes and is not committed in the
+  agent-visible preparation directory.
 - Every review row is provisional; clinical/terminology review has not been
   performed. The offline demo is an **oracle/self-check**, not measured agent
   performance.
@@ -49,7 +50,7 @@ fhir-question-bench --help
 # Validate locked source hashes, question contracts, review states, and all 20 gold records
 python -m fhir_question_bench audit
 
-# Export one question with only its agent-visible corpus and protocol assets
+# Export one question with its corpus, protocol, response contract, and policies
 python -m fhir_question_bench prepare --question-id temporal-001 --out .\prepared\temporal-001
 
 # Recompute private gold. Keep this output outside any agent-visible directory.
@@ -73,10 +74,16 @@ No command downloads or extracts archives.
 ## Strict response format
 
 The response is JSON with exact fields; unsupported extra fields and extra
-claims are rejected. A claim binds the complete typed answer to its supporting
-evidence and a protocol rule. Evidence includes both hashes, resource identity,
-relative source file, JSON Pointer, and the source literal, plus a Bundle entry
-index or 1-based NDJSON line when applicable.
+claims are rejected. Prepared packages contain `response-contract.json` and
+`selection-policies.json`, which specify the versioned output shape, selection
+rules, and completeness obligations without revealing gold answers. A claim
+binds the complete typed answer to its supporting evidence and a protocol rule.
+Evidence includes both hashes, resource identity, relative source file, JSON
+Pointer, and source literal, plus a Bundle entry index or 1-based NDJSON line
+when applicable. Equivalent evidence can use a parent citation or sufficient
+leaf citations; source identity, decisive fields, and exact units remain
+checked. Decimal answers compare numerically and aware timestamps compare as
+instants; series order and exact units remain significant.
 
 ```json
 {
@@ -110,11 +117,14 @@ index or 1-based NDJSON line when applicable.
 
 The six accepted answer states are `answered`, `partial`,
 `insufficient_evidence`, `ambiguous`, `unsupported_capability`, and
-`invalid_data`. Absence/cohort claims also carry a scope check with the corpus
-hash, protocol, resource type, patient scope, cutoff, criteria, an answer-claim
-binding, and an explicit complete-scan assertion. The deterministic grader checks type-aware answer
-equality, current source/gold hashes, resolving pointers/literals, exact
-decisive evidence identities, rule binding, and required scope. It does not
+`invalid_data`. Absence/cohort claims also carry a scope check with the corpus hash, protocol,
+selection policy/version, resource type, patient scope, cutoff, criteria, an
+answer-claim binding, and an explicit complete-scan assertion. Unresolved
+references that could change membership stop gold derivation rather than being
+counted as non-matches. The deterministic grader checks type-aware answer
+equality, current source/gold hashes, resolving pointers/literals, sufficient
+decisive evidence from the required source identities, rule binding, and
+required scope. It does not
 judge prose as clinical reasoning.
 
 ## Python interfaces for the next runner milestone
@@ -125,7 +135,8 @@ Stable starting points:
 from pathlib import Path
 from fhir_question_bench import (
     AgentResponse, GoldAnswer, Question, audit_dataset, derive_gold,
-    grade_response, load_corpus, load_questions, prepare_question, verify_gold,
+    grade_response, load_corpus, load_questions, load_selection_policies,
+    prepare_question, verify_gold,
 )
 
 questions = load_questions(Path(".../data/questions.jsonl"))
@@ -143,7 +154,9 @@ validated dataclasses in `fhir_question_bench.contracts`; `Corpus` and
 immutable SHA-256 manifests. `resolve_reference(source, reference, corpus)` is
 available from `fhir_question_bench.references` and returns explicit
 `resolved`, `missing`, or `ambiguous` outcomes. Gold and review data are not
-copied by `prepare_question`.
+copied by `prepare_question`. `grade_response` accepts an optional `data_root`
+argument so an external grader can use private gold derivation inputs while
+responses themselves are authored only from the prepared public assets.
 
 ## Research and design
 

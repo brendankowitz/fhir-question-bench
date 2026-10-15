@@ -1,0 +1,218 @@
+{
+  "version": 1,
+  "policy_version": 1,
+  "policies": {
+    "patient-date-v1": {
+      "operation": "patient-birth-date",
+      "criteria": {},
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "observation-count-v1": {
+      "operation": "count-observations",
+      "criteria": {
+        "count_bundle_containers": false,
+        "count_contained_resources": false
+      },
+      "completeness": {
+        "scan": "all exported top-level Observation resources",
+        "bundle_containers_and_contained_resources": "excluded"
+      }
+    },
+    "condition-code-v1": {
+      "operation": "condition-code",
+      "criteria": {},
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "direct-quantity-v1": {
+      "operation": "direct-quantity",
+      "criteria": {
+        "unit_conversion": false
+      },
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "latest-final-before-cutoff-v1": {
+      "operation": "latest-final-observation",
+      "criteria": {
+        "required_status": "final",
+        "cutoff_inclusive": true
+      },
+      "missing_effective_time": "indeterminate for potentially qualifying status; a known nonqualifying status remains excluded",
+      "missing_value": "exclude-only-with-dataAbsentReason",
+      "latest_tie": "indeterminate",
+      "completeness": {
+        "scan": "all observations matching patient and code through cutoff",
+        "missing_effectiveDateTime": "indeterminate for potentially qualifying status; a known nonqualifying status remains excluded",
+        "candidate_status_and_value": "cite qualifying and excluded candidates"
+      }
+    },
+    "final-series-before-cutoff-v1": {
+      "operation": "final-observation-series",
+      "criteria": {
+        "required_status": "final",
+        "cutoff_inclusive": true
+      },
+      "missing_effective_time": "indeterminate for potentially qualifying status; a known nonqualifying status remains excluded",
+      "missing_value": "exclude-only-with-dataAbsentReason",
+      "ordering": [
+        "effectiveDateTime ascending",
+        "resource_identity ascending"
+      ],
+      "completeness": {
+        "scan": "all observations matching patient and code through cutoff",
+        "missing_effectiveDateTime": "indeterminate for potentially qualifying status; a known nonqualifying status remains excluded",
+        "candidate_status_and_value": "cite qualifying and excluded candidates"
+      }
+    },
+    "active-condition-at-cutoff-v1": {
+      "operation": "active-conditions",
+      "criteria": {
+        "clinical_status": "active",
+        "onset_at_or_before_cutoff": true
+      },
+      "completeness": {
+        "scan": "all exported Condition resources",
+        "unresolved_subject_reference": "indeterminate"
+      }
+    },
+    "encounter-recorded-status-v1": {
+      "operation": "encounter-status",
+      "criteria": {},
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "encounter-medication-resource-set-v1": {
+      "operation": "medication-order-administration-set",
+      "criteria": {
+        "resolve_subject_and_encounter_context": true,
+        "compare_source_locations": true
+      },
+      "completeness": {
+        "scan": "all exported MedicationRequest and MedicationAdministration resources",
+        "unresolved_subject_or_context": "indeterminate"
+      }
+    },
+    "resolve-administration-medication-v1": {
+      "operation": "administration-medication-code",
+      "criteria": {},
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "bundle-scoped-fullurl-v1": {
+      "operation": "bundle-alias-patient",
+      "criteria": {
+        "bundle_alias_scope": "source Bundle"
+      },
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "encounter-diagnosis-reference-v1": {
+      "operation": "encounter-diagnosis-conditions",
+      "criteria": {
+        "unresolved_reference": "indeterminate"
+      },
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "owned-code-lookup-v1": {
+      "operation": "terminology-lookup",
+      "criteria": {
+        "terminology": "benchmark-owned synthetic mechanics"
+      },
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "owned-map-equivalence-v1": {
+      "operation": "terminology-map-exact",
+      "criteria": {
+        "accepted_equivalence": [
+          "equivalent",
+          "equal"
+        ]
+      },
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "owned-map-all-targets-v1": {
+      "operation": "terminology-map-ambiguous",
+      "criteria": {
+        "return_all_targets": true
+      },
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "owned-map-unmatched-v1": {
+      "operation": "terminology-map-absent",
+      "criteria": {
+        "no_target": "unmatched"
+      },
+      "completeness": {
+        "scan": "all resources in the declared source scope"
+      }
+    },
+    "adult-screen-set-v1": {
+      "operation": "adult-screen-cohort",
+      "criteria": {
+        "required_status": "final",
+        "cutoff_inclusive": true,
+        "unique_patients": true,
+        "minimum_value_field": "valueQuantity.value",
+        "minimum_age_as_of": "cutoff date"
+      },
+      "completeness": {
+        "scan": "all exported top-level Observation resources",
+        "unresolved_relevant_reference": "indeterminate; do not certify a complete count or set",
+        "cohort_unit": "unique resolved Patient source location"
+      }
+    },
+    "adult-screen-count-v1": {
+      "operation": "adult-screen-count",
+      "criteria": {
+        "required_status": "final",
+        "cutoff_inclusive": true,
+        "unique_patients": true,
+        "minimum_value_field": "valueQuantity.value",
+        "minimum_age_as_of": "cutoff date"
+      },
+      "completeness": {
+        "scan": "all exported top-level Observation resources",
+        "unresolved_relevant_reference": "indeterminate; do not certify a complete count or set",
+        "cohort_unit": "unique resolved Patient source location"
+      }
+    },
+    "scoped-missing-weight-v1": {
+      "operation": "missing-weight",
+      "criteria": {
+        "cutoff_inclusive": true,
+        "scope": "patient, code, exported Observation resources"
+      },
+      "completeness": {
+        "scan": "all exported observations within patient, code, and cutoff scope",
+        "unresolved_relevant_reference": "indeterminate"
+      }
+    },
+    "scoped-absence-query-v1": {
+      "operation": "absence-code",
+      "criteria": {
+        "cutoff_inclusive": true,
+        "scope": "patient, code, exported Observation resources"
+      },
+      "completeness": {
+        "scan": "all exported observations within patient, code, and cutoff scope",
+        "unresolved_relevant_reference": "indeterminate"
+      }
+    }
+  }
+}

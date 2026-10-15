@@ -23,10 +23,21 @@ EXPECTED = {
     "direct-003": ("answered", "code", {"system": "urn:bench:condition", "code": "local-condition-a", "display": "Synthetic local condition A"}),
     "direct-004": ("answered", "quantity", {"value": "72.5", "unit": "kg"}),
     "temporal-001": ("answered", "quantity", {"value": "4.1", "unit": "mmol/L"}),
-    "temporal-002": ("answered", "series", 2),
+    "temporal-002": (
+        "answered",
+        "series",
+        [
+            {"time": "2026-01-01T09:00:00Z", "value": "12.1", "unit": "g/dL"},
+            {"time": "2026-01-10T09:00:00Z", "value": "12.8", "unit": "g/dL"},
+        ],
+    ),
     "temporal-003": ("answered", "set", ["Condition/c-ada-active"]),
     "temporal-004": ("answered", "narrative", "finished"),
-    "join-001": ("answered", "set", 2),
+    "join-001": (
+        "answered",
+        "set",
+        ["MedicationAdministration/ma-ada", "MedicationRequest/mr-ada"],
+    ),
     "join-002": ("answered", "code", {"system": "urn:bench:med", "code": "med-a", "display": "Example medicine A"}),
     "join-003": ("answered", "set", ["Patient/p-transaction"]),
     "join-004": ("answered", "set", ["Condition/c-ada-active"]),

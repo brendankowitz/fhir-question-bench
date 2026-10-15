@@ -48,6 +48,11 @@ def prepare_question(
     protocol_target = output / "protocols" / "protocols.json"
     protocol_target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(protocol_path, protocol_target)
+    public_asset_hashes = {}
+    for name in ("response-contract.json", "selection-policies.json"):
+        asset = root / "agent" / name
+        shutil.copyfile(asset, output / name)
+        public_asset_hashes[name] = hashlib.sha256(asset.read_bytes()).hexdigest()
     question_target = output / "question.json"
     question_target.write_text(
         json.dumps(question.as_dict(), sort_keys=True, indent=2) + "\n",
@@ -62,6 +67,7 @@ def prepare_question(
             json.dumps(question.as_dict(), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
         ).hexdigest(),
         "protocol_sha256": hashlib.sha256(protocol_path.read_bytes()).hexdigest(),
+        "public_asset_sha256": public_asset_hashes,
         "export_kind": "agent-visible question package",
     }
     (output / "prepared-manifest.json").write_text(

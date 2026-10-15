@@ -119,6 +119,19 @@ def validate_answer(value: Any, answer_type: str | None = None) -> dict | None:
             raise ContractError("code answer must be a coded concept or mapping result")
     if kind in {"series", "set"} and not isinstance(payload, list):
         raise ContractError(f"{kind} answer value must be an array")
+    if kind == "series":
+        for index, item in enumerate(payload):
+            row = _object(item, f"series item {index}", {"time", "value", "unit"})
+            _aware_datetime(row["time"], f"series item {index}.time")
+            if not isinstance(row["value"], str):
+                raise ContractError(f"series item {index}.value must be a decimal string")
+            try:
+                number = Decimal(row["value"])
+            except InvalidOperation as error:
+                raise ContractError(f"series item {index}.value must be a finite decimal") from error
+            if not number.is_finite():
+                raise ContractError(f"series item {index}.value must be a finite decimal")
+            _nonempty(row["unit"], f"series item {index}.unit")
     if kind == "set":
         try:
             if len({json.dumps(item, sort_keys=True, separators=(",", ":"), ensure_ascii=False) for item in payload}) != len(payload):
@@ -336,10 +349,20 @@ class GoldAnswer:
             scope = _object(
                 scope,
                 "scope_obligation",
-                {"protocol_id", "resource_type", "patient_reference", "cutoff", "criteria"},
+                {
+                    "protocol_id",
+                    "selection_policy",
+                    "selection_policy_version",
+                    "resource_type",
+                    "patient_reference",
+                    "cutoff",
+                    "criteria",
+                },
             )
             _aware_datetime(scope["cutoff"], "scope_obligation.cutoff")
-            for key in ("protocol_id", "resource_type", "patient_reference"):
+            if type(scope["selection_policy_version"]) is not int or scope["selection_policy_version"] < 1:
+                raise ContractError("scope_obligation.selection_policy_version must be a positive integer")
+            for key in ("protocol_id", "selection_policy", "resource_type", "patient_reference"):
                 _nonempty(scope[key], f"scope_obligation.{key}")
             if not isinstance(scope["criteria"], dict):
                 raise ContractError("scope_obligation.criteria must be an object")
@@ -426,6 +449,8 @@ class AgentResponse:
                     "claim_id",
                     "corpus_hash",
                     "protocol_id",
+                    "selection_policy",
+                    "selection_policy_version",
                     "resource_type",
                     "patient_reference",
                     "cutoff",
@@ -437,8 +462,10 @@ class AgentResponse:
                 raise ContractError("scope_check.corpus_hash must be a lowercase SHA-256")
             if type(scope["complete_scan"]) is not bool or not isinstance(scope["criteria"], dict):
                 raise ContractError("scope_check requires complete_scan boolean and criteria object")
+            if type(scope["selection_policy_version"]) is not int or scope["selection_policy_version"] < 1:
+                raise ContractError("scope_check.selection_policy_version must be a positive integer")
             _aware_datetime(scope["cutoff"], "scope_check.cutoff")
-            for key in ("id", "claim_id", "protocol_id", "resource_type", "patient_reference"):
+            for key in ("id", "claim_id", "protocol_id", "selection_policy", "resource_type", "patient_reference"):
                 _nonempty(scope[key], f"scope_check.{key}")
             checked_scopes.append(scope)
         return cls(

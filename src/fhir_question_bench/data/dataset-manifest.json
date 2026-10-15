@@ -3,15 +3,23 @@
   "files": [
     {
       "path": "questions.jsonl",
-      "sha256": "2c1c5e172c85567eb1c04ab2cd00a7d90898f494041ae56bd2b45f2c89f34c04"
+      "sha256": "d9af95a770b0d8772fb8f4027975a46c358abefffce130428e9d8a9abc7e3306"
     },
     {
       "path": "agent/protocols/protocols.json",
-      "sha256": "859ba3c176ea38c9a5a98e1f57021664c443d5c237b2327a435df7d8af16bcff"
+      "sha256": "216bc1f9b754783d738d950496bc577a216bf47296ed456221046ff1352ea133"
     },
     {
       "path": "agent/corpus-manifest.json",
       "sha256": "fcd34e1b214e88fe9eb11a19dbe1ce08702b513feb62cd0668b2e32cf47aa4e8"
+    },
+    {
+      "path": "agent/response-contract.json",
+      "sha256": "791b9504d7c91d6e72b8cc9e27cbd61a9ef668d50c58f665a4e65e092f55f616"
+    },
+    {
+      "path": "agent/selection-policies.json",
+      "sha256": "f4e165f70c7b5cd3a6f225bc2defb249d7b20cd0b5dfa235a253bf119c21e5bb"
     },
     {
       "path": "review/review-ledger.jsonl",

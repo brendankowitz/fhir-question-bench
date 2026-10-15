@@ -19,7 +19,7 @@ fhir-question-bench = "fhir_question_bench.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-fhir_question_bench = ["data/*.jsonl", "data/**/*.json", "data/**/*.jsonl"]
+fhir_question_bench = ["data/*.jsonl", "data/**/*.json", "data/**/*.jsonl", "data/**/*.ndjson"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

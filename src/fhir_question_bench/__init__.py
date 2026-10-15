@@ -3,7 +3,14 @@
 from .contracts import AgentResponse, EvidenceRef, GoldAnswer, Grade, Question
 from .corpus import Corpus, ResolvedResource, load_corpus
 from .grading import grade_response
-from .oracle import audit_dataset, derive_gold, load_questions, verify_dataset_manifest, verify_gold
+from .oracle import (
+    audit_dataset,
+    derive_gold,
+    load_questions,
+    load_selection_policies,
+    verify_dataset_manifest,
+    verify_gold,
+)
 from .prepare import prepare_question
 
 __all__ = [
@@ -19,6 +26,7 @@ __all__ = [
     "grade_response",
     "load_corpus",
     "load_questions",
+    "load_selection_policies",
     "prepare_question",
     "verify_gold",
     "verify_dataset_manifest",

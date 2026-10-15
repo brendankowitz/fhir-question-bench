@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "media_type": "application/vnd.fhir-question-bench.response+json",
+  "response": {
+    "required": ["question_id", "status", "answer", "claims", "evidence", "limitations"],
+    "optional": ["scope_checks"],
+    "status_values": ["answered", "partial", "insufficient_evidence", "ambiguous", "unsupported_capability", "invalid_data"],
+    "answer": "null or {kind, value}; kind must match question.answer_type",
+    "claims": {
+      "cardinality": "exactly one",
+      "required_fields": ["id", "answer_pointer", "evidence_ids", "rule_id"],
+      "answer_pointer": "/answer",
+      "rule_id_source": "matching public protocol rule_id"
+    },
+    "evidence": {
+      "required_fields": ["id", "corpus_hash", "resource_identity", "resource_reference", "source_hash", "file", "pointer", "source_value"],
+      "optional_fields": ["line", "entry_index", "version"],
+      "source_value": "JSON value at pointer; JSON decimal values are represented as canonical decimal strings",
+      "line": "one-based NDJSON line",
+      "entry_index": "zero-based Bundle entry"
+    },
+    "scope_checks": {
+      "required_fields": ["id", "claim_id", "corpus_hash", "protocol_id", "selection_policy", "selection_policy_version", "resource_type", "patient_reference", "cutoff", "criteria", "complete_scan"],
+      "cutoff": "ISO-8601 timezone-aware instant",
+      "complete_scan": "boolean assertion; only assert true after applying the public selection policy to the complete exported scope",
+      "resource_type": "FHIR resource type or pipe-separated set declared by the selection policy",
+      "patient_reference": "question.parameters.patient when patient-scoped; * for a corpus-wide scope",
+      "criteria": "exactly the public selection criteria combined with question parameters and required policy flags"
+    },
+    "answer_value_shapes": {
+      "boolean": "JSON boolean",
+      "code": "recorded coding or declared mapping result",
+      "quantity": "{value: decimal string, unit: string}; unit is exact",
+      "timestamp": "date-only YYYY-MM-DD or ISO-8601 timezone-aware instant",
+      "series": "ordered array of {time: timezone-aware instant, value: decimal string, unit: string}",
+      "set": "array with unique JSON members",
+      "aggregate": "{count: non-negative integer}",
+      "narrative": "string"
+    }
+  },
+  "grading": {
+    "numeric_quantities": "compare decimal values numerically; units remain exact",
+    "instants": "compare timezone-aware instants semantically; date-only values are not instants",
+    "series": "order is significant and follows the matching public selection policy",
+    "evidence": "each decisive obligation needs exact or parent citation, or sufficient source leaves for an object-valued obligation"
+  }
+}

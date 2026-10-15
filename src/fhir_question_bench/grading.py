@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
-from .contracts import AgentResponse, EvidenceRef, GoldAnswer, Grade, Question
+from .contracts import AgentResponse, ContractError, EvidenceRef, GoldAnswer, Grade, Question
 from .corpus import Corpus, ResolvedResource, json_pointer_value, source_literal
 from .oracle import derive_gold
 
@@ -22,9 +24,25 @@ def _answer_equal(left: Any, right: Any) -> bool:
     a, b = left["value"], right["value"]
     if kind == "quantity":
         return Decimal(a["value"]) == Decimal(b["value"]) and a["unit"] == b["unit"]
+    if kind == "timestamp":
+        return _timestamp_equal(a, b)
+    if kind == "series":
+        return len(a) == len(b) and all(
+            _timestamp_equal(actual["time"], expected["time"])
+            and Decimal(actual["value"]) == Decimal(expected["value"])
+            and actual["unit"] == expected["unit"]
+            for actual, expected in zip(a, b)
+        )
     if kind == "set":
         return sorted(_canonical(item) for item in a) == sorted(_canonical(item) for item in b)
     return _canonical(a) == _canonical(b)
+
+
+def _timestamp_equal(left: str, right: str) -> bool:
+    if "T" not in left or "T" not in right:
+        return "T" not in left and "T" not in right and left == right
+    parse = lambda value: datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return parse(left).astimezone(timezone.utc) == parse(right).astimezone(timezone.utc)
 
 
 def _resource_for_evidence(
@@ -77,19 +95,99 @@ def _resource_for_evidence(
     return resource, relative_pointer
 
 
-def _locator(evidence: EvidenceRef) -> tuple[Any, ...]:
+def _same_source(left: EvidenceRef, right: EvidenceRef) -> bool:
     return (
-        evidence.corpus_hash,
-        evidence.resource_identity,
-        evidence.resource_reference,
-        evidence.source_hash,
-        evidence.file,
-        evidence.pointer,
-        evidence.line,
-        evidence.entry_index,
-        evidence.version,
-        _canonical(evidence.source_value),
+        left.corpus_hash,
+        left.resource_identity,
+        left.resource_reference,
+        left.source_hash,
+        left.file,
+        left.line,
+        left.entry_index,
+        left.version,
+    ) == (
+        right.corpus_hash,
+        right.resource_identity,
+        right.resource_reference,
+        right.source_hash,
+        right.file,
+        right.line,
+        right.entry_index,
+        right.version,
     )
+
+
+def _is_ancestor(parent: str, child: str) -> bool:
+    return parent == child or (parent != "" and child.startswith(parent.rstrip("/") + "/"))
+
+
+def _one_level_parent(parent: str, child: str) -> bool:
+    return (
+        parent != ""
+        and _is_ancestor(parent, child)
+        and len(child.split("/")) == len(parent.split("/")) + 1
+    )
+
+
+def _leaf_pointers(value: Any, pointer: str) -> list[str]:
+    if isinstance(value, dict) and value:
+        return [
+            child
+            for key, item in value.items()
+            for child in _leaf_pointers(item, f"{pointer}/{str(key).replace('~', '~0').replace('/', '~1')}")
+        ]
+    if isinstance(value, list) and value:
+        return [
+            child
+            for index, item in enumerate(value)
+            for child in _leaf_pointers(item, f"{pointer}/{index}")
+        ]
+    return [pointer]
+
+
+def _evidence_coverage(
+    actual: list[EvidenceRef],
+    required: tuple[EvidenceRef, ...],
+) -> bool:
+    if not required:
+        return not actual
+    covered_actual: set[str] = set()
+    for obligation in required:
+        same_source = [item for item in actual if _same_source(item, obligation)]
+        if any(
+            item.pointer == obligation.pointer
+            or _one_level_parent(item.pointer, obligation.pointer)
+            for item in same_source
+        ):
+            covered_actual.update(item.id for item in same_source if (
+                item.pointer == obligation.pointer or _one_level_parent(item.pointer, obligation.pointer)
+            ))
+            continue
+        if isinstance(obligation.source_value, (dict, list)):
+            leaves = _leaf_pointers(obligation.source_value, obligation.pointer)
+            leaf_evidence = [
+                item for item in same_source
+                if item.pointer.startswith(obligation.pointer.rstrip("/") + "/")
+            ]
+            if leaves and all(
+                any(_is_ancestor(item.pointer, leaf) for item in leaf_evidence)
+                for leaf in leaves
+            ):
+                covered_actual.update(
+                    item.id for item in leaf_evidence
+                    if any(_is_ancestor(item.pointer, leaf) for leaf in leaves)
+                )
+                continue
+        return False
+    return len(covered_actual) == len(actual)
+
+
+def _normalize_scope(value: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(value)
+    cutoff = normalized.get("cutoff")
+    if isinstance(cutoff, str) and "T" in cutoff:
+        normalized["cutoff"] = datetime.fromisoformat(cutoff.replace("Z", "+00:00")).astimezone(timezone.utc).isoformat()
+    return normalized
 
 
 def _validated_evidence(
@@ -120,16 +218,26 @@ def grade_response(
     gold: GoldAnswer | dict[str, Any],
     response: AgentResponse | dict[str, Any],
     corpus: Corpus,
+    data_root: Path | str | None = None,
 ) -> Grade:
-    if isinstance(gold, dict):
-        gold = GoldAnswer.from_dict(gold)
-    if isinstance(response, dict):
-        response = AgentResponse.from_dict(response)
+    try:
+        gold = GoldAnswer.from_dict(gold.as_dict() if isinstance(gold, GoldAnswer) else gold)
+        response = AgentResponse.from_dict(response.as_dict() if isinstance(response, AgentResponse) else response)
+        if gold.answer is not None:
+            from .contracts import validate_answer
+
+            validate_answer(gold.answer, question.answer_type)
+        if response.answer is not None:
+            from .contracts import validate_answer
+
+            validate_answer(response.answer, question.answer_type)
+    except (ContractError, TypeError, ValueError) as error:
+        return Grade(question.id, False, (f"response or gold contract is invalid: {error}",))
     errors: list[str] = []
     if question.id != gold.question_id or question.id != response.question_id:
         errors.append("question IDs do not match")
     try:
-        current_gold = derive_gold(question, corpus, corpus.manifest_path.parent.parent)
+        current_gold = derive_gold(question, corpus, data_root or corpus.manifest_path.parent.parent)
     except (KeyError, ValueError) as error:
         return Grade(question.id, False, (f"gold cannot be recomputed from current source: {error}",))
     if _canonical(current_gold.as_dict()) != _canonical(gold.as_dict()):
@@ -154,14 +262,11 @@ def grade_response(
     if set(evidence_by_id) != cited_ids:
         errors.append("response contains unbound evidence or cites unknown evidence")
 
-    actual_locators: list[tuple[Any, ...]] = []
     for evidence in response.evidence:
         valid, reason = _validated_evidence(evidence, corpus)
         if not valid:
             errors.append(reason or f"evidence {evidence.id} is invalid")
-        actual_locators.append(_locator(evidence))
-    required_locators = [_locator(item) for item in gold.required_evidence]
-    if sorted(map(_canonical, actual_locators)) != sorted(map(_canonical, required_locators)):
+    if not _evidence_coverage(list(response.evidence), gold.required_evidence):
         errors.append("required evidence is incomplete, irrelevant, or cites the wrong source identity")
 
     expected_scopes = []
@@ -181,6 +286,9 @@ def grade_response(
     if gold.scope_obligation is not None and response.claims:
         if any(scope["claim_id"] != response.claims[0]["id"] for scope in response.scope_checks):
             errors.append("scope/completeness check is not bound to the answer claim")
-    if _canonical(actual_scopes) != _canonical(expected_scopes):
+    if len(actual_scopes) != len(expected_scopes) or any(
+        _canonical(_normalize_scope(actual)) != _canonical(_normalize_scope(expected))
+        for actual, expected in zip(actual_scopes, expected_scopes)
+    ):
         errors.append("scope/completeness check does not match the required absence or cohort obligation")
     return Grade(question.id, not errors, tuple(dict.fromkeys(errors)))

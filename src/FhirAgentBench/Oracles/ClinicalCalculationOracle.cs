@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FhirAgentBench.Answers;
+using FhirAgentBench.Corpus;
 using FhirAgentBench.Questions;
 
 namespace FhirAgentBench.Oracles;
@@ -104,8 +105,8 @@ public sealed class ClinicalCalculationOracle : IOracle
             return NoData();
         }
 
-        var systolic = latest.Average(p => (double)p.Parts["systolic"].Value);
-        var diastolic = latest.Average(p => (double)p.Parts["diastolic"].Value);
+        var systolic = latest.Average(p => p.Parts["systolic"].Value);
+        var diastolic = latest.Average(p => p.Parts["diastolic"].Value);
         var result = new
         {
             systolic = ClinicalFormulas.RoundHalfAwayFromZero(systolic, 1),
@@ -117,15 +118,21 @@ public sealed class ClinicalCalculationOracle : IOracle
 
     private static Answer Cha2ds2Vasc(Subject subject)
     {
+        var heartFailure = ActiveKeys(subject, "chf");
+        var hypertension = ActiveKeys(subject, "hypertension");
+        var diabetes = ActiveKeys(subject, "diabetes");
+        var strokeOrTia = EverKeys(subject, "stroke_tia");
+        var vascular = EverKeys(subject, "vascular");
         var score = ClinicalFormulas.Cha2ds2Vasc(
-            hasHeartFailure: IsActive(subject, "chf"),
-            hasHypertension: IsActive(subject, "hypertension"),
+            hasHeartFailure: heartFailure.Count > 0,
+            hasHypertension: hypertension.Count > 0,
             ageYears: AgeAt(subject, subject.Context.Now),
-            hasDiabetes: IsActive(subject, "diabetes"),
-            hasStrokeOrTia: HasEver(subject, "stroke_tia"),
-            hasVascularDisease: HasEver(subject, "vascular"),
+            hasDiabetes: diabetes.Count > 0,
+            hasStrokeOrTia: strokeOrTia.Count > 0,
+            hasVascularDisease: vascular.Count > 0,
             isFemale: Patients.IsFemale(subject.Patient));
-        return Answer.Of(score, []);
+        var evidence = new[] { subject.Key }.Concat(heartFailure).Concat(hypertension).Concat(diabetes).Concat(strokeOrTia).Concat(vascular);
+        return Answer.Of(score, evidence);
     }
 
     private static Answer LabGap(Subject subject)
@@ -167,11 +174,19 @@ public sealed class ClinicalCalculationOracle : IOracle
         Patients.Age(subject.Patient, at)
             ?? throw new InvalidDataException($"Question '{subject.Question.Id}': {subject.Key} has no birthDate, so age cannot be computed.");
 
-    private static bool IsActive(Subject subject, string parameter) =>
-        Conditions.HasActive(subject.Context, subject.Key, CodeSet(subject, parameter));
+    private static IReadOnlyList<string> ActiveKeys(Subject subject, string parameter)
+    {
+        var codes = CodeSet(subject, parameter);
+        return subject.Context.Corpus.ForPatient(subject.Key, "Condition")
+            .Where(c => FhirElements.HasCoding(c, "code", FhirElements.Snomed, codes) && Conditions.IsActive(c, subject.Context.Now))
+            .Select(CorpusIndex.KeyOf)
+            .ToList();
+    }
 
-    private static bool HasEver(Subject subject, string parameter) =>
-        Conditions.ConsideredInWindow(subject.Context, subject.Key, CodeSet(subject, parameter), DateTimeOffset.MinValue).Any();
+    private static IReadOnlyList<string> EverKeys(Subject subject, string parameter) =>
+        Conditions.ConsideredInWindow(subject.Context, subject.Key, CodeSet(subject, parameter), DateTimeOffset.MinValue)
+            .Select(c => c.Key)
+            .ToList();
 
     private static HashSet<string> CodeSet(Subject subject, string parameter) =>
         subject.Parameters.GetStrings(parameter).ToHashSet(StringComparer.Ordinal);

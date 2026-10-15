@@ -287,6 +287,20 @@ public sealed class ClinicalCalculationOracleTests : IDisposable
     }
 
     [Fact]
+    public void BloodPressure_MeansAreExactDecimals_SoThresholdIsNotMissedByBinaryError()
+    {
+        AddPatient();
+        AddPanel("a", "2025-09-01T00:00:00Z", "129.9", "70");
+        AddPanel("b", "2025-10-01T00:00:00Z", "130.1", "70");
+        AddPanel("c", "2025-11-01T00:00:00Z", "130.0", "70");
+
+        var gold = Calculate(new() { ["formula"] = "acc-aha-2017-bp", ["readings"] = "3" });
+
+        Assert.Equal(130.0m, Value(gold).GetProperty("systolic").GetDecimal());
+        Assert.True(Value(gold).GetProperty("stage1_or_higher").GetBoolean());
+    }
+
+    [Fact]
     public void BloodPressure_DiastolicAtThreshold_IsStage1()
     {
         AddPatient();
@@ -353,6 +367,9 @@ public sealed class ClinicalCalculationOracleTests : IDisposable
         });
 
         Assert.Equal(7, Value(gold).GetInt32());
+        Assert.Equal(
+            new[] { "Condition/chf", "Condition/dm", "Condition/stroke", "Patient/p" }.Order(StringComparer.Ordinal),
+            gold.Evidence.Order(StringComparer.Ordinal));
     }
 
     [Fact]

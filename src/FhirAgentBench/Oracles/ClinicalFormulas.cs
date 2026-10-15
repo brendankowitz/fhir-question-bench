@@ -42,8 +42,8 @@ internal static class ClinicalFormulas
         return isFemale ? clearance * 0.85 : clearance;
     }
 
-    public static bool IsStage1OrHigher(double meanSystolic, double meanDiastolic) =>
-        meanSystolic >= 130.0 || meanDiastolic >= 80.0;
+    public static bool IsStage1OrHigher(decimal meanSystolic, decimal meanDiastolic) =>
+        meanSystolic >= 130m || meanDiastolic >= 80m;
 
     public static int Cha2ds2Vasc(
         bool hasHeartFailure, bool hasHypertension, int ageYears, bool hasDiabetes, bool hasStrokeOrTia, bool hasVascularDisease, bool isFemale)

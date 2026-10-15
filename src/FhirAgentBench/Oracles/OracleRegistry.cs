@@ -24,6 +24,10 @@ public sealed class OracleRegistry
         new ActiveMedicationsOracle(),
         new MedicationReasonOracle(),
         new ObservationBeforeMedicationOracle(),
+        new ImmunizationHistoryOracle(),
+        new ProcedureHistoryOracle(),
+        new EncounterQueryOracle(),
+        new AllergyCheckOracle(),
         new UnanswerableOracle(),
     ]);
 

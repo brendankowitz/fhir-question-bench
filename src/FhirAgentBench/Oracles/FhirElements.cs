@@ -7,6 +7,7 @@ internal static class FhirElements
     public const string Loinc = "http://loinc.org";
     public const string Snomed = "http://snomed.info/sct";
     public const string RxNorm = "http://www.nlm.nih.gov/research/umls/rxnorm";
+    public const string Cvx = "http://hl7.org/fhir/sid/cvx";
 
     public static string? String(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

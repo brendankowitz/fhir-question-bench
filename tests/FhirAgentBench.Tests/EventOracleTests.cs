@@ -159,11 +159,20 @@ public sealed class EventOracleTests : IDisposable
     }
 
     [Fact]
-    public void Immunization_DaysSinceLatest_IsWholeUtcCalendarDays()
+    public void Immunization_DaysSinceLatest_IsWholeCalendarDays()
     {
         AddImmunization("late", "140", "2026-01-13T23:59:00Z");
 
         Assert.Equal(2, Value(Vaccine("days_since_latest", null, "140")).GetInt32());
+    }
+
+    [Fact]
+    public void Immunization_NonUtcOffset_LatestDateAndDaysSinceUseTheRecordedOffsetDate()
+    {
+        AddImmunization("offset", "140", "2025-03-04T23:30:00-05:00");
+
+        Assert.Equal("2025-03-04", Value(Vaccine("latest_date", null, "140")).GetString());
+        Assert.Equal(317, Value(Vaccine("days_since_latest", null, "140")).GetInt32());
     }
 
     [Fact]

@@ -10,6 +10,9 @@ public sealed class AllergyCheckOracle : IOracle
     private static readonly string[] Returns = ["any", "codes"];
     private static readonly HashSet<string> ExcludedVerification = ["refuted", "entered-in-error"];
 
+    private static readonly Comparer<(string System, string Code)> CodeOrder = Comparer<(string System, string Code)>.Create(
+        (a, b) => string.CompareOrdinal(a.System, b.System) is var bySystem and not 0 ? bySystem : string.CompareOrdinal(a.Code, b.Code));
+
     public string Name => "allergy-check";
 
     public Answer Compute(OracleContext context, Question question)
@@ -19,7 +22,7 @@ public sealed class AllergyCheckOracle : IOracle
         var substances = parameters.Has("substances") ? ParseSubstances(question, parameters.GetStrings("substances")) : null;
         var category = parameters.GetOptionalString("category");
 
-        var codes = new SortedSet<(string System, string Code)>();
+        var codes = new SortedSet<(string System, string Code)>(CodeOrder);
         var evidence = new List<string>();
         foreach (var allergy in context.Corpus.ForPatient(context.PatientKey(question.Patient), "AllergyIntolerance"))
         {

@@ -38,7 +38,7 @@ internal static class Events
 
         var chosen = returns == "first_date" ? OldestFirst(events).First() : NewestFirst(events).First();
         return returns == "days_since_latest"
-            ? Answer.Of((context.Now.UtcDateTime.Date - chosen.When.UtcDateTime.Date).Days, [chosen.Key])
+            ? Answer.Of(DateOnly.FromDateTime(context.Now.DateTime).DayNumber - DateOnly.FromDateTime(chosen.When.DateTime).DayNumber, [chosen.Key])
             : Answer.Of(FhirTime.ToDate(chosen.When), [chosen.Key]);
     }
 }

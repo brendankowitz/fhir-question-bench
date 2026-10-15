@@ -37,6 +37,12 @@ public sealed class CorpusIndex
             index.AddFile(file);
         }
 
+        if (index.Count == 0)
+        {
+            throw new InvalidDataException(
+                $"Corpus data directory '{directory}' contains no FHIR resources. Run 'fab corpus fetch <corpus-dir>' first.");
+        }
+
         index.IndexPatients();
         return index;
     }
@@ -96,6 +102,18 @@ public sealed class CorpusIndex
 
     private void AddFile(string path)
     {
+        try
+        {
+            ReadFile(path);
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            throw new InvalidDataException($"Cannot read '{path}': {ex.Message}", ex);
+        }
+    }
+
+    private void ReadFile(string path)
+    {
         if (path.EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase))
         {
             foreach (var line in File.ReadLines(path).Where(l => !string.IsNullOrWhiteSpace(l)))
@@ -115,10 +133,20 @@ public sealed class CorpusIndex
             return;
         }
 
-        foreach (var entry in root.GetProperty("entry").EnumerateArray())
+        if (!root.TryGetProperty("entry", out var entries))
         {
+            return;
+        }
+
+        foreach (var entry in entries.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("resource", out var resource))
+            {
+                continue;
+            }
+
             var fullUrl = entry.TryGetProperty("fullUrl", out var url) ? url.GetString() : null;
-            AddResource(entry.GetProperty("resource"), fullUrl, path);
+            AddResource(resource, fullUrl, path);
         }
     }
 
@@ -188,6 +216,7 @@ public sealed class CorpusIndex
             if (resource.TryGetProperty(name, out var reference)
                 && reference.ValueKind == JsonValueKind.Object
                 && reference.TryGetProperty("reference", out var value)
+                && value.ValueKind == JsonValueKind.String
                 && ResolveKey(value.GetString()!) is { } key
                 && key.StartsWith("Patient/", StringComparison.Ordinal))
             {

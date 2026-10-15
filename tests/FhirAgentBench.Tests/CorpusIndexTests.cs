@@ -80,4 +80,69 @@ public sealed class CorpusIndexTests
         Assert.Equal(65, FhirTime.AgeInYears("1960-03-01", Fixture.Now));
         Assert.Equal(10, FhirTime.AgeInYears("2015-09-09", Fixture.Now));
     }
+
+    [Fact]
+    public void Load_BundleWithoutEntryOrResource_IsSkipped()
+    {
+        using var dir = TempCorpus(
+            ("empty.json", """{"resourceType":"Bundle","type":"batch"}"""),
+            ("sparse.json", """{"resourceType":"Bundle","entry":[{"fullUrl":"x"},{"resource":{"resourceType":"Patient","id":"p1"}}]}"""));
+
+        Assert.Equal(1, CorpusIndex.Load(dir.Path).Count);
+    }
+
+    [Theory]
+    [InlineData("bad.json", "{ not json")]
+    [InlineData("bad.ndjson", "[1,2]")]
+    [InlineData("bad.json", """{"id":"x"}""")]
+    public void Load_MalformedFile_NamesTheFile(string name, string content)
+    {
+        using var dir = TempCorpus(("good.json", """{"resourceType":"Patient","id":"p1"}"""), (name, content));
+
+        var ex = Assert.Throws<InvalidDataException>(() => CorpusIndex.Load(dir.Path));
+
+        Assert.Contains(name, ex.Message);
+    }
+
+    [Fact]
+    public void Load_DirectoryWithoutResources_ExplainsHowToFetch()
+    {
+        using var dir = TempCorpus(("readme.txt", "nothing"));
+
+        var ex = Assert.Throws<InvalidDataException>(() => CorpusIndex.Load(dir.Path));
+
+        Assert.Contains("fab corpus fetch", ex.Message);
+    }
+
+    [Fact]
+    public void Load_NullOrNonStringReference_IsIgnored()
+    {
+        using var dir = TempCorpus(
+            ("a.json", """{"resourceType":"Patient","id":"p1"}"""),
+            ("b.json", """{"resourceType":"Observation","id":"o1","subject":{"reference":null}}"""),
+            ("c.json", """{"resourceType":"Observation","id":"o2","subject":{"reference":5}}"""));
+
+        var index = CorpusIndex.Load(dir.Path);
+
+        Assert.Empty(index.ForPatient("Patient/p1", "Observation"));
+        Assert.Equal(3, index.Count);
+    }
+
+    private static TempDirectory TempCorpus(params (string Name, string Content)[] files)
+    {
+        var dir = new TempDirectory();
+        foreach (var (name, content) in files)
+        {
+            File.WriteAllText(Path.Combine(dir.Path, name), content);
+        }
+
+        return dir;
+    }
+
+    private sealed class TempDirectory : IDisposable
+    {
+        public string Path { get; } = Directory.CreateTempSubdirectory("fab-corpus-").FullName;
+
+        public void Dispose() => Directory.Delete(Path, recursive: true);
+    }
 }

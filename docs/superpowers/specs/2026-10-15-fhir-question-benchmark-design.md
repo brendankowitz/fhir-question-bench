@@ -2,28 +2,28 @@
 
 **Status:** Proposed; research completed, implementation not started.
 **Research date:** 2026-10-15 UTC (2026-10-14 in the user's local time).
-**Scope:** 1,000 original, professionally relevant questions over synthetic FHIR
-folders, with executable answer keys and auditable supporting evidence.
+**Scope:** 300 original, professionally relevant items over synthetic FHIR
+folders: 200 patient/cohort questions and 100 operational tasks, with executable
+answer keys and auditable supporting evidence.
 
 ## User-directed delivery update: reviewed increments and operational tasks
 
 On 2026-10-15 UTC, the user requested Astra review, expansion from the initial
 20-item engineering slice to 100 questions, evaluation and fixes, then expansion
-by 100 questions per iteration until 1,000. The last 100 items are operational.
-This update supersedes the original read-only-only scope and 1,000-question
+by 100 questions per iteration. The user subsequently capped the release at
+**300 total**, retaining the final 100 operational items (items 201-300).
+This update supersedes the earlier 1,000-item target, read-only-only scope and
 category allocation below; the original allocation remains research history,
 not the active dataset quota.
 
-The active target is **900 patient/cohort question-answering items plus 100
-operational items**. Proposed primary-family counts for the first 900 are:
-orientation/navigation 70; exact retrieval 90; longitudinal/temporal 130;
-medication/allergy 110; terminology 160; cohorts/aggregates 130;
-research phenotypes 70; quality/provenance 50; missing evidence/abstention 40;
-professional synthesis 50. These sum to 900. Difficulty/persona/source-layer
-cross-tabs must be rebalanced and frozen before the relevant batch is evaluated;
-the original 1,000-item cross-tabs are not simultaneously binding.
+The active target is **200 patient/cohort question-answering items plus 100
+operational items**. Cover all ten QA primary families; rebalance their counts
+and difficulty/persona/source-layer cross-tabs for 200 QA items and freeze them
+before the relevant batch is evaluated. Neither the previous 900-QA allocation
+nor the original 1,000-item cross-tabs is binding.
 
-Delivery totals are 20, 100, 200, 300, 400, 500, 600, 700, 800, 900, and 1,000.
+Delivery totals are **20 -> 100 -> 200 -> 300**, then stop. The first 200 items
+are QA; the final increment adds the 100 operational tasks.
 At each gate, inspect new items and the cumulative set, evaluate the runnable
 agent arms, review failures, fix the dataset/harness/tools as appropriate, and
 rerun affected cases plus a fixed regression panel before adding the next batch.
@@ -155,7 +155,7 @@ more diagnoses or recommending more treatments.
 | Goal | Measure patient-level and cohort-level question answering with reproducible clinical rules and source-level citations. |
 | Goal | Separate navigation benefit, terminology benefit, computational correctness, and tool-interface overhead. |
 | Goal | Show understandable failure examples: what was missed or guessed, why it matters, and what evidence was available. |
-| Goal | Produce 1,000 distinct question instances across diverse task families, not 1,000 trivial paraphrases. |
+| Goal | Produce 300 distinct items across diverse task families, not trivial paraphrases. |
 | Non-goal | Autonomous diagnosis, prescribing, order entry, or deploying a bedside assistant. |
 | Non-goal | Claiming synthetic-data performance establishes real-world safety or population validity. |
 | Anti-goal | LLM-generated answer keys certified only by another LLM, unsupported exact code mappings, hidden truncation, or silently incomplete cohorts. |
@@ -294,10 +294,15 @@ cleared for cloud transmission by being downloadable.
 
 Optional future external-validity work may use MIMIC-FHIR under the exact chosen
 release's access, license, ethics, and cloud-processing conditions. Keep it
-separate from the 1,000-question synthetic core. This investigation downloaded
+separate from the synthetic benchmark core. This investigation downloaded
 no MIMIC patient records and makes no blanket commercial-use claim about MIMIC.
 
-## 3. The 1,000-question blueprint
+## 3. Original 1,000-question blueprint (historical allocation)
+
+The quota table, persona/source counts and sealed split below describe the
+original research proposal, not the active 300-item release. The delivery update
+above governs current counts and evaluation exposure. Structural complexity,
+task-family definitions and lineage isolation still apply.
 
 ### 3.1 Primary question-family allocation
 
@@ -379,7 +384,7 @@ Scale tiers are exact resource-count manifests, not approximate patient counts:
 small <=1,000; medium 1,001-25,000; large 25,001-150,000; stress >150,000 up to
 a proposed 1,000,000. Single-patient complexity and cohort scale are orthogonal.
 Stress reruns and format permutations are robustness evaluations, not extra
-questions toward 1,000.
+questions toward the active release target.
 
 ### 3.3 Question examples to instantiate, not accepted gold items
 
@@ -598,7 +603,7 @@ described above; this shape does not establish an actual patient result.
 8. Validate evidence pointers against original bytes; run mutation tests that
    change the decisive value, status, time, map relation, or patient link.
 
-All 1,000 accepted items need independent semantic review appropriate to their
+All 300 accepted items need independent semantic review appropriate to their
 domain (clinical professional or terminology/informatics expert). Model/agent
 review may triage but must retain its actual identity. Without the necessary
 professional reviewers, publish only a **provisional research set**, never a
@@ -651,7 +656,7 @@ Every item carries minimal capability requirements and answerability. Before
 running, conformance discovery creates an eligibility manifest. Report eligible
 count/total count, unsupported/blocked counts, and successful answers against
 the **fixed full denominator** as well as capability-eligible accuracy.
-Do not advertise a score "on 1,000 questions" if most are excluded.
+Do not advertise a score "on 300 items" if most are excluded.
 
 For native Synthea, first pin a failing/passing test for fullUrl aliases.
 Prefer an upstream resolver fix. If a normalized derivative is used for
@@ -697,8 +702,8 @@ No guaranteed minimum uplift is assumed. A proposed practical target is at least
 10 percentage points improvement in strict grounded success on preregistered
 L4/L5 tasks, with uncertainty reported. It is a target, not a claimed result or
 a basis for removing questions. Estimate power after the development pilot
-using family counts and within-family correlation; 1,000 correlated items do
-not imply 1,000 independent samples.
+using family counts and within-family correlation; 300 correlated items do
+not imply 300 independent samples.
 
 Use fresh per-question sessions by default. Separate cold-start indexing,
 warm per-question execution, and batch-amortized total cost; include preparation
@@ -797,8 +802,8 @@ errors, costs, and clinical-review capacity.
 | 0: protocol and source lock | Reproducible corpus profile, capability manifest, comparison protocol, contracts | Native-reference failure understood; no future capabilities mislabeled implemented |
 | 1: gold-first vertical slice | 20 independently checked questions, including unanswerable and exact-code traps | Every answer/evidence locator recomputes; mutation and boundary tests work |
 | 2: development pilot | 100 questions, 20 at each difficulty, B/C/D on one model | Equal access/budgets; no gold leakage; reviewer decision and measured cost |
-| 3: scenario/terminology expansion | Full source and family coverage, release-specific assets | Clinical and licensing gates met; every required capability conformance-tested |
-| 4: 1,000-item freeze | 100 development / 100 validation / 800 sealed test; quotas audited | 100% accepted records have required oracle, evidence, and review; no cross-split lineages |
+| 3: 200-item QA gate | 200 QA items with source and family coverage, release-specific assets | Evaluate/fix/regression gate passed; clinical and licensing gates met; required capabilities conformance-tested |
+| 4: 300-item final gate | Add 100 operational tasks to the 200 QA items; freeze active quotas and exposure ledger, then stop | Whole-output operation grading; 100% accepted records have required oracle, evidence, and review; no cross-split lineages |
 | 5: comparative report | Paired runs, confidence intervals, cost curves, error atlas | All denominators and exclusions disclosed; failed/unsupported outcomes retained |
 
 Do not promise an implementation calendar before reviewer availability,

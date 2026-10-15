@@ -2,8 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build an auditable 1,000-question synthetic FHIR benchmark that measures
-whether specialist CLI/MCP tools improve professional question answering.
+**Goal:** Build an auditable 300-item synthetic FHIR benchmark that measures
+whether specialist CLI/MCP tools improve professional question answering and
+operational workflows: 200 QA items plus 100 operational tasks.
 
 **Architecture:** Immutable FHIR corpora and terminology assets feed independent
 answer/evidence oracles. A Python harness runs equal-access agent arms through
@@ -24,10 +25,11 @@ approval. Each task is a reviewable milestone, not a claimed completed feature.
 The user's latest direction supersedes the original big-bang release sequence:
 finish the 20-item engineering slice; obtain **Astra (`gpt-6-astra`) review**;
 fix important findings; expand to 100 and evaluate; then expand by 100 only after
-each evaluation/fix/regression gate, through 1,000. No question-generation or
+each evaluation/fix/regression gate, stopping at **300 total**. No question-generation or
 evaluation run is implied by a plan update.
 
-Use 900 question-answering items plus a final 100 operational items. See the
+Use 200 question-answering items plus a final 100 operational items (201-300).
+Stages are **20 -> 100 -> 200 -> 300**, then stop. See the
 design's delivery update for revised QA quotas, proposed 25/25/25/25 operational
 split, source/output separation, and independent artifact grading. Extend
 question/response contracts for operations before generating that final batch.
@@ -59,8 +61,8 @@ acknowledgement is not a substitute for a publication-quality boundary.
 
 ## Global constraints
 
-- Final target: 900 QA plus 100 operational items; stage targets are 20, 100,
-  then increments of 100 through 1,000. Acceptance class and exposure status are
+- Final target: 200 QA plus 100 operational items; stage targets are 20, 100,
+  200, and 300, with no further expansion. Acceptance class and exposure status are
   explicit; provisional engineering items are not professionally accepted items.
 - Freeze active batch quotas before evaluation; original sealed split and
   1,000-QA matrix are historical. At final release require at least 100 task
@@ -252,7 +254,7 @@ Arm values are `filesystem`, `cli`, `mcp`; raw context is a separate diagnostic.
   inference calls and preparation costs. Commit runner/config, not transient
   workspaces.
 
-## Task 6: Scale, review, and freeze incremental batches through 1,000
+## Task 6: Scale, review, and freeze incremental batches through 300
 
 **Files:** dataset module, accepted public questions/review ledger, tests.
 **Depends on:** Tasks 1-5; expert staffing and required terminology access.
@@ -271,9 +273,9 @@ list[GoldAnswer], reviews: list[dict]) -> dict`;
 - [ ] Expand scenario packs and native Synthea subsets, use bounded authoring
   and expert review, and accept records only after deterministic evidence
   verification and mutation checks. Maintain explicit blocked/provisional
-  states; do not lower review gates to hit 1,000.
+  states; do not lower review gates to hit 300.
 - [ ] Implement an explicit stage-target audit argument and document its actual
-  syntax before use. Audit targets 20, 100, then +100 through 1,000, expecting
+  syntax before use. Audit targets 20, 100, 200, and 300, expecting
   the requested record count and zero violations for the claimed acceptance
   class. Freeze
   wording, keys, terminology, splits, tool revision, budgets, and protocol.
@@ -316,8 +318,8 @@ grades: list[Grade], frozen_manifest: dict) -> dict`.
 
 ## Completion criteria
 
-The benchmark is implemented only when all 1,000 records pass their actual
+The benchmark is implemented only when all 300 records pass their actual
 acceptance gates and the harness independently reproduces facts and evidence.
-A 100-item pilot is not a 1,000-item release. Tool capability completion is
+A 100-item pilot is not a 300-item release. Tool capability completion is
 separate from benchmark authoring completion. Clinical effectiveness remains
 unproven without an appropriately governed real-world study.

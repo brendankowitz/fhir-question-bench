@@ -1,0 +1,11 @@
+{
+  "copilot_command": ["copilot"],
+  "copilot_version": "1.0.97",
+  "model": "gpt-5.4",
+  "reasoning_effort": "high",
+  "wall_timeout_seconds": 60,
+  "max_ai_credits": 30,
+  "max_trace_bytes": 1048576,
+  "max_answer_bytes": 262144,
+  "auth_env": ["COPILOT_GITHUB_TOKEN"]
+}

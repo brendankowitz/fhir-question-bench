@@ -89,9 +89,28 @@ def main(argv: list[str] | None = None) -> int:
     grade.add_argument("--out", type=Path, required=True)
     demo = subparsers.add_parser("demo", help="run the offline oracle self-check; not measured agent performance")
     demo.add_argument("--out", type=Path, required=True)
+    run = subparsers.add_parser("run", help="prepare initial20 episodes; dry-run by default, live blocked")
+    run.add_argument("--config", type=Path, required=True)
+    run.add_argument("--output", type=Path, required=True)
+    run.add_argument("--execute", action="store_true")
+    run.add_argument("--approve-total-credits", type=float)
+    run.add_argument("--fake-process", type=Path, help="trusted offline .py fixture ONLY; no model performance")
+    run.add_argument("--fake-tool-process", type=Path, help="explicit trusted offline MCP fixture ONLY")
 
     args = parser.parse_args(argv)
     try:
+        if args.command == "run":
+            from .runner import run_benchmark
+
+            report = run_benchmark(
+                args.config, args.output, args.data_root, execute=args.execute,
+                approve_total_credits=args.approve_total_credits,
+                fake_process=args.fake_process, fake_tool_process=args.fake_tool_process,
+            )
+            print(_json({"mode": report["mode"], "output": str(args.output),
+                         "snapshot_id": report["snapshot_id"], **report["counts"],
+                         "budget": report["budget"]}))
+            return 1 if report["counts"]["failed"] or report["counts"]["blocked"] else 0
         questions, corpus = _dataset(args.data_root)
         if args.command == "audit":
             result = audit_dataset(args.data_root)

@@ -16,3 +16,5 @@ artifacts/
 gold.jsonl
 gold-*.jsonl
 run-traces/
+runs/
+.test-work*/

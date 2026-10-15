@@ -6,8 +6,11 @@ namespace FhirAgentBench.Execution;
 
 public sealed record AttemptRecord(string QuestionId, int Repeat, AttemptEnd End, double DurationSeconds, string? Detail, string AttemptDirectory);
 
-public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corpus, string promptTemplate)
+public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corpus, string promptTemplate, string? workspaceRoot = null)
 {
+    private readonly string _workspaceRoot = workspaceRoot
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "fab", "ws");
+
     public async Task<IReadOnlyList<AttemptRecord>> RunAsync(
         IReadOnlyList<Question> questions, int repeats, string runDirectory, CancellationToken cancellationToken = default)
     {
@@ -58,7 +61,7 @@ public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corp
     private async Task<AttemptOutcome> RunInWorkspaceAsync(
         Question question, int repeat, string attemptDirectory, string prompt, CancellationToken cancellationToken)
     {
-        var workspace = Directory.CreateTempSubdirectory("fab-ws-").FullName;
+        var workspace = Directory.CreateDirectory(Path.Combine(_workspaceRoot, Guid.NewGuid().ToString("N"))).FullName;
         try
         {
             return await harness.RunAsync(new AttemptRequest(question, repeat, attemptDirectory, workspace, prompt), cancellationToken)
@@ -66,24 +69,49 @@ public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corp
         }
         finally
         {
-            try
+            CopyAnswerBack(workspace, attemptDirectory);
+            DeleteWorkspace(workspace, attemptDirectory);
+        }
+    }
+
+    private static void CopyAnswerBack(string workspace, string attemptDirectory)
+    {
+        var source = Path.Combine(workspace, "answer.json");
+        var target = Path.Combine(attemptDirectory, "answer.json");
+        try
+        {
+            if (File.Exists(source))
             {
-                var answer = Path.Combine(workspace, "answer.json");
-                if (File.Exists(answer))
-                {
-                    File.Copy(answer, Path.Combine(attemptDirectory, "answer.json"), overwrite: true);
-                }
+                File.Copy(source, target, overwrite: true);
             }
-            finally
-            {
-                try
-                {
-                    Directory.Delete(workspace, recursive: true);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                }
-            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            TryDelete(target);
+            File.WriteAllText(Path.Combine(attemptDirectory, "answer.copy-error.txt"), ex.Message);
+        }
+    }
+
+    private static void DeleteWorkspace(string workspace, string attemptDirectory)
+    {
+        try
+        {
+            Directory.Delete(workspace, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            File.WriteAllText(Path.Combine(attemptDirectory, "cleanup.txt"), $"Workspace left behind: {workspace}{Environment.NewLine}{ex.Message}");
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
     }
 }

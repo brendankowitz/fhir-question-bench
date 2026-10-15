@@ -16,7 +16,16 @@ public sealed class RunPipelineTests : IDisposable
 
     private readonly string _runDirectory = Directory.CreateTempSubdirectory("fab-run-").FullName;
 
-    public void Dispose() => Directory.Delete(_runDirectory, recursive: true);
+    private readonly string _workspaceRoot = Directory.CreateTempSubdirectory("fab-wsroot-").FullName;
+
+    public void Dispose()
+    {
+        Directory.Delete(_runDirectory, recursive: true);
+        Directory.Delete(_workspaceRoot, recursive: true);
+    }
+
+    private RunOrchestrator NewOrchestrator(IAgentHarness harness, CorpusDefinition? corpus = null) =>
+        new(harness, corpus ?? Corpus, File.ReadAllText(PromptPath()), _workspaceRoot);
 
     private static readonly Question LatestA1c = new()
     {
@@ -145,7 +154,7 @@ public sealed class RunPipelineTests : IDisposable
         {
             [1] = (AttemptEnd.Completed, "{\"status\":\"insufficient_data\",\"answer\":null,\"evidence\":[]}"),
         });
-        var attempts = await new RunOrchestrator(harness, Corpus, File.ReadAllText(PromptPath())).RunAsync([LatestA1c], 1, _runDirectory);
+        var attempts = await NewOrchestrator(harness).RunAsync([LatestA1c], 1, _runDirectory);
         using var locked = new FileStream(Path.Combine(_runDirectory, attempts[0].AttemptDirectory, "answer.json"), FileMode.Open, FileAccess.Read, FileShare.None);
 
         var grades = new RunGrader(Oracles, Context).Grade([LatestA1c], attempts, _runDirectory);
@@ -171,7 +180,7 @@ public sealed class RunPipelineTests : IDisposable
         };
         const string answer = "{\"status\":\"answered\",\"answer\":{\"value\":{\"value\":9.4,\"unit\":\"%\"},\"date\":{\"value\":1,\"unit\":\"%\"}},\"evidence\":[]}";
         var harness = new ScriptedHarness(new Dictionary<int, (AttemptEnd, string?)> { [1] = (AttemptEnd.Completed, answer) });
-        var attempts = await new RunOrchestrator(harness, Corpus, File.ReadAllText(PromptPath())).RunAsync([question], 1, _runDirectory);
+        var attempts = await NewOrchestrator(harness).RunAsync([question], 1, _runDirectory);
 
         var ex = Assert.Throws<InvalidOperationException>(() => new RunGrader(Oracles, Context).Grade([question], attempts, _runDirectory));
 
@@ -183,7 +192,7 @@ public sealed class RunPipelineTests : IDisposable
     public async Task Grader_Throws_WhenOracleFails()
     {
         var question = LatestA1c with { Oracle = new OracleCall("latest-observation", OracleParameters.Empty) };
-        var attempts = await new RunOrchestrator(new AbstainHarness(), Corpus, File.ReadAllText(PromptPath())).RunAsync([question], 1, _runDirectory);
+        var attempts = await NewOrchestrator(new AbstainHarness()).RunAsync([question], 1, _runDirectory);
 
         var ex = Assert.Throws<InvalidOperationException>(() => new RunGrader(Oracles, Context).Grade([question], attempts, _runDirectory));
 
@@ -193,7 +202,7 @@ public sealed class RunPipelineTests : IDisposable
     [Fact]
     public async Task Grader_Throws_WhenQuestionIsMissingFromSet()
     {
-        var attempts = await new RunOrchestrator(new AbstainHarness(), Corpus, File.ReadAllText(PromptPath())).RunAsync([LatestA1c], 1, _runDirectory);
+        var attempts = await NewOrchestrator(new AbstainHarness()).RunAsync([LatestA1c], 1, _runDirectory);
 
         var ex = Assert.Throws<InvalidDataException>(() => new RunGrader(Oracles, Context).Grade([Pharmacy], attempts, _runDirectory));
 
@@ -222,6 +231,31 @@ public sealed class RunPipelineTests : IDisposable
 
         Assert.False(Directory.Exists(harness.Workspace));
         Assert.True(File.Exists(Path.Combine(_runDirectory, "attempts", "t1-a1c", "r1", "answer.json")));
+    }
+
+    [Fact]
+    public async Task Orchestrator_RecordsCopyError_AndKeepsHarnessException_WhenAnswerIsLocked()
+    {
+        var harness = new RecordingHarness { Throw = true, LockAnswer = true };
+
+        var ex = await Assert.ThrowsAsync<IOException>(() => RunAsync(harness, repeats: 1, [LatestA1c]));
+
+        Assert.Equal("boom", ex.Message);
+        var attemptDirectory = Path.Combine(_runDirectory, "attempts", "t1-a1c", "r1");
+        Assert.False(File.Exists(Path.Combine(attemptDirectory, "answer.json")));
+        Assert.True(File.Exists(Path.Combine(attemptDirectory, "answer.copy-error.txt")));
+        Assert.True(File.Exists(Path.Combine(attemptDirectory, "cleanup.txt")));
+        harness.ReleaseLock();
+    }
+
+    [Fact]
+    public async Task Orchestrator_CreatesWorkspaceUnderInjectedRoot()
+    {
+        var harness = new RecordingHarness();
+
+        await RunAsync(harness, repeats: 1, [LatestA1c]);
+
+        Assert.Equal(Path.GetFullPath(_workspaceRoot), Path.GetDirectoryName(Path.GetFullPath(harness.Workspace!)));
     }
 
     [Fact]
@@ -290,7 +324,7 @@ public sealed class RunPipelineTests : IDisposable
 
         var corpus = Corpus with { Directory = corpusDirectory };
         var harness = new TamperingHarness(Path.Combine(dataDirectory, "patients.json"));
-        var orchestrator = new RunOrchestrator(harness, corpus, File.ReadAllText(PromptPath()));
+        var orchestrator = NewOrchestrator(harness, corpus);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => orchestrator.RunAsync([LatestA1c, Pharmacy], 1, Path.Combine(_runDirectory, "run")));
@@ -314,7 +348,7 @@ public sealed class RunPipelineTests : IDisposable
     private async Task<IReadOnlyList<GradeRecord>> RunAsync(IAgentHarness harness, int repeats, IReadOnlyList<Question>? questions = null)
     {
         questions ??= [LatestA1c, Pharmacy];
-        var orchestrator = new RunOrchestrator(harness, Corpus, File.ReadAllText(PromptPath()));
+        var orchestrator = NewOrchestrator(harness);
         var attempts = await orchestrator.RunAsync(questions, repeats, _runDirectory);
         return new RunGrader(Oracles, Context).Grade(questions, attempts, _runDirectory);
     }
@@ -336,10 +370,22 @@ public sealed class RunPipelineTests : IDisposable
 
         public bool Throw { get; init; }
 
+        public bool LockAnswer { get; init; }
+
+        private FileStream? _lock;
+
+        public void ReleaseLock() => _lock?.Dispose();
+
         public async Task<AttemptOutcome> RunAsync(AttemptRequest request, CancellationToken cancellationToken = default)
         {
             Workspace = request.WorkspaceDirectory;
-            await File.WriteAllTextAsync(Path.Combine(Workspace, "answer.json"), AnswerJson.Serialize(Answer.Insufficient()), cancellationToken);
+            var path = Path.Combine(Workspace, "answer.json");
+            await File.WriteAllTextAsync(path, AnswerJson.Serialize(Answer.Insufficient()), cancellationToken);
+            if (LockAnswer)
+            {
+                _lock = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+            }
+
             return Throw ? throw new IOException("boom") : new AttemptOutcome(AttemptEnd.Completed, TimeSpan.Zero, null);
         }
     }

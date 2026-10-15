@@ -66,6 +66,67 @@ answers or failures guide fixes. Maintain an exposure ledger and versioned
 evaluation snapshots; any genuinely sealed final subset must remain uninspected
 until preregistration and its one-time final run.
 
+### Astra review amendments: comparison and execution gates
+
+**Comparison snapshots:** bind each result to question/corpus/gold hashes,
+grader/rule version, prompts, model's actual version, inference settings,
+repetition policy, budgets, and each arm's implementation and permissions.
+Any change invalidates results dependent on that changed configuration, not
+just results affected by gold corrections. Targeted reruns and a regression
+panel can establish engineering readiness; they cannot refresh an old cumulative
+score. Reuse earlier results only under an explicit dependency-compatibility
+decision; otherwise rerun the required paired arms within approved budgets or
+mark the current cumulative comparison pending. Preserve historical snapshots
+and separate first-pass from post-fix results. Do not pool them as a fixed-system
+confirmatory result.
+
+**Batch freeze and exposure:** freeze membership, rules, keys, eligibility, and
+reporting before a batch's first scored comparison. Corrections create new
+versions with reasons; retain replaced/rejected items and denominator slots.
+Log exposure purpose, actor/role, timestamp, item/version, dependence component,
+information revealed, and the development revision/decision influenced.
+Independent pre-evaluation gold checks are distinct from outcome-driven tuning.
+Propagate tuning exposure through connected task-family, patient-lineage,
+counterfactual, and cohort-world components. Report independent component counts
+and sizes; insufficient clusters do not support a reliable confirmatory
+bootstrap interval. Incremental results default to descriptive adaptive
+evaluation. A genuinely isolated sealed holdout is optional.
+
+**Operational comparison:** baseline B retains general scripting without the
+specialist engine; C/D add the specialist CLI/MCP. Equal access means identical
+task semantics, clinical assets, configurations, and feasible allowed methods,
+not giving B the specialist binary. Success is artifact-based unless explicit
+product invocation is itself the task; report such workflow tasks separately.
+A matched-engine CLI/MCP comparison is a separate experiment. Distinguish native
+support from end-to-end feasibility using permitted client-side fallbacks.
+Freeze eligibility using independent representative conformance checks, never
+remove items because scored execution failed. Keep blocked entitlement, absent
+native support, feasible fallback, infrastructure failure, and observed wrong
+answers distinct.
+
+**Whole-output grading:** each operational item needs a versioned contract for
+inputs, output schema/inventory, auxiliary artifacts/logs, protected content,
+required/forbidden content, permitted extras, conservation/loss rules, and
+partial/failure semantics. Collect and hash the entire declared output tree,
+not only agent-selected paths. A sanitized primary file plus an unauthorized
+unaltered copy must fail. De-identification checks follow the supplied policy's
+scope, not indiscriminate string deletion. Validation pins profile dependencies,
+terminology, policy, and required/prohibited rule-location-severity tuples;
+equivalent diagnostic wording is allowed. Add independently constructed bad
+outputs that must fail each operation grader.
+
+**Enforced boundary:** live execution of model-authored scripts and operational
+tools requires a process-level boundary covering all descendants: read-only
+source/assets, inaccessible gold/oracle/private files, private writable
+episode/cache folders, and the common network policy. Working-directory
+conventions and CLI approval flags do not enforce containment. Artifact
+collection must reject escaping links/reparse points and canonical paths.
+Retain pre/post hashes as defense in depth; unexpected source changes invalidate
+the episode and stop advancement. Negative conformance checks must test source
+writes, external writes, gold reads, and descendant access. If no verified
+boundary is available, live execution is blocked; trusted offline fake-process
+fixture checks remain permitted and explicitly do not demonstrate isolation.
+
 ## 1. Intent and the claim worth testing
 
 Doctors, nurses, advanced practitioners, specialists, and researchers need more
@@ -532,7 +593,7 @@ described above; this shape does not establish an actual patient result.
 6. Verify terminology against pinned assets, not the model. For tractable
    sets/counts, use a second independent calculation or manual enumerations.
 7. Run clinician/domain review of clinical wording, plausibility, and rules.
-   Require relevant clinician approval for all 80 phenotype items, all L4/L5
+   Require relevant clinician approval for all phenotype items, all L4/L5
    clinical synthesis items, and high-risk medication/allergy interpretations.
 8. Validate evidence pointers against original bytes; run mutation tests that
    change the decisive value, status, time, map relation, or patient link.

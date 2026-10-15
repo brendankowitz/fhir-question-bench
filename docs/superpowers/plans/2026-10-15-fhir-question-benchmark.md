@@ -42,14 +42,31 @@ matrix and 800-item sealed allocation below are historical proposed defaults.
 The user has not authorized unlimited inference spending or waived independent
 clinical review requirements.
 
+### Review gates applying to every implementation handoff
+
+The design's Astra amendments are binding: comparison snapshots invalidate
+dependent results after any relevant system/configuration change; regression
+success alone does not refresh cumulative scores. Batch freezes and exposure
+are component-level, with adaptive results labeled as such. Native capability,
+permitted fallback feasibility, blocked execution, and observed failure are
+separate fields. Operational acceptance checks the full artifact inventory.
+
+Runner/grader offline conformance starts at 20 provisional engineering items.
+Live agent-authored execution requires verified process-level containment and
+the spending gate. Until containment passes negative access/write tests for
+all descendants, use offline fake-process validation only; a trusted-local
+acknowledgement is not a substitute for a publication-quality boundary.
+
 ## Global constraints
 
-- Exactly 1,000 accepted question instances: 100 development, 100 validation,
-  800 sealed test; at least 100 task families; no task family contributes more
-  than 20. Ten broad `primary_family` categories are separate from these IDs.
-- Match the design's family, difficulty, persona, and primary-source quotas.
-- At least 200 patient lineages; patient/template/variant/cohort-world grouping
-  prevents cross-split leakage.
+- Final target: 900 QA plus 100 operational items; stage targets are 20, 100,
+  then increments of 100 through 1,000. Acceptance class and exposure status are
+  explicit; provisional engineering items are not professionally accepted items.
+- Freeze active batch quotas before evaluation; original sealed split and
+  1,000-QA matrix are historical. At final release require at least 100 task
+  families, no task family over 20, and at least 200 patient lineages.
+- Audit patient/template/variant/cohort-world grouping at every stage; final-only
+  diversity constraints must not reject the deliberately small initial slice.
 - Default FHIR release R4, subject to explicit corpus validation; no silent
   mixed-version ingestion or assumed US Core conformance.
 - Pin tool/source/terminology revisions; native source data is read-only.
@@ -183,8 +200,9 @@ only, no endpoint secrets or credentials.
 Path`; `estimate_requests(requests: Path, pricing: dict) -> CostEstimate`;
 `submit_requests(requests: Path, config: RunConfig, approval: dict) -> Path`;
 `collect_candidates(results: Path) -> list[dict]`. Candidate state is always
-`review_required`, never implicitly accepted. This milestone also produces the
-100 accepted development items needed by Task 5, 20 per difficulty level.
+`review_required`, never implicitly accepted. This milestone expands the
+development slice after its first offline runner/grader gate; it does not block
+Task 5 or the minimal Task 7 implementation at 20 engineering items.
 
 - [ ] Write offline tests proving estimate-only sends nothing; wrong approval
   hash/budget rejects; retries obey limits; 401/403/404 stop; 429/5xx remain
@@ -200,14 +218,16 @@ Path`; `estimate_requests(requests: Path, pricing: dict) -> CostEstimate`;
 - [ ] Expand the gold-first slice to 100 development questions with 20 per
   difficulty level. Recompute gold and evidence, run decisive mutations, obtain
   the required independent expert review, and fix task-family/lineage/world
-  groupings. Reject unreviewed items; Task 5 cannot run on a 20-item substitute.
+  groupings. Retain unreviewed items as provisional, not accepted. Offline
+  runner/grader conformance on the initial 20 items precedes this expansion.
 - [ ] Commit transport/pipeline changes with required trailers, not credentials
   or provider trace dumps.
 
 ## Task 5: Fair B/C/D runner and capability manifest
 
 **Files:** runner/adapters/pilot configuration and tests.
-**Depends on:** Tasks 1-3; Task 4 for paid model transport.
+**Depends on:** Tasks 1-3 for offline conformance; approved transport, verified
+containment, and spending authorization before live model execution.
 **Consumes:** `Question`, `CorpusManifest`, `RunConfig`.
 **Produces:** `discover_capabilities(config: RunConfig) -> dict`;
 `run_episode(question: Question, arm: str, config: RunConfig) -> RunResult`.
@@ -223,7 +243,8 @@ Arm values are `filesystem`, `cli`, `mcp`; raw context is a separate diagnostic.
   add CLI subprocess and MCP stdio adapters over the same pinned tool build.
   Put exact turn/token/tool-output/wall-time budgets into the pilot config
   after estimate review. Discover and test capabilities before eligibility.
-- [ ] Run offline tests and a local tool-only conformance run with no inference.
+- [ ] Integrate minimal Task 7 typed grading/reporting at the initial 20-item
+  gate. Run offline tests and local tool-only conformance with no inference.
   Retain native-reference failures; file upstream work separately or label the
   track blocked. Do not rewrite sources to make the test appear to pass.
 - [ ] After spending approval, run the 100-development-question B/C/D pilot:
@@ -231,7 +252,7 @@ Arm values are `filesystem`, `cli`, `mcp`; raw context is a separate diagnostic.
   inference calls and preparation costs. Commit runner/config, not transient
   workspaces.
 
-## Task 6: Scale, review, and freeze exactly 1,000 items
+## Task 6: Scale, review, and freeze incremental batches through 1,000
 
 **Files:** dataset module, accepted public questions/review ledger, tests.
 **Depends on:** Tasks 1-5; expert staffing and required terminology access.
@@ -240,8 +261,9 @@ Arm values are `filesystem`, `cli`, `mcp`; raw context is a separate diagnostic.
 list[GoldAnswer], reviews: list[dict]) -> dict`;
 `freeze_dataset(input_dir: Path, output_dir: Path) -> str` (manifest hash).
 
-- [ ] Write tests for all family matrix totals, persona/source quotas,
-  100/100/800 split, at least 100 families and 200 lineages, maximum family 20,
+- [ ] Write stage-parameterized tests for current QA/operational quotas,
+  acceptance class, exposure, batch membership and frozen manifests. At final
+  release test at least 100 families and 200 lineages, maximum family 20,
   missing required clinical review, missing terminology license/version, and
   duplicates. Split connected lineage/template/counterfactual/cohort components;
   reject leakage even when wording differs.
@@ -250,8 +272,10 @@ list[GoldAnswer], reviews: list[dict]) -> dict`;
   and expert review, and accept records only after deterministic evidence
   verification and mutation checks. Maintain explicit blocked/provisional
   states; do not lower review gates to hit 1,000.
-- [ ] Run `python -m fhir_question_bench dataset audit --input .\dataset`;
-  expect exactly 1,000 accepted records and zero gate violations. Freeze
+- [ ] Implement an explicit stage-target audit argument and document its actual
+  syntax before use. Audit targets 20, 100, then +100 through 1,000, expecting
+  the requested record count and zero violations for the claimed acceptance
+  class. Freeze
   wording, keys, terminology, splits, tool revision, budgets, and protocol.
 - [ ] Commit redistributable dataset/manifests and review provenance with
   required trailers; sealed keys remain out of agent-visible/public mounts
@@ -260,7 +284,8 @@ list[GoldAnswer], reviews: list[dict]) -> dict`;
 ## Task 7: Evidence-aware grading and honest comparative report
 
 **Files:** grading/report modules and tests.
-**Depends on:** Tasks 1-3 and 5; final test report additionally needs Task 6.
+**Depends on:** Tasks 1-3 for the first offline grader; Task 5 supplies episode
+results. Minimal reporting precedes expansion; final reporting needs Task 6.
 **Consumes:** gold, responses/traces, eligibility/freeze manifests.
 **Produces:** `grade_response(question: Question, gold: GoldAnswer,
 response: AgentResponse) -> Grade`; `build_report(results: list[RunResult],
@@ -278,8 +303,9 @@ grades: list[Grade], frozen_manifest: dict) -> dict`.
   cold/warm/preprocessing accounting, subgroup reports, and error examples.
   No invented spend when provider token/pricing data is missing.
 - [ ] Run the tests, then run the frozen comparison only within approved
-  budgets. Proposed panel: `gpt-5.6-sol` and `gpt-6.1-sol`, three runs per
-  item/arm, 14,400 episodes for B/C/D on 800 sealed questions. Approval may
+  budgets and verified containment. Proposed model panel: `gpt-5.6-sol` and
+  `gpt-6.1-sol`; recompute cost/episode estimates for each active batch and
+  repetition policy, not the historical 800-item sealed proposal. Approval may
   narrow that panel before preregistration; record the changed scope and do not
   imply unrun models/repeats. Inference settings must also be preregistered.
   Report all arms affected by any post-freeze gold correction as invalidated

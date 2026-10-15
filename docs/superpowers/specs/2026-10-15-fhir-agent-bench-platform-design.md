@@ -1,183 +1,274 @@
-# FHIR Agent Bench: platform design (C# revision)
+# FHIR Agent Bench: design (revision 2)
 
-**Status:** Proposed — supersedes the Python harness direction in
-`2026-10-15-fhir-question-benchmark-design.md`. The Python package on this
-branch is kept as a **reference prototype**: its 100 QA + 50 operational items,
-oracles, and grading rules are seed material to port, not the product.
+**Status:** Proposed. Supersedes revision 1 of this file (platform-first C#
+port of the Python prototype) and `2026-10-15-fhir-question-benchmark-design.md`.
 **Date:** 2026-10-15.
+**Evidence base:** `docs/research/reports/FHIR agent bench revised plan.md` and
+the notes under `docs/research/research_notes/FHIR agent bench revised plan/`.
 
 ## 1. Intent
 
-Measure whether an agent answering clinician/researcher questions over a folder
-of FHIR data does better — more correct, better grounded, cheaper — when it is
-given specialist FHIR tooling (the `cli-on-fhir` MCP/CLI from
-brendankowitz/ignixa-fhir#504, skills, or prompt changes) than when it only has
-a filesystem. Results must be convincing to clinicians and professionals:
-every answer is shown next to the gold answer and the exact source resources
-that justify it.
+About 150 FHIR questions, simple to complex, written the way clinicians and
+researchers ask them. They test how well an **agent harness plus LLM** reasons
+over a corpus of FHIR data. We change one thing at a time (tools such as the
+`cli-on-fhir` MCP, skills, prompts, or the model) and measure whether accuracy,
+cost and consistency change.
 
-The bench is modelled on two prior works:
+Validating `cli-on-fhir` (brendankowitz/ignixa-fhir#504) is a primary purpose.
+Questions are written assuming its **full designed tool surface** has landed:
+search, read, patient context, `fhirpath_evaluate`, `plan_fhir_search`,
+`sql_view` and the terminology tools. Every run records the tool commit it used.
 
-- **olympus-swe-bench** (brendankowitz/olympus-swe-bench#1): C#/.NET solution,
-  one folder per task (`task.yaml`, `problem.md`, hidden grading assets,
-  `AUTHORING.md`), harness/profile YAML, admission checks, paired comparison
-  metrics, report generation.
-- **MedAgentBench** (Stanford, NEJM AI 2025): realistic clinician-voiced
-  instructions over a patient population, deterministic reference solutions
-  (`refsol`) that compute the gold answer from the FHIR data, task families of
-  increasing difficulty, and query vs. action tasks.
+## 2. Principles
 
-## 2. Goals, non-goals, anti-goals
+1. **Difficulty lives in the data, not the prompt.** The corpus is too large to
+   read whole. References must be resolved. Some results are entered in error.
+   Units disagree. Codes must be discovered.
+2. **Gold is code.** Every question has an oracle that computes its answer from
+   the pinned corpus. Oracles never call Ignixa search or `cli-on-fhir`, so a
+   bug in the tool under test cannot also be in the gold.
+3. **Deterministic grading.** Typed answers, explicit tolerances, strict set
+   equality. No LLM judge decides pass or fail.
+4. **Measure before building.** No platform or UI work until a pilot shows the
+   bench separates a strong profile from a weak one (Gate 3).
 
-**Goals**
-- Corpus first: build pinned, hash-locked synthetic corpora; generate tasks *from* them.
-- 150 tasks: 100 QA of scaled complexity (tiers 1–5, ≥25 hard terminology:
-  translation, equivalence, subsumption, display/code disagreement, inactive
-  codes, ambiguous local codes, UCUM normalisation, unmapped → abstain) and
-  50 operational tasks (de-identification, FML transforms, SQL-on-FHIR views,
-  validation, terminology operations).
-- Everything in C# (.NET 10) using Ignixa libraries for parsing, FHIRPath,
-  terminology, validation, de-id, FML, SQL-on-FHIR, and FhirFakes generation.
-- Run profiles that vary the prompt template, skills, MCP servers and model,
-  with side-by-side, per-task paired comparison.
-- A polished React web UI to browse tasks, launch runs, watch traces, inspect
-  answer vs. gold with cited resources, and compare runs.
-- One container image, hostable; users bring their own GitHub Copilot token.
+## 3. Decisions
 
-**Non-goals**
-- Clinical decision support or treatment recommendations.
-- Real PHI. Licensed terminology content (no SNOMED CT descriptions copied).
-- LLM-as-judge for pass/fail.
-
-**Anti-goals (failure even if it "works")**
-- Gold produced by the tool under test, or by an LLM without an oracle.
-- Tasks whose answer leaks through the prompt or file names.
-- A user's token persisted, logged, or shared across sessions.
-- Claiming clinical validation for items not verified by a professional.
-
-## 3. Repository layout (mirrors olympus-swe-bench)
-
-```
-FhirAgentBench.sln
-src/
-  FhirAgentBench.Core/          task model, loader, selector, results, metrics
-  FhirAgentBench.Corpus/        corpus builder (Synthea subset + FhirFakes scenarios), manifests/hashes
-  FhirAgentBench.Oracles/       per-family reference solutions (Ignixa-based)
-  FhirAgentBench.Grading/       answer, evidence, artifact graders
-  FhirAgentBench.Execution/     Copilot SDK runner, workspace isolation, profiles
-  FhirAgentBench.Cli/           admit | build-corpus | run | grade | report | verify
-  FhirAgentBench.Web/           ASP.NET Core API + SignalR, hosts the React build
-web/                            React + TypeScript (Vite) UI
-corpora/<corpus-id>/            built corpus + corpus.yaml (sources, seeds, hashes)
-tasks/<TASK-ID>/                one folder per task (see §4)
-profiles/<profile-id>/          run profiles (see §6)
-skills/, mcp/                   assets profiles can enable
-docs/superpowers/{specs,plans,research}/
-tests/                          xUnit
-```
-
-## 4. Task folder ("what you see")
-
-```
-tasks/FAB-QA-T5-017/
-  task.yaml        id, title, kind (qa|operation), tier 1-5, family, persona,
-                   corpus id + hash, answer_type, budget, tags,
-                   capabilities_advantaged, verification {status, by, at, notes}
-  prompt.md        clinician/researcher-voiced ask + required answer format
-  gold/answer.json hidden: typed answer + decisive evidence references
-  gold/expected/   hidden (operations): expected artifacts
-  inputs/          visible operation inputs (FML map, ViewDefinition, profile, rules)
-  AUTHORING.md     provenance, oracle used, leakage review, why tools help
-```
-
-The oracle for a task is code in `FhirAgentBench.Oracles` keyed by family +
-parameters in `task.yaml`; `admit` re-runs it against the pinned corpus and
-fails if gold drifts. Gold is never mounted into the agent workspace.
-
-## 5. Grading ("how we decide it's right")
-
-Each attempt produces four results; **pass = correct ∧ grounded** (QA) or
-**pass = artifact contract satisfied** (operations).
-
-1. **Correct** — typed comparison by `answer_type`: exact, set, ordered list,
-   number/quantity with UCUM-normalised tolerance, date/period, coded value
-   (equivalence via owned terminology fixtures), and **abstain** (correct
-   refusal when data is missing/ambiguous/unmapped).
-2. **Grounded** — cited references resolve in the corpus and include the
-   decisive evidence; extra citations allowed, fabricated ones fail.
-3. **Artifact contract** (operations) — Ignixa-based checks: validate output,
-   compare SQL-on-FHIR rows (order-insensitive, typed), de-id rule checks
-   (no identifiers left, consistent date shift, references preserved), FML
-   output equivalence after normalisation.
-4. **Efficiency** — turns, tool calls by tool, tokens, premium requests, wall time.
-
-An optional LLM rationale review may *annotate* traces; it never changes pass/fail.
-Metrics follow olympus: resolved rate with CI, pass@k / pass-all-k, flip rate,
-cost per pass, breakdowns by tier/family/persona, and **paired per-task
-comparison** between profiles.
-
-## 6. Run profiles and runs
-
-A **profile** = `profile.yaml` (model, prompt template, enabled skills, MCP
-servers, tool allow-list, budget) plus assets. Baselines shipped:
-`filesystem-only`, `filesystem+cli-on-fhir-mcp`, `filesystem+fhir-skill`.
-A **run** = profile × task selection × repetitions, with a snapshot hash of the
-profile, corpus, task set and runtime versions; changing any of them is a new
-snapshot (no silent comparison across changed inputs).
-
-## 7. Execution and security
-
-- Uses the **GitHub Copilot SDK for .NET** in `Mode = Empty`, one session per
-  attempt with explicit `AvailableTools`, MCP servers and skills from the
-  profile; no ambient host tools.
-- Each attempt gets a fresh copy of the corpus as its workspace (read-only
-  source; separate output dir); gold and other tasks are not reachable.
-- **Token: bring-your-own.** Hosted mode accepts a user's Copilot-entitled
-  GitHub token per browser session, held in server memory only, passed as the
-  per-session `GitHubToken`, never written to disk, logs, traces or results;
-  cleared on sign-out/idle timeout. GitHub OAuth device/web flow is the
-  preferred way to obtain it. **Local mode** may use the logged-in Copilot
-  CLI / environment token.
-- Cost guard: per-run premium-request estimate shown and confirmed before start;
-  per-run concurrency and budget caps.
-- Container: single image (ASP.NET + built React + Copilot runtime + the
-  `cli-on-fhir` tool), corpora and tasks baked in or mounted read-only, results
-  volume for runs. Network egress limited to Copilot endpoints.
-
-## 8. Web UI (React + TypeScript)
-
-- **Tasks** — filter by tier/family/persona/kind/verification; task detail
-  shows prompt, inputs, and (toggle) gold + evidence rendered as FHIR resources.
-- **Run builder** — choose/clone a profile, edit prompt template, toggle skills
-  and MCP servers, pick model and tasks, see cost estimate, launch.
-- **Live run** — streaming trace (tool calls, MCP calls, messages).
-- **Attempt view** — agent answer vs gold, pass/fail per grader, cited
-  resources highlighted in a FHIR resource viewer, efficiency stats.
-- **Compare** — two or more runs side by side: score deltas with CIs,
-  per-task win/loss/flip grid, tool-usage and cost differences.
-- **Verify** — reviewer workflow to mark tasks verified/rejected with notes,
-  writing to `task.yaml` verification fields (git-tracked).
-
-## 9. Verification lifecycle
-
-`generated → unverified → under-review → verified | rejected`.
-All 130 newly generated items start `unverified`; the original 20 are
-`provisional`. Only a named human reviewer can set `verified`; reports
-separate verified vs unverified scores.
-
-## 10. Decisions and open items
-
-| Decision | Who |
+| Decision | Source |
 |---|---|
-| All C#/.NET, Ignixa libraries for FHIR semantics | user |
-| BYO Copilot token in hosted mode; local token allowed locally | user |
-| React UI, comparable runs with editable prompt/skills/MCP | user |
-| Corpus first, tasks generated from it; MedAgentBench-style tasks, olympus-style layout | user |
-| React + TypeScript is the only non-C# part (UI) | coordinator's call |
-| Copilot SDK (.NET) instead of shelling out to the CLI | coordinator's call |
-| Deterministic graders decide pass/fail; LLM review is annotation only | coordinator's call |
-| Python prototype kept on branch as reference until the C# port reaches parity | coordinator's call |
+| Everything in C# (.NET 10), including the oracles | user |
+| Corpus generated, not imported: Synthea (licence acceptable) + FhirFakes needles + seeded mutations | user |
+| Real LOINC, SNOMED CT, RxNorm, CVX codes are acceptable | user |
+| Harness-agnostic where cheap; GitHub Copilot CLI/SDK is the primary harness when a tradeoff is needed | user |
+| Oracles use `System.Text.Json` over raw resources, not Ignixa | coordinator: independence from the tool under test |
+| Answers are returned as a file (`answer.json`), not via a bench-owned MCP tool | coordinator: works with any CLI harness, including no-MCP baselines |
+| The 50 operational tasks (de-id, FML, SQL-on-FHIR, validation) leave the 150 | coordinator: they are not corpus questions; possible later track |
+| Read-only questions in v1; no MedAgentBench-style write/order tasks | coordinator |
 
-Open: hosting target (Azure Container Apps vs. App Service), whether Foundry
-is used for question-drafting assistance in the C# pipeline, and who the
-clinical/terminology reviewers are.
+## 4. Corpus
+
+Three layers. Each layer is produced once, its files are hashed, and the hashes
+are recorded in `corpora/<corpus-id>/corpus.yaml`. Evaluation never regenerates
+data.
+
+1. **Base: Synthea R4.** Phase 0 uses the pinned public sample
+   (`synthea-sample-data@9959d917`, zip sha256 `56cb9e49…a521`: 109 patients,
+   119,981 resources). Phase 1 replaces it with a custom run of about 100–130
+   patients. That run pins the seed, clinician seed, reference date, end date
+   and jar, and uses keep modules to guarantee the patients the questions need.
+2. **Needles: about 12 FhirFakes scenario patients** built with a seeded
+   `ScenarioBuilder`, with facts known by construction:
+   - N1: diabetes escalating to a GLP-1.
+   - N2: CKD on drugs that raise potassium.
+   - N3: AF on anticoagulation.
+   - N4: inpatient AKI on vancomycin.
+   - N5: untreated hypertension.
+   - N6: allergy conflicting with an order.
+   - N7: paediatric asthma.
+   - N8: pregnancy.
+   - N9: oncology regimen.
+   - N10: serotonergic/QT polypharmacy, with one medication coded as text only.
+   - N11: duplicate patient record.
+   - N12: hospice/multimorbidity.
+
+   A custom Synthea module is acceptable for any needle where it is easier.
+3. **Mutations: a seeded post-processor** that writes a manifest. Each manifest
+   entry records category, resource, path, before and after. Categories:
+   - Status: entered-in-error, refuted, stopped.
+   - Units: mg/dL ↔ mmol/L.
+   - Codes: site-local code with a display; ICD-10 beside SNOMED; text-only
+     medication.
+   - Missing data: `dataAbsentReason`, reduced date precision.
+   - Duplicates: exact, near, and duplicate Patient records.
+   - References: one dangling reference; some `urn:uuid` → `Type/id`.
+   - Conflicts: an allergy contradicted by an order.
+
+The large data files are not committed to git: they are fetched or generated
+into `corpora/<id>/data/` and checked against `corpus.yaml` hashes. Each corpus
+has one frozen **now**, which the harness supplies. Question text never
+contains it.
+
+## 5. Questions
+
+### 5.1 Tiers (by mechanism)
+
+| Tier | Mechanism | Count |
+|---|---|---|
+| T1 | Direct lookup: one type, one patient, latest or "ever" | 20 |
+| T2 | Filtered/temporal: windows, status, first/last, relative time | 30 |
+| T3 | Aggregation/trend: count, mean, min/max, change, units | 30 |
+| T4 | Multi-resource and terminology: drug classes, hierarchies, reference hops | 30 |
+| T5 | Calculation and stated rules (CHA2DS2-VASc, Cockcroft-Gault, KDIGO) | 20 |
+| T6 | Cohort/population across the corpus | 12 |
+| T7 | Unanswerable from the record: correct answer is to abstain | 8 |
+
+Tags, independent of tier:
+- Data mechanism: `TEMP`, `AGG`, `TERM`, `UNIT`, `ABS`, `CALC`, `MULTI`, `REF`.
+- `tool_groups`: which `cli-on-fhir` group the question exercises
+  (`patient-context`, `search`, `fhirpath`, `sql-view`, `terminology`).
+
+Template diversity: about 60 templates, at most 3 instances each, and no
+patient behind more than about 8 questions.
+
+### 5.2 Voice and context
+
+The harness supplies a launch context: `{now, patient: name + birth date + MRN,
+role}`. The question then says "she", "this patient" or "my panel", for
+example: "What was his last potassium?" or "How many of my diabetics had a last
+A1c over 9 this year, counting those with none?" A question never contains a
+resource id or an invented code system. Where missing data matters, the
+question says in clinical words what to do. Rules for care-gap and calculation
+questions are stated in clinical shorthand.
+
+### 5.3 Splits
+
+- **Test:** 150 questions.
+- **Dev:** 30 questions from the same template families but different patients;
+  skills and prompts may be tuned on these.
+- **Holdout:** 50 private questions on a second corpus seed, never published.
+  A large gap between test and holdout scores means a profile has overfit.
+
+## 6. Answers and grading
+
+The agent writes `answer.json` into its output directory:
+
+```json
+{ "status": "answered" | "insufficient_data",
+  "answer": <typed value>,
+  "evidence": ["Observation/abc", "..."] }
+```
+
+The answer spec (type, unit, precision, fields) appears in a fixed harness
+section of the prompt, never in the clinical wording.
+
+| Type | JSON shape | Rule |
+|---|---|---|
+| integer | number | exact |
+| decimal | number | absolute tolerance declared per question |
+| quantity | `{value, unit}` | unit must equal the declared UCUM unit after normalising equivalent spellings; value within tolerance |
+| date | `"YYYY-MM-DD"` | exact at declared precision |
+| code | `{system, code}` | tuple equality, display ignored |
+| identifier | `{system, value}` | tuple equality (MRN, NPI) |
+| set | array of strings or of `{system, code}` | strict set equality; precision and recall logged |
+| boolean | true/false | exact |
+| composite | object of named fields, each with its own spec | all fields correct; per-field logged |
+
+Any type may be declared `nullable`, meaning "no such result" is a valid
+answer, given as `answer: null`. This is distinct from `insufficient_data`.
+Abstaining is correct only when the gold is `insufficient_data`; on answerable
+questions it is counted as **abstained**, not wrong.
+
+Every attempt ends in exactly one status: `correct`, `wrong`, `abstained`,
+`format_invalid`, `turn_limit` or `harness_error`. Harness errors are re-run
+and not scored. Evidence is not graded; retrieval recall against the oracle's
+evidence ids is reported as a diagnostic.
+
+**Grader CI:** each question ships 2–4 equivalent answers that must pass and
+2–4 near misses that must fail. Two baselines must score as expected: the
+oracle profile at 100%, and the always-abstain profile at about 5%.
+
+## 7. Oracles
+
+An oracle is a C# class keyed by name with typed parameters from the question
+file. It reads a `CorpusIndex` that the bench owns. The index:
+- loads Bundles and NDJSON;
+- resolves `urn:uuid` fullUrls, `Type/id`, conditional
+  `Type?identifier=system|value` and contained `#id` references;
+- finds patients by MRN.
+
+`admit` runs every oracle against the pinned corpus. It fails a question when:
+- the oracle throws;
+- the gold is empty for a question not marked `expect_empty`;
+- the gold hash differs from `gold.lock.json`, i.e. gold drift.
+
+Gold is computed at grading time and never written into a run workspace.
+`gold.lock.json` stores hashes only. Every question needs a second derivation
+before it is `verified`: either an independent query written in a different
+style, or a second author.
+
+## 8. Profiles and harnesses
+
+A profile (`profiles/<id>.yaml`) defines the harness, model, built-in tools,
+MCP servers, skills directory, prompt template, per-attempt credit cap and
+turn limit. Harness implementations sit behind `IAgentHarness`:
+
+- `copilot-cli`: the primary harness. Runs the `copilot` CLI non-interactively
+  with an explicit `--available-tools` list, MCP servers via
+  `--additional-mcp-config`, no custom instructions, and a per-attempt
+  `--max-ai-credits`.
+- `oracle` (B0) and `abstain` (B1): baselines that run without cost.
+- A Copilot SDK harness and other CLIs (Claude Code, etc.) are added later as
+  further `IAgentHarness` implementations. Prompt-in and answer-file-out keeps
+  that cheap.
+
+Profiles:
+
+| ID | Model | Tools | Skill / prompt | Purpose |
+|---|---|---|---|---|
+| B0 | – | oracle | – | must score 100% |
+| B1 | – | always abstain | – | floor ≈ 5% |
+| B2 | A | none | default | knowledge floor |
+| P1 | A | shell: view, rg, glob, powershell | default | baseline |
+| P2 | A | P1 + full `cli-on-fhir` MCP | default | **tool effect (P2−P1)** |
+| P2a | A | P2 minus the terminology, sql-view and fhirpath groups | default | which tool groups matter |
+| P3 | A | P2 | FHIR skill | **skill effect (P3−P2)** |
+| P4 | A | `cli-on-fhir` MCP only | default | can the MCP replace code? |
+| P5 | B | P2 | default | **model effect** |
+| P6 | A | P2 | plan/verify prompt | prompt effect |
+
+**Workspace isolation:**
+- Each attempt runs in a fresh directory outside the repository.
+- The corpus is attached read-only via `--add-dir`, and its file manifest is
+  re-checked after the attempt.
+- Gold is never on disk during a run.
+- `--allow-all-paths` and `--allow-all-urls` are never passed.
+
+**Cost guard:** `run` prints the number of attempts × the credit cap and
+requires `--yes`.
+
+## 9. Measurement
+
+- **Repeats:** K=3 by default; K=5 for the three pre-registered contrasts
+  (P2−P1, P3−P2, model).
+- **Primary statistic:** paired per-question difference, with standard errors
+  clustered by patient. Exact McNemar and a paired bootstrap serve as checks.
+  The other contrasts use Holm–Bonferroni correction.
+- **Also reported:** pass@1, pass^k, flip rate, cost and tokens per correct
+  answer, turns, an accuracy-vs-cost Pareto plot, and per-tier and
+  per-`tool_group` breakdowns. Per-tier and per-group results are descriptive
+  only.
+- **Expected resolution:** at 150 questions, roughly 8 pp at K=3 and 7 pp at
+  K=5 for same-model profiles. 5 pp needs 300–600 questions.
+
+## 10. Phases and gates
+
+| Phase | Work | Gate |
+|---|---|---|
+| 0 | C# skeleton; corpus index; grader; 6 oracles; 10 questions; Copilot CLI harness; B0/B1/P1/P2 profiles; first real run | B0 = 100%, B1 = abstain share. Real P1 and P2 trajectories graded. Agent cannot reach gold. `cli-on-fhir` indexes the sample corpus in practical time |
+| 1 | Custom Synthea run, needles, mutation layer, corpus v1 hashes | Oracle confirms every needle fact and manifest entry. A median patient exceeds a model context window |
+| 2 | About 60 templates → about 220 candidates, grader CI, dev and holdout splits | 100% oracle pass. Second derivation agrees. Every question is reachable through the tools |
+| 3 | Pilot: weak vs strong profile at K=3; drop questions every run passes or fails; re-run power | Strong − weak ≥ 20 pp. Projected minimum detectable effect for P2−P1 ≤ 10 pp at K=5 |
+| 4 | Freeze 150/30/50 and run the profile matrix | Results reproducible from the pinned corpus, tool commit and model |
+| 5 | Optional: React UI, hosting with bring-your-own token, write tasks, scale to 300+ | Driven by Phase 4 |
+
+Each phase gets its own implementation plan in `docs/superpowers/plans/` once
+the previous gate passes.
+
+## 11. Disposition of the Python prototype
+
+- **Keep as ideas:** typed answers including abstain, oracle-computed gold,
+  evidence grounding, run profiles with paired comparison, runner isolation
+  checks. The existing 100 questions become template ideas only.
+- **Remove at the end of Phase 0:** the Python package, its corpus, its 150
+  items and its tests. Git history keeps them.
+
+## 12. Open items
+
+- Clinician reviewer for question wording and rule questions. Without one, the
+  bench is labelled "engineer-reviewed".
+- Whether to keep Claim/ExplanationOfBenefit as distractors, depending on
+  indexing cost in Phase 0.
+- Run budget: about 8 profiles × 150 questions × K=3, plus the pilot. Estimated
+  from Phase 0 usage data.
+- Java 17+ is needed for the Phase 1 custom Synthea run; it is not installed on
+  the current dev machine.

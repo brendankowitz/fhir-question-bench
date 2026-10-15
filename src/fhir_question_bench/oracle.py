@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -14,6 +15,14 @@ from .references import _resolve_reference
 
 class OracleError(ValueError):
     """A question cannot be independently evaluated under its declared protocol."""
+
+
+@dataclass(frozen=True, slots=True)
+class _ObservationDecision:
+    answer_eligible: bool
+    evidence_member: bool
+    excluded_by: tuple[str, ...]
+    indeterminate: tuple[str, ...]
 
 
 DATA_ROOT = Path(__file__).parent / "data"
@@ -303,28 +312,101 @@ def _query_observations(
     system: str | None = None,
     code: str | None = None,
     required_status: str | None = None,
-) -> list[ResolvedResource]:
-    matches = []
+) -> tuple[list[ResolvedResource], list[ResolvedResource]]:
+    evidence_members = []
+    answer_candidates = []
     for item in corpus.resources:
         resource = item.resource
         if resource.get("resourceType") != "Observation":
             continue
         if system is not None and code is not None and not _coding_matches(resource, system, code):
             continue
-        if required_status and resource.get("status") and resource["status"] != required_status:
-            matches.append(item)
-            continue
-        effective = resource.get("effectiveDateTime")
-        if system is not None and code is not None and not effective:
-            raise OracleError(f"{item.identity} has no effectiveDateTime; cutoff membership is indeterminate")
-        if effective and _instant(effective) > _question_time(question):
-            continue
-        if required_status and not resource.get("status"):
-            raise OracleError(f"{item.identity} has no status; temporal eligibility is indeterminate")
-        if patient is not None and not _subject_is(item, patient, corpus):
-            continue
-        matches.append(item)
-    return matches
+        decision = _decide_observation(
+            item,
+            question,
+            corpus,
+            patient=patient,
+            required_status=required_status,
+        )
+        if decision.indeterminate and not decision.excluded_by:
+            raise OracleError(f"{item.identity} eligibility is indeterminate: {'; '.join(decision.indeterminate)}")
+        if decision.evidence_member:
+            evidence_members.append(item)
+        if decision.answer_eligible:
+            answer_candidates.append(item)
+    return evidence_members, answer_candidates
+
+
+def _decide_observation(
+    item: ResolvedResource,
+    question: Question,
+    corpus: Corpus,
+    *,
+    patient: ResolvedResource | None,
+    required_status: str | None,
+) -> _ObservationDecision:
+    resource = item.resource
+    exclusions = []
+    indeterminate = []
+
+    subject_reference = resource.get("subject", {}).get("reference")
+    patient_matches = patient is None
+    if patient is not None:
+        if not subject_reference:
+            indeterminate.append(
+                f"{item.identity} has no subject reference; patient membership is indeterminate"
+            )
+            patient_matches = False
+        else:
+            resolution = _resolve_reference(item, subject_reference, corpus)
+            if resolution.status != "resolved":
+                indeterminate.append(
+                    f"{item.identity} subject reference is {resolution.status}; "
+                    "patient membership is indeterminate"
+                )
+                patient_matches = False
+            else:
+                subject = resolution.targets[0]
+                patient_matches = _same_location(subject, patient)
+                if not patient_matches:
+                    exclusions.append("different patient")
+
+    effective = resource.get("effectiveDateTime")
+    time_in_scope = False
+    if effective is None:
+        indeterminate.append(
+            f"{item.identity} has no effectiveDateTime; cutoff membership is indeterminate"
+        )
+    else:
+        try:
+            time_in_scope = _instant(effective) <= _question_time(question)
+            if not time_in_scope:
+                exclusions.append("after cutoff")
+        except OracleError:
+            indeterminate.append(
+                f"{item.identity} has invalid effectiveDateTime; cutoff membership is indeterminate"
+            )
+
+    status = resource.get("status")
+    if required_status is not None:
+        if not status:
+            indeterminate.append(
+                f"{item.identity} has no status; temporal eligibility is indeterminate"
+            )
+        elif status != required_status:
+            exclusions.append("nonqualifying status")
+
+    evidence_member = patient_matches and (
+        time_in_scope
+        or (effective is None and required_status is not None and status and status != required_status)
+    )
+    answer_eligible = not exclusions and not indeterminate
+    return _ObservationDecision(
+        answer_eligible=answer_eligible,
+        evidence_member=evidence_member,
+        excluded_by=tuple(exclusions),
+        indeterminate=tuple(indeterminate),
+    )
 
 
 def _quantity(resource: ResolvedResource) -> dict[str, str]:
@@ -448,7 +530,7 @@ def derive_gold(
         pointers = _evidence_for(resource, "/valueQuantity")
         answer = {"kind": "quantity", "value": _quantity(resource)}
     elif operation == "latest-final-observation":
-        candidates = _query_observations(
+        candidates, answer_candidates = _query_observations(
             question,
             corpus,
             patient=bound_patient,
@@ -462,11 +544,7 @@ def derive_gold(
                 raise OracleError(f"{item.identity} has no status; temporal eligibility is indeterminate")
             if item.resource.get("status") == required_status and not item.resource.get("valueQuantity") and not item.resource.get("dataAbsentReason"):
                 raise OracleError(f"{item.identity} has neither valueQuantity nor dataAbsentReason")
-        valid = [
-            item for item in candidates
-            if item.resource.get("status") == required_status
-            and item.resource.get("valueQuantity") is not None
-        ]
+        valid = [item for item in answer_candidates if item.resource.get("valueQuantity") is not None]
         if not valid:
             raise OracleError(f"protocol found no qualifying {required_status} observation")
         chosen = max(valid, key=lambda item: _instant(item.resource["effectiveDateTime"]))
@@ -480,7 +558,7 @@ def derive_gold(
         ]
         answer = {"kind": "quantity", "value": _quantity(chosen)}
     elif operation == "final-observation-series":
-        candidates = _query_observations(
+        candidates, answer_candidates = _query_observations(
             question,
             corpus,
             patient=bound_patient,
@@ -496,9 +574,8 @@ def derive_gold(
                 raise OracleError(f"{item.identity} has neither valueQuantity nor dataAbsentReason")
         valid = sorted(
             (
-                item for item in candidates
-                if item.resource.get("status") == required_status
-                and item.resource.get("valueQuantity") is not None
+                item for item in answer_candidates
+                if item.resource.get("valueQuantity") is not None
             ),
             key=lambda item: (_instant(item.resource["effectiveDateTime"]), item.identity),
         )
@@ -736,9 +813,8 @@ def derive_gold(
         else:
             answer = {"kind": "set", "value": members}
     elif operation in {"missing-weight", "absence-code"}:
-        patient_ref = params["patient"]
         patient = bound_patient
-        code_matches = _query_observations(
+        code_matches, _ = _query_observations(
             question,
             corpus,
             patient=patient,
@@ -763,13 +839,7 @@ def derive_gold(
         if operation == "absence-code":
             pointers.extend(
                 pair
-                for item in _query_observations(
-                    question,
-                    corpus,
-                    patient=patient,
-                    system=params["system"],
-                    code=params["code"],
-                )
+                for item in code_matches
                 for pair in _evidence_for(item, "/subject/reference", "/code", "/effectiveDateTime")
             )
     else:

@@ -369,6 +369,147 @@ def test_temporal_known_nonqualifying_status_excludes_unresolved_candidate(tmp_p
     assert derive_gold(question, corpus, data_root).answer["value"] == {"value": "4.1", "unit": "mmol/L"}
 
 
+@pytest.mark.parametrize(
+    ("patient_state", "time_state", "status_state"),
+    [
+        (patient, time, status)
+        for patient in ("match", "other", "unresolved")
+        for time in ("before", "after", "missing")
+        for status in ("final", "nonfinal", "missing")
+    ],
+)
+def test_temporal_candidate_decisions_separate_eligibility_from_evidence(
+    tmp_path, patient_state, time_state, status_state
+):
+    data_root = copy_fixture_data(tmp_path)
+    fields = {
+        "subject": {
+            "match": {"reference": "Patient/p-ada"},
+            "other": {"reference": "Patient/p-bryn"},
+            "unresolved": None,
+        }[patient_state],
+        "effectiveDateTime": {
+            "before": "2026-01-14T00:00:00Z",
+            "after": "2026-01-16T00:00:00Z",
+            "missing": None,
+        }[time_state],
+        "status": {
+            "final": "final",
+            "nonfinal": "preliminary",
+            "missing": None,
+        }[status_state],
+    }
+
+    def update_candidate(item):
+        for field, value in fields.items():
+            if value is None:
+                item.pop(field, None)
+            else:
+                item[field] = value
+        item["valueQuantity"] = {"value": 8.8, "unit": "mmol/L"}
+
+    mutate_ndjson(data_root, "o-potassium-other", update_candidate)
+    corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
+    question = _question(load_questions(data_root / "questions.jsonl"), "temporal-001")
+    independently_excluded = (
+        patient_state == "other"
+        or time_state == "after"
+        or status_state == "nonfinal"
+    )
+    expected_evidence_member = (
+        patient_state == "match"
+        and time_state != "after"
+        and (time_state == "before" or status_state == "nonfinal")
+    )
+    known_qualifier = (
+        patient_state == "match"
+        and time_state == "before"
+        and status_state == "final"
+    )
+    if not independently_excluded and not known_qualifier:
+        with pytest.raises(OracleError):
+            derive_gold(question, corpus, data_root)
+        return
+
+    gold = derive_gold(question, corpus, data_root)
+    if independently_excluded:
+        assert gold.answer["value"] == {"value": "4.1", "unit": "mmol/L"}
+    candidate_evidence = [
+        item for item in gold.required_evidence
+        if item.resource_identity == "Observation/o-potassium-other"
+    ]
+    assert bool(candidate_evidence) is expected_evidence_member
+    if expected_evidence_member:
+        assert any(item.pointer.endswith("/status") for item in candidate_evidence)
+
+
+def test_other_patient_missing_time_does_not_invalidate_or_require_evidence(tmp_path):
+    from fhir_question_bench.demo import make_demo_response
+
+    data_root = copy_fixture_data(tmp_path)
+    mutate_ndjson(data_root, "o-potassium-other", lambda item: item.pop("effectiveDateTime"))
+    corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
+    question = _question(load_questions(data_root / "questions.jsonl"), "temporal-001")
+    gold = derive_gold(question, corpus, data_root)
+    assert gold.answer["value"] == {"value": "4.1", "unit": "mmol/L"}
+    assert not any(
+        item.resource_identity == "Observation/o-potassium-other"
+        for item in gold.required_evidence
+    )
+    assert grade_response(question, gold, make_demo_response(question, gold), corpus, data_root).strict_success
+
+
+def test_other_patient_nonfinal_observation_is_not_mandatory_evidence(tmp_path):
+    from fhir_question_bench.demo import make_demo_response
+
+    data_root = copy_fixture_data(tmp_path)
+    mutate_ndjson(data_root, "o-potassium-other", lambda item: item.update(status="preliminary"))
+    corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
+    question = _question(load_questions(data_root / "questions.jsonl"), "temporal-001")
+    gold = derive_gold(question, corpus, data_root)
+    response = copy.deepcopy(make_demo_response(question, gold))
+    assert not any(
+        item.resource_identity == "Observation/o-potassium-other"
+        for item in gold.required_evidence
+    )
+    assert grade_response(question, gold, response, corpus, data_root).strict_success
+
+
+def test_in_scope_nonfinal_candidate_remains_mandatory_evidence(tmp_path):
+    data_root = copy_fixture_data(tmp_path)
+    mutate_ndjson(
+        data_root,
+        "o-potassium-other",
+        lambda item: item.update(
+            subject={"reference": "Patient/p-ada"},
+            effectiveDateTime="2026-01-14T00:00:00Z",
+            status="preliminary",
+        ),
+    )
+    corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
+    question = _question(load_questions(data_root / "questions.jsonl"), "temporal-001")
+    gold = derive_gold(question, corpus, data_root)
+    evidence = [
+        item for item in gold.required_evidence
+        if item.resource_identity == "Observation/o-potassium-other"
+    ]
+    assert {item.pointer for item in evidence} >= {
+        "/subject/reference", "/code", "/status", "/effectiveDateTime", "/valueQuantity"
+    }
+    from fhir_question_bench.demo import make_demo_response
+
+    response = copy.deepcopy(make_demo_response(question, gold))
+    evidence_ids = {item["id"] for item in response["evidence"] if item["resource_identity"] == "Observation/o-potassium-other"}
+    response["evidence"] = [item for item in response["evidence"] if item["id"] not in evidence_ids]
+    response["claims"][0]["evidence_ids"] = [
+        evidence_id for evidence_id in response["claims"][0]["evidence_ids"]
+        if evidence_id not in evidence_ids
+    ]
+    grade = grade_response(question, gold, response, corpus, data_root)
+    assert not grade.strict_success
+    assert "required evidence is incomplete" in grade.errors[0]
+
+
 def _template_value(value, question, policy):
     if isinstance(value, dict) and set(value) == {"parameter"}:
         return question["parameters"][value["parameter"]]
@@ -554,13 +695,17 @@ def test_mutated_typed_response_and_gold_are_revalidated():
     corpus, questions = setup()
     question = _question(questions, "direct-004")
     gold = derive_gold(question, corpus)
-    response = AgentResponse.from_dict(make_demo_response(question, gold))
+    gold_snapshot = copy.deepcopy(gold.as_dict())
+    response = AgentResponse.from_dict(copy.deepcopy(make_demo_response(question, gold)))
     response.claims[0]["answer_pointer"] = "/not-answer"
     assert not grade_response(question, gold, response, corpus).strict_success
 
-    response = AgentResponse.from_dict(make_demo_response(question, gold))
+    response = AgentResponse.from_dict(copy.deepcopy(make_demo_response(question, gold)))
     response.answer["value"]["value"] = 72.5
-    assert not grade_response(question, gold, response, corpus).strict_success
+    invalid_response_grade = grade_response(question, gold, response, corpus)
+    assert not invalid_response_grade.strict_success
+    assert "response or gold contract is invalid: quantity value must be a decimal string" in invalid_response_grade.errors
+    assert gold.as_dict() == gold_snapshot
 
     directly_constructed = AgentResponse(
         question.id,
@@ -574,8 +719,12 @@ def test_mutated_typed_response_and_gold_are_revalidated():
 
     gold = derive_gold(question, corpus)
     altered_gold = GoldAnswer.from_dict(copy.deepcopy(gold.as_dict()))
-    altered_gold.answer["value"]["value"] = 999
-    assert not grade_response(question, altered_gold, make_demo_response(question, gold), corpus).strict_success
+    altered_gold.answer["value"]["value"] = "999"
+    invalid_gold_response = copy.deepcopy(make_demo_response(question, gold))
+    invalid_gold_grade = grade_response(question, altered_gold, invalid_gold_response, corpus)
+    assert not invalid_gold_grade.strict_success
+    assert "gold is stale or does not match the currently loaded source corpus" in invalid_gold_grade.errors
+    assert gold.as_dict() == gold_snapshot
 
 
 def test_series_and_timestamp_answers_use_semantic_numeric_and_instant_equality():

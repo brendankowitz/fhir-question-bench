@@ -9,5 +9,5 @@ question: How many flu shots has she had in the last five years?
 answer: { type: integer }
 oracle:
   name: immunization-history
-  parameters: { cvx: ["140", "141", "150", "158", "88", "111", "135", "149", "153", "155", "166", "168", "171", "185", "186", "197", "205"], window_days: 1826, return: "count" }
+  parameters: { cvx: ["140", "141", "150", "158", "88", "135", "153", "155", "166", "168", "171", "185", "186", "197", "205"], window_days: 1826, return: "count" }
 verification: { status: unverified }

@@ -5,7 +5,7 @@ tags: [ABS]
 tool_groups: [patient-context, search]
 persona: primary-care
 patient: { mrn: "d21f2794-014b-c66b-3688-888382ab7434", name: "Theressa101 Carroll471", birth_date: "1979-12-23" }
-question: She's an ex-smoker. How many pack-years did she smoke, for lung cancer screening eligibility?
+question: She's an ex-smoker. As recorded in her chart, how many pack-years did she smoke, for lung cancer screening eligibility?
 answer: { type: decimal, tolerance: 1 }
 oracle: { name: unanswerable }
 verification: { status: unverified }

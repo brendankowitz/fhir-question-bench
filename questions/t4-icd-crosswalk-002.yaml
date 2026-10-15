@@ -5,7 +5,7 @@ tags: [MAP, TERM]
 tool_groups: [patient-context, search, terminology]
 persona: coder
 patient: { mrn: "3732fde5-efc6-d57a-517b-0500f2177181", name: "Danny396 Jacobs452", birth_date: "1960-03-25" }
-question: Which ICD-10-CM code goes on the claim for his high cholesterol diagnosis?
+question: Which ICD-10-CM code (the HL7 sid 'icd-10-cm' code system, not WHO ICD-10) goes on the claim for his hyperlipidemia diagnosis? Give the code with its dot, e.g. J45.20.
 answer: { type: code }
 oracle:
   name: condition-crosswalk

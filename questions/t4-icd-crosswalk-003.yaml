@@ -5,7 +5,7 @@ tags: [MAP, TERM]
 tool_groups: [patient-context, search, terminology]
 persona: coder
 patient: { mrn: "e503e9b3-d149-653b-92df-ca4a8cb68e16", name: "Nilda678 Wiza601", birth_date: "1984-10-08" }
-question: What's the ICD-10-CM code for her prediabetes?
+question: What's the ICD-10-CM code (the HL7 sid 'icd-10-cm' code system, not WHO ICD-10) for her prediabetes? Give the code with its dot, e.g. J45.20.
 answer: { type: code }
 oracle:
   name: condition-crosswalk

@@ -9,6 +9,6 @@ question: Has she had a flu shot in the past 12 months? If so, give the date; if
 answer: { type: date, nullable: true }
 oracle:
   name: immunization-history
-  parameters: { cvx: ["140", "141", "150", "158", "88", "111", "135", "149", "153", "155", "166", "168", "171", "185", "186", "197", "205"], window_days: 365, return: "latest_date" }
+  parameters: { cvx: ["140", "141", "150", "158", "88", "135", "153", "155", "166", "168", "171", "185", "186", "197", "205"], window_days: 365, return: "latest_date" }
 expect_empty: true
 verification: { status: unverified }

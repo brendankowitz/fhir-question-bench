@@ -183,6 +183,6 @@ def main(argv: list[str] | None = None) -> int:
             print(_json({"json": str(json_path), "markdown": str(args.out), "strict_success": sum(row["strict_success"] for row in rows), "question_count": len(rows), "mode": "oracle/self-check"}))
             return 0 if all(row["strict_success"] for row in rows) else 1
         raise ValueError(f"unsupported command {args.command}")
-    except (OSError, ValueError, KeyError, StopIteration) as error:
+    except (OSError, ValueError, KeyError, StopIteration, RecursionError) as error:
         parser.exit(2, f"error: {error}\n")
     return 2

@@ -48,12 +48,24 @@ class _WindowsJob:
                         ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
                         ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
 
+        class Accounting(ctypes.Structure):
+            _fields_ = [("TotalUserTime", ctypes.c_longlong), ("TotalKernelTime", ctypes.c_longlong),
+                        ("ThisPeriodTotalUserTime", ctypes.c_longlong),
+                        ("ThisPeriodTotalKernelTime", ctypes.c_longlong),
+                        ("TotalPageFaultCount", w.DWORD), ("TotalProcesses", w.DWORD),
+                        ("ActiveProcesses", w.DWORD), ("TotalTerminatedProcesses", w.DWORD)]
+
+        self._accounting_type = Accounting
         self.kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         self.kernel.CreateJobObjectW.argtypes = [ctypes.c_void_p, w.LPCWSTR]
         self.kernel.CreateJobObjectW.restype = w.HANDLE
         self.kernel.SetInformationJobObject.argtypes = [w.HANDLE, ctypes.c_int, ctypes.c_void_p, w.DWORD]
         self.kernel.AssignProcessToJobObject.argtypes = [w.HANDLE, w.HANDLE]
         self.kernel.TerminateJobObject.argtypes = [w.HANDLE, w.UINT]
+        self.kernel.QueryInformationJobObject.argtypes = [w.HANDLE, ctypes.c_int,
+                                                          ctypes.c_void_p, w.DWORD,
+                                                          ctypes.POINTER(w.DWORD)]
+        self.kernel.QueryInformationJobObject.restype = w.BOOL
         self.kernel.CloseHandle.argtypes = [w.HANDLE]
         self.handle = self.kernel.CreateJobObjectW(None, None)
         if not self.handle:
@@ -75,9 +87,24 @@ class _WindowsJob:
         if resume(int(process._handle)) != 0:
             raise OSError("cannot resume job-contained offline fixture")
 
-    def terminate(self):
-        if self.handle and not self.kernel.TerminateJobObject(self.handle, 1):
+    def active_processes(self) -> int:
+        accounting = self._accounting_type()
+        if not self.kernel.QueryInformationJobObject(
+                self.handle, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None):
             raise ctypes.WinError(ctypes.get_last_error())
+        return accounting.ActiveProcesses
+
+    def terminate_and_wait(self, timeout: float) -> bool:
+        if not self.handle:
+            return True
+        if self.active_processes() and not self.kernel.TerminateJobObject(self.handle, 1):
+            raise ctypes.WinError(ctypes.get_last_error())
+        deadline = time.monotonic() + timeout
+        while self.active_processes():
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.01)
+        return True
 
     def close(self):
         if self.handle:
@@ -98,6 +125,7 @@ def capture_process(
     chunks: list[bytearray] = [bytearray(), bytearray()]
     overflow = threading.Event()
     callback_errors: list[Exception] = []
+    cleanup_errors: list[str] = []
     lock = threading.Lock()
     readers = []
     failure = None
@@ -168,24 +196,35 @@ def capture_process(
             if process:
                 if job:
                     try:
-                        job.terminate()
-                    finally:
-                        if process.poll() is None:
-                            process.kill()
+                        quiescent = job.terminate_and_wait(5)
+                        if not quiescent:
+                            cleanup_errors.append("Windows Job Object descendants did not exit before the cleanup deadline")
+                    except Exception as error:
+                        cleanup_errors.append(f"Windows Job Object cleanup failed: {error}")
+                    if process.poll() is None:
+                        process.kill()
                 else:
                     try:
                         os.killpg(process.pid, signal.SIGKILL)
                     except ProcessLookupError:
                         pass
-                process.wait(timeout=5)
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    cleanup_errors.append("root process did not exit before the cleanup deadline")
                 for reader in readers:
-                    reader.join(timeout=2)
+                    reader.join(timeout=5)
+                    if reader.is_alive():
+                        cleanup_errors.append("process output reader did not stop before the cleanup deadline")
                 if process.stdin and not process.stdin.closed:
                     process.stdin.close()
         finally:
             if job:
                 job.close()
-    if overflow.is_set():
+    if cleanup_errors:
+        callback_errors.extend(RuntimeError(message) for message in cleanup_errors)
+        failure = "cleanup_failed"
+    if overflow.is_set() and failure != "cleanup_failed":
         failure = "trace_overflow"
     if callback_errors and failure is None:
         failure = "protocol_error"

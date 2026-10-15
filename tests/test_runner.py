@@ -131,6 +131,10 @@ def test_prepared_argv_and_fresh_mcp_config_all_arms(setup_run):
             assert mcp["args"] == ["mcp", str(Path(row["workspace"]) / "corpus")]
             assert mcp["tools"] == ["search", "read"]
     assert report["snapshot"]["tool"]["revision_status"] == "unverified-declaration"
+    permissions = report["snapshot"]["permissions"]
+    assert permissions["all_paths"] is permissions["all_urls"] is False
+    assert permissions["personal_config"] is False and permissions["builtin_mcps"] is False
+    assert set(permissions["effective_argv_sha256"]) == {"filesystem", "cli", "mcp"}
 
 
 @pytest.mark.parametrize("patch", [
@@ -174,7 +178,7 @@ def test_fake_real_subprocess_success_with_usage_and_observed_argv(setup_run):
     assert row["usage"]["input_tokens"] == 12
     assert row["tool_calls"] == 1
     assert row["pricing_usd"] is None
-    observed = json.loads((Path(row["workspace"]) / "observed.json").read_text())
+    observed = json.loads((Path(row["directory"]) / "observed.json").read_text())
     assert observed["argv"] == row["copilot_argv"][1:]
     assert row["elapsed_seconds"] > 0
     assert "not model performance" in (setup_run[3] / "run" / "report.md").read_text()
@@ -214,11 +218,11 @@ def test_timeout_kills_descendant_not_just_parent(setup_run):
     assert result.returncode == 1
     row = report["episodes"][0]
     assert row["status"] == "timeout"
-    work = Path(row["workspace"])
-    assert (work / "child-pid.txt").exists()
-    (work / "release-child").write_text("release")
+    directory = Path(row["directory"])
+    assert (directory / "child-pid.txt").exists()
+    (directory / "release-child").write_text("release")
     time.sleep(1)
-    assert not (work / "escaped.txt").exists()
+    assert not (directory / "escaped.txt").exists()
     assert report["containment"]["verified"] is False
 
 
@@ -272,7 +276,7 @@ def test_prompt_metacharacters_stay_one_argv_argument(setup_run):
     result, report = invoke(setup_run, config=config, mode="success", tool_mode="tool")
     assert result.returncode == 0, result.stderr
     row = report["episodes"][0]
-    observed = json.loads((Path(row["workspace"]) / "observed.json").read_text())
+    observed = json.loads((Path(row["directory"]) / "observed.json").read_text())
     assert observed["argv"] == row["copilot_argv"][1:]
     assert not list(setup_run[3].rglob("hacked"))
 
@@ -468,3 +472,257 @@ def test_all_twenty_through_sixty_fake_subprocesses_are_only_engineering_evidenc
     for arm in ("filesystem", "cli", "mcp"):
         assert report["by_arm"][arm] == {
             "planned": 20, "status_counts": {"completed": 20}, "strict_success": 20}
+
+@pytest.mark.parametrize(("mode", "expected"), [
+    ("idlethen-tool", "invalid_lifecycle"),
+    ("idlethen-session", "invalid_lifecycle"),
+    ("session-mismatch", "invalid_lifecycle"),
+    ("idlethen-activity", "invalid_lifecycle"),
+])
+def test_terminal_idle_must_be_final_and_session_associated(setup_run, mode, expected):
+    result, report = invoke(setup_run, config=one_question(setup_run[0]), mode=mode)
+    assert result.returncode == 1, result.stderr
+    assert report["episodes"][0]["status"] == expected
+    assert report["counts"]["failed"] == 1
+
+
+@pytest.mark.parametrize(("mode", "expected"), [
+    ("deep-answer", "invalid_response"),
+    ("deep-usage", "invalid_usage"),
+    ("deep-trace", "invalid_trace"),
+])
+def test_deep_json_is_a_bounded_episode_failure_and_report_persists(setup_run, mode, expected):
+    config = one_question(setup_run[0])
+    config["max_answer_bytes"] = 20000
+    config["max_trace_bytes"] = 20000
+    result, report = invoke(setup_run, config=config, mode=mode)
+    assert result.returncode == 1, result.stderr
+    assert report["episodes"][0]["status"] == expected
+    counts = report["counts"]
+    assert counts["planned"] == counts["completed"] + counts["failed"] + counts["blocked"] + counts["not_run"]
+    assert counts["failed"] == 1
+    assert (setup_run[3] / "run" / "report.md").is_file()
+
+
+@pytest.mark.parametrize("override", [
+    "--allow-all", "--allow-all-paths", "--allow-all-urls", "--allow-all-tools",
+    "--additional-mcp-config=@personal.json", "--model=other", "--reasoning-effort high",
+    "--max-ai-credits", "--usage-output-file=other.json", "-p injected prompt",
+    "--resume=old-session", "--config", "--mcp-config personal.json",
+    "--allow-all-p", "--model other", "--",
+])
+def test_configured_copilot_command_cannot_override_runner_owned_options(setup_run, override):
+    config = one_question(setup_run[0])
+    config["copilot_command"] = ["copilot", *override.split()]
+    result, report = invoke(setup_run, config=config)
+    assert result.returncode == 2, result.stderr
+    assert report is None
+    assert "runner-owned" in result.stderr
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows Job Object descendant completion")
+def test_normal_parent_exit_waits_for_job_descendants(tmp_path):
+    from fhir_question_bench.processes import capture_process
+
+    code = (
+        "import subprocess,sys; from pathlib import Path; "
+        "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']); "
+        "Path('child-pid.txt').write_text(str(child.pid))"
+    )
+    result = capture_process([sys.executable, "-I", "-c", code], tmp_path,
+                             dict(os.environ), 5, 4096)
+    assert result.failure is None
+    pid = int((tmp_path / "child-pid.txt").read_text())
+    import ctypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    handle = kernel.OpenProcess(0x00100000, False, pid)
+    if handle:
+        try:
+            assert kernel.WaitForSingleObject(handle, 0) == 0
+        finally:
+            kernel.CloseHandle(handle)
+
+
+def test_preflight_mutation_is_checked_before_episode_dispatch(setup_run, monkeypatch):
+    from fhir_question_bench import runner
+    from fhir_question_bench.processes import ProcessResult
+
+    config, config_path, fixture, root = setup_run
+    config = one_question(config)
+    config_path.write_text(json.dumps(config))
+    data_root = root / "protected-data"
+    shutil.copytree(DATA_ROOT, data_root)
+    fake = fixture / "success.py"
+    shutil.copyfile(ROOT / "tests" / "fake_copilot.py", fake)
+    calls = []
+
+    def mutate_during_preflight(argv, cwd, env, timeout, max_bytes, on_line=None):
+        calls.append(argv)
+        assert argv[-1] == "--version"
+        (data_root / "agent" / "corpus" / "resources.ndjson").write_bytes(b"changed source")
+        return ProcessResult(0, 0.01, b"offline-fixture-1\n", b"", None, False, ())
+
+    monkeypatch.setattr(runner, "capture_process", mutate_during_preflight)
+    report = runner.run_benchmark(config_path, root / "preflight-source-change", data_root,
+                                  fake_process=fake)
+    assert len(calls) == 1
+    assert report["episodes"][0]["status"] == "blocked_integrity"
+    assert report["counts"]["blocked"] == 1
+    assert report["counts"]["planned"] == report["counts"]["failed"] + report["counts"]["blocked"] + report["counts"]["completed"] + report["counts"]["not_run"]
+
+
+def test_specialist_startup_exception_does_not_block_filesystem_arm(setup_run, monkeypatch):
+    from fhir_question_bench import runner
+    from fhir_question_bench.processes import ProcessResult
+
+    config, config_path, fixture, root = setup_run
+    config = one_question(config, ["filesystem", "cli", "mcp"])
+    config["tool"] = {"command": ["missing-specialist.exe"], "expected_revision": "declared",
+                      "mcp_tools": ["search", "read"]}
+    config_path.write_text(json.dumps(config))
+    fake = fixture / "success.py"
+    fake_tool = fixture / "tool.py"
+    shutil.copyfile(ROOT / "tests" / "fake_copilot.py", fake)
+    shutil.copyfile(ROOT / "tests" / "fake_copilot.py", fake_tool)
+    original = runner.capture_process
+
+    def raise_for_mcp(argv, cwd, env, timeout, max_bytes, on_line=None):
+        if "mcp" in argv:
+            raise OSError("specialist startup failed")
+        return original(argv, cwd, env, timeout, max_bytes, on_line)
+
+    monkeypatch.setattr(runner, "capture_process", raise_for_mcp)
+    report = runner.run_benchmark(config_path, root / "specialist-startup-error", DATA_ROOT,
+                                  fake_process=fake,
+                                  fake_tool_process=fake_tool)
+    assert [row["status"] for row in report["episodes"]] == ["completed", "blocked_tool", "blocked_tool"]
+    assert "specialist startup failed" in report["preflight"]["mcp_error"]
+
+
+def test_preflight_workspace_mutation_is_not_rebaselined(setup_run, monkeypatch):
+    from fhir_question_bench import runner
+    from fhir_question_bench.processes import ProcessResult
+
+    config, config_path, fixture, root = setup_run
+    config = one_question(config)
+    config_path.write_text(json.dumps(config))
+    fake = fixture / "success.py"
+    shutil.copyfile(ROOT / "tests" / "fake_copilot.py", fake)
+    output = root / "preflight-workspace-change"
+    workspace = output / "episodes" / "direct-001" / "filesystem" / "workspace"
+
+    def mutate_during_preflight(argv, cwd, env, timeout, max_bytes, on_line=None):
+        (workspace / "corpus" / "extra.ndjson").write_text("{}")
+        return ProcessResult(0, 0.01, b"offline-fixture-1\n", b"", None, False, ())
+
+    monkeypatch.setattr(runner, "capture_process", mutate_during_preflight)
+    report = runner.run_benchmark(config_path, output, DATA_ROOT, fake_process=fake)
+    assert report["episodes"][0]["status"] == "blocked_integrity"
+    assert report["counts"]["blocked"] == 1
+
+
+def test_original_terminology_change_during_episode_fails_collection(setup_run, monkeypatch):
+    from fhir_question_bench import runner
+
+    config, config_path, fixture, root = setup_run
+    config = one_question(config)
+    config_path.write_text(json.dumps(config))
+    fake = fixture / "success.py"
+    shutil.copyfile(ROOT / "tests" / "fake_copilot.py", fake)
+    data_root = root / "terminology-data"
+    shutil.copytree(DATA_ROOT, data_root)
+    original = runner.capture_process
+    calls = 0
+
+    def mutate_during_episode(argv, cwd, env, timeout, max_bytes, on_line=None):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return original(argv, cwd, env, timeout, max_bytes, on_line)
+        (data_root / "agent" / "terminology" / "CodeSystem.json").write_bytes(b"changed terminology")
+        return original(argv, cwd, env, timeout, max_bytes, on_line)
+
+    monkeypatch.setattr(runner, "capture_process", mutate_during_episode)
+    report = runner.run_benchmark(config_path, root / "terminology-change", data_root,
+                                  fake_process=fake)
+    assert calls == 2
+    assert report["episodes"][0]["status"] == "data_mutation"
+    assert report["counts"]["failed"] == 1
+
+
+def test_runner_selects_only_the_original_initial_twenty_when_data_expands(setup_run, monkeypatch):
+    from dataclasses import replace
+    from fhir_question_bench import runner
+
+    questions = load_questions(DATA_ROOT / "questions.jsonl")
+    expanded = [*questions, replace(questions[0], id="qa-extra-unreviewed")]
+    monkeypatch.setattr(runner, "load_questions", lambda _path: expanded)
+    config, config_path, _, root = setup_run
+    config = copy.deepcopy(config)
+    config["arms"] = ["filesystem"]
+    config.pop("question_ids", None)
+    config_path.write_text(json.dumps(config))
+
+    report = runner.run_benchmark(config_path, root / "initial20-only", DATA_ROOT)
+    assert report["counts"]["planned"] == 20
+    assert {row["question_id"] for row in report["episodes"]} == {question.id for question in questions[:20]}
+
+
+def test_initial20_hash_pin_rejects_changed_selected_question(setup_run, monkeypatch):
+    from dataclasses import replace
+    from fhir_question_bench import runner
+
+    original = load_questions(DATA_ROOT / "questions.jsonl")
+    changed = [replace(original[0], prompt=original[0].prompt + " modified")]
+    monkeypatch.setattr(runner, "load_questions", lambda _path: changed + original[1:])
+    config, config_path, _, root = setup_run
+    config_path.write_text(json.dumps(one_question(config)))
+    with pytest.raises(ValueError, match="pinned initial20 question hash mismatch: direct-001"):
+        runner.run_benchmark(config_path, root / "changed-initial-question", DATA_ROOT)
+
+
+def test_initial20_runner_rejects_any_new_unreviewed_question_id(setup_run):
+    config = one_question(setup_run[0])
+    config["question_ids"] = ["qa-101"]
+    result, report = invoke(setup_run, config=config)
+    assert result.returncode == 2
+    assert report is None
+    assert "pinned initial20 IDs" in result.stderr
+
+
+def test_explicit_trailing_telemetry_is_allowed_after_terminal_idle(setup_run):
+    result, report = invoke(setup_run, config=one_question(setup_run[0]), mode="telemetry-after-idle")
+    assert result.returncode == 0, result.stderr
+    assert report["episodes"][0]["status"] == "completed"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows Job Object cleanup reporting")
+def test_unconfirmed_windows_cleanup_blocks_collection_and_advancement(setup_run, monkeypatch):
+    from fhir_question_bench import processes, runner
+
+    config, config_path, fixture, root = setup_run
+    questions = load_questions(DATA_ROOT / "questions.jsonl")[:2]
+    corpus = load_corpus(DATA_ROOT / "agent" / "corpus-manifest.json")
+    responses = {question.id: make_demo_response(question, derive_gold(question, corpus, DATA_ROOT))
+                 for question in questions}
+    (fixture / "fixture-response.json").write_text(json.dumps(responses))
+    fake = fixture / "success.py"
+    shutil.copyfile(ROOT / "tests" / "fake_copilot.py", fake)
+    config = copy.deepcopy(config)
+    config["question_ids"] = [question.id for question in questions]
+    config["arms"] = ["filesystem"]
+    config_path.write_text(json.dumps(config))
+    cleanup_calls = 0
+
+    def fail_episode_cleanup(_self, _timeout):
+        nonlocal cleanup_calls
+        cleanup_calls += 1
+        return cleanup_calls == 1
+
+    monkeypatch.setattr(processes._WindowsJob, "terminate_and_wait", fail_episode_cleanup)
+    report = runner.run_benchmark(config_path, root / "cleanup-failed", DATA_ROOT,
+                                  fake_process=fake)
+    assert [row["status"] for row in report["episodes"]] == ["cleanup_failed", "blocked_cleanup"]
+    assert "did not exit" in report["episodes"][0]["errors"][0]
+    assert "grade" not in report["episodes"][0]
+    assert report["counts"]["failed"] == report["counts"]["blocked"] == 1

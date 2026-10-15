@@ -285,11 +285,27 @@ benchmark evidence. Fake mode is always labeled `offline-fake-process`,
 Every execution bounds combined stdout/stderr and answer/usage bytes, records
 exit status and elapsed time, and cancels fixture descendants on timeout,
 overflow **and normal parent exit**. Windows uses suspended creation, Job
-Object assignment, then resume (failing closed if unsupported); POSIX uses a
-new process session/group. These are trusted-fixture lifecycle controls, not
-a hostile-code sandbox. Final collection requires zero process exit, no
-session error, a recognized `session.idle` terminal trace event, a regular
-single-link answer, a strict response and a passing evidence-aware grade.
+Object assignment, then resume, then waits for job accounting to report zero
+active descendants before collection; a cleanup deadline failure is reported
+and stops advancement. POSIX uses a new process session/group. These are
+trusted-fixture lifecycle controls, not
+a hostile-code sandbox. Preparation freezes complete original data-root and
+protected workspace inventories. Those exact file bytes, directory membership
+and link safety are
+checked before each dispatch and after collection; no changed source or later
+workspace becomes a new baseline. This is change detection, not write
+prevention. The runner remains pinned to the original initial20 question IDs
+and per-item SHA-256 values. Later unverified QA rows cannot enter its
+denominator.
+Configured Copilot argv may not override runner-owned prompt, session, model,
+budget, permission, MCP/config or output options; reported permission metadata
+is derived from the effective generated argv.
+
+Final collection requires zero process exit, a final lifecycle `session.idle`
+for the same session when IDs are supplied, no later lifecycle activity without
+another terminal transition, a regular single-link answer, a strict response
+and a passing evidence-aware grade. Bounded JSON-depth failures in answers,
+usage or traces are failed episodes, with the planned denominator still reported.
 Unknown live CLI event schemas are not certified by these fixtures.
 Symlinks/reparse points, hardlinked answers, malformed/oversize JSON,
 unsupported citations and source mutation cannot pass. Source changes stop

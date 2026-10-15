@@ -36,19 +36,17 @@ assert "RUNNER_TEST_SECRET" not in os.environ
 assert "COPILOT_GITHUB_TOKEN" not in os.environ
 assert "PYTHONPATH" not in os.environ
 assert not list(Path(os.environ["COPILOT_HOME"]).glob("*gold*"))
-(work / "observed.json").write_text(json.dumps({
+(work.parent / "observed.json").write_text(json.dumps({
     "argv": sys.argv[1:], "home": os.environ["COPILOT_HOME"],
     "environment_names": sorted(os.environ),
 }), encoding="utf-8")
 if mode == "timeout":
     time.sleep(30)
-if mode == "descendant":
-    child = subprocess.Popen([sys.executable, "-c",
-        "import time; from pathlib import Path; "
-        "exec(\"while not Path('release-child').exists(): time.sleep(0.05)\"); "
-        "Path('escaped.txt').write_text('bad')"])
-    (work / "child-pid.txt").write_text(str(child.pid))
-    time.sleep(30)
+if mode in {"descendant", "parent-exits"}:
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    (work.parent / "child-pid.txt").write_text(str(child.pid))
+    if mode == "descendant":
+        time.sleep(30)
 if mode == "overflow":
     sys.stdout.write("x" * 100000)
     sys.stdout.flush()
@@ -83,10 +81,32 @@ usage.write_text(json.dumps({"model": "offline-fixture", "input_tokens": 12,
                              "output_tokens": 4}), encoding="utf-8")
 if mode == "badusage":
     usage.write_text("not JSON")
+if mode == "deep-answer":
+    (work / "answer.json").write_bytes(b"[" * 4000 + b"0" + b"]" * 4000)
+if mode == "deep-usage":
+    usage.write_bytes(b"[" * 4000 + b"0" + b"]" * 4000)
+if mode == "deep-trace":
+    print("[" * 4000 + "0" + "]" * 4000)
 if mode == "sessionerror":
     print(json.dumps({"type": "session.error", "data": {"message": "fixture error"}}))
-if mode != "noevents":
+if mode == "idlethen-tool":
+    print(json.dumps({"type": "session.idle", "data": {"sessionId": "same"}}))
+    print(json.dumps({"type": "tool.execution_start", "data": {"sessionId": "same", "toolCallId": "unfinished"}}))
+elif mode == "idlethen-session":
+    print(json.dumps({"type": "session.idle", "data": {"sessionId": "old"}}))
+    print(json.dumps({"type": "session.start", "data": {"sessionId": "new"}}))
+elif mode == "session-mismatch":
+    print(json.dumps({"type": "session.start", "data": {"sessionId": "first"}}))
+    print(json.dumps({"type": "session.idle", "data": {"sessionId": "second"}}))
+elif mode == "idlethen-activity":
+    print(json.dumps({"type": "session.idle", "data": {"sessionId": "same"}}))
+    print(json.dumps({"type": "assistant.turn_start", "data": {"sessionId": "same"}}))
+elif mode == "telemetry-after-idle":
+    print(json.dumps({"type": "session.idle", "data": {"sessionId": "same"}}))
+    print(json.dumps({"type": "telemetry", "data": {"elapsed_ms": 5}}))
+elif mode != "noevents":
     print(json.dumps({"type": "tool.execution_start", "data": {"toolName": "shell"}}))
-if mode not in {"unterminated", "noevents"}:
+if mode not in {"unterminated", "noevents", "idlethen-tool", "idlethen-session",
+                "session-mismatch", "idlethen-activity", "telemetry-after-idle"}:
     print(json.dumps({"type": "session.idle", "data": {}}))
 raise SystemExit(3 if mode == "nonzero" else 0)

@@ -24,16 +24,30 @@ from .processes import capture_process
 
 ARMS = ["filesystem", "cli", "mcp"]
 AUTH_NAMES = ["COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"]
-BUILTIN_TOOLS = ["view", "rg", "glob", "powershell", "read_powershell", "stop_powershell", "apply_patch"]
-PERMISSIONS = {
-    "available_tools": BUILTIN_TOOLS,
-    "autoapprove_tools": True,
-    "all_paths": False,
-    "all_urls": False,
-    "personal_config": False,
-    "builtin_mcps": False,
-    "os_isolation": False,
+INITIAL_20_QUESTION_SHA256 = {
+    "direct-001": "508adb548e279927ed216dfb047abdf2fd294fe833291a57a721aa215948fcc4",
+    "direct-002": "4cd8b5d77a25a91c3e72e28661065eb4cc25e0fc7dcf942a5b5cf3fcc80f63d8",
+    "direct-003": "5736b66bf99e3fc11f65eb03e60fc5b383e59afe9b8143bb7a895c1cebfe3e5b",
+    "direct-004": "2e2415512d443b76ea0b2b590af69c9441105f794a81933dc751fca8bc573fcc",
+    "temporal-001": "3d4209cd8cc484118661d048368b153541c643655d0920ca56017c1f447d3534",
+    "temporal-002": "e7e1c6c15cfc7b554a780afa1d5bcb5ea93effec8578c0becc2de0562a54ce9b",
+    "temporal-003": "5268608cbb45cb0ba560330c7d9775a0b81450199d03c24ddb415ee697f39f1d",
+    "temporal-004": "1119da2cfbfa625853e33a329e50591f487df7b1896b7850a581aaaa339326b5",
+    "join-001": "32a3931570929e854220c7c08ada20bc404d91280334a57eb6cc91915010f477",
+    "join-002": "43c8a07eb44fc0eb0ea14b47b9a96573f3dbe94901cf7db6d6b981b94808ff4c",
+    "join-003": "a68976a7410c8590350273df630c3fcca4403eccc7e5413721a0335fe5e93a69",
+    "join-004": "3dd80f44f0ab11e8e476aa0b54d0b6809c80d0a37eda29f02482674c6758abad",
+    "term-001": "c739807ed58bc396f2774c27801fcfa6c0644a79b434f1b51072198d160930c5",
+    "term-002": "a5044ed16ebcdd17cadfa9cb85587ac6f33d14a4ac891772297c3fe0bdcb49c9",
+    "term-003": "fefa4af9e772e1499f4ca0deae95576193ee29f9e3522e531e67854e4283bf78",
+    "term-004": "92ec204ec12dd0c14e53955007b5538377cc1b6de2edd0b90bb31e5e819a8e09",
+    "cohort-001": "fcfb2b8dfe0a48d80160901d5e4628c30699e1998e122ee67287bfaae4b325ad",
+    "cohort-002": "66a4d224c769eb075e79bcd6f8a660f5e2e41b3e5fa97ec93ab9cd68c42763ec",
+    "cohort-003": "0437d720a75a5c4b955f5f0be4cd91d89212a6080f5d9295f75692898d16388c",
+    "cohort-004": "a99d5a1ab89dea6e9d529e26956e7ab433be48c7482b1e6c3c380f07514f66b2",
 }
+INITIAL_20_QUESTION_IDS = tuple(INITIAL_20_QUESTION_SHA256)
+BUILTIN_TOOLS = ["view", "rg", "glob", "powershell", "read_powershell", "stop_powershell", "apply_patch"]
 PROMPT = (
     "Answer question.json using the local corpus, protocols/protocols.json and terminology assets. "
     "Read response-contract.json and selection-policies.json first. Use the exact public "
@@ -65,6 +79,30 @@ def _argv(value: Any, name: str) -> list[str]:
     return value
 
 
+_RUNNER_OWNED_OPTIONS = {
+    "-p", "--prompt", "-C", "--cd", "--working-directory", "--model",
+    "--reasoning-effort", "--max-ai-credits", "--usage-output-file",
+    "--output-format", "--stream", "--resume", "--continue", "-c",
+    "--agent", "--agents", "--config", "--mcp-config", "--additional-mcp-config",
+    "--directory", "--",
+    "--secret-env-vars", "--allow-all", "--allow-all-paths", "--allow-all-urls",
+    "--allow-all-tools", "--allow-tool", "--deny-tool", "--available-tools",
+    "--disable-builtin-mcps", "--no-custom-instructions", "--no-ask-user",
+    "--no-auto-update", "--no-remote", "--no-remote-export", "--disallow-temp-dir",
+    "--log-dir",
+}
+
+
+def _validate_copilot_prefix(command: list[str]) -> None:
+    for argument in command[1:]:
+        option = argument.split("=", 1)[0]
+        abbreviated = option.startswith("--") and any(owned.startswith(option) for owned in _RUNNER_OWNED_OPTIONS
+                                                           if owned.startswith("--"))
+        if option in _RUNNER_OWNED_OPTIONS or abbreviated or (
+                argument.startswith(("-p", "-C")) and argument not in {"-p", "-C"}):
+            raise ValueError(f"copilot_command cannot override runner-owned option {argument!r}")
+
+
 def read_config(path: Path) -> dict:
     config = json.loads(path.read_text(encoding="utf-8"))
     required = {"copilot_command", "copilot_version", "model",
@@ -74,6 +112,7 @@ def read_config(path: Path) -> dict:
     if not isinstance(config, dict) or required - config.keys() or config.keys() - required - optional:
         raise ValueError("runner config has missing or unknown fields")
     _argv(config["copilot_command"], "copilot_command")
+    _validate_copilot_prefix(config["copilot_command"])
     for key in ("model", "copilot_version"):
         if not isinstance(config[key], str) or not config[key].strip() or config[key].strip().lower() == "auto":
             raise ValueError(f"{key} requires a fixed identifier, not auto")
@@ -159,16 +198,56 @@ def _check_links(path: Path) -> None:
             raise ValueError(f"reparse path is forbidden: {part}")
 
 
-def _inventory(root: Path) -> dict[str, str]:
+def _protected_inventory(root: Path, ignored_root_files: set[str] | None = None) -> dict[str, str]:
+    """Freeze complete directory membership and file bytes, rejecting links."""
+    ignored = ignored_root_files or set()
     _check_links(root)
     result = {}
     for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root).as_posix()
+        if relative in ignored:
+            continue
         _check_links(path)
-        if path.is_file():
+        if path.is_dir():
+            result[relative + "/"] = "directory"
+        elif path.is_file():
             if path.stat().st_nlink != 1:
-                raise ValueError(f"hardlinked source asset is forbidden: {path}")
-            result[path.relative_to(root).as_posix()] = _file_hash(path)
+                raise ValueError(f"hardlinked protected asset is forbidden: {path}")
+            result[relative] = _file_hash(path)
+        else:
+            raise ValueError(f"unsupported protected workspace entry: {path}")
     return result
+
+
+def _effective_permissions(config: dict) -> dict:
+    effective = {arm: prepare_argv(config, arm, Path("episode")) for arm in config["arms"]}
+    all_argv = [argument for argv in effective.values() for argument in argv]
+    available = []
+    for argv in effective.values():
+        try:
+            start = argv.index("--available-tools") + 1
+        except ValueError:
+            continue
+        while start < len(argv) and not argv[start].startswith("-"):
+            available.append(argv[start])
+            start += 1
+        break
+    config_values = []
+    for argv in effective.values():
+        for index, argument in enumerate(argv[:-1]):
+            if argument in {"--config", "--mcp-config", "--additional-mcp-config"}:
+                config_values.append((argument, argv[index + 1]))
+    return {
+        "available_tools": available,
+        "autoapprove_tools": "--allow-all-tools" in all_argv,
+        "all_paths": any(arg.split("=", 1)[0] in {"--allow-all", "--allow-all-paths"} for arg in all_argv),
+        "all_urls": any(arg.split("=", 1)[0] in {"--allow-all", "--allow-all-urls"} for arg in all_argv),
+        "personal_config": any(flag != "--additional-mcp-config" or not value.startswith("@")
+                                or not value.endswith("mcp.json") for flag, value in config_values),
+        "builtin_mcps": "--disable-builtin-mcps" not in all_argv,
+        "os_isolation": False,
+        "effective_argv_sha256": {arm: _hash(argv) for arm, argv in effective.items()},
+    }
 
 
 def _environment(directory: Path) -> dict[str, str]:
@@ -292,7 +371,8 @@ def _read_regular(path: Path, limit: int) -> bytes:
     return data
 
 
-def _collect(row: dict, process, question, gold, corpus, root: Path, config: dict, before: dict) -> None:
+def _collect(row: dict, process, question, gold, corpus, root: Path, config: dict,
+             source_guard: dict[str, str], workspace_guard: dict[str, str]) -> None:
     directory = Path(row["directory"])
     work = Path(row["workspace"])
     (directory / "stdout.jsonl").write_bytes(process.stdout)
@@ -302,12 +382,8 @@ def _collect(row: dict, process, question, gold, corpus, root: Path, config: dic
     row["errors"].extend(process.errors)
     row["status"] = process.failure or ("process_failed" if process.exit_code != 0 else "completed")
     try:
-        unchanged = all(_read_regular(work / name, len(data)) == data
-                        for name, data in before.items())
-        for folder in ("corpus", "protocols", "terminology"):
-            names = {f"{folder}/{name}" for name in _inventory(work / folder)}
-            if names != {name for name in before if name.startswith(folder + "/")}:
-                unchanged = False
+        unchanged = (_protected_inventory(work, {"answer.json"}) == workspace_guard
+                     and _protected_inventory(root) == source_guard)
         corpus.assert_unchanged()
         verify_dataset_manifest(root)
     except (OSError, ValueError, OverflowError) as error:
@@ -317,23 +393,61 @@ def _collect(row: dict, process, question, gold, corpus, root: Path, config: dic
     if not unchanged:
         row["status"] = "data_mutation"
     events = []
+    trace_invalid = False
+    terminal_seen_in_trace = False
     for line in process.stdout.splitlines():
         try:
             event = json.loads(line)
             if isinstance(event, dict):
                 events.append(event)
+                terminal_seen_in_trace = terminal_seen_in_trace or event.get("type") == "session.idle"
+            else:
+                trace_invalid = True
+        except RecursionError:
+            trace_invalid = True
         except (ValueError, UnicodeError):
+            if terminal_seen_in_trace:
+                trace_invalid = True
             continue  # Non-JSON trace is preserved, never interpreted as an answer.
-    recognized = [event for event in events if event.get("type") in {
+    lifecycle_types = {
         "session.idle", "session.error", "tool.execution_start", "tool.execution_complete",
         "assistant.message", "session.start",
-    }]
+    }
+    recognized = [event for event in events if event.get("type") in lifecycle_types]
     row["tool_calls"] = sum(event["type"] == "tool.execution_start" for event in recognized) if recognized else None
+    terminal_activity = False
+    terminal_seen = False
+    for event in events:
+        event_type = event.get("type")
+        if event_type in lifecycle_types:
+            if terminal_seen:
+                terminal_activity = True
+            if event_type == "session.idle":
+                terminal_seen = True
+                terminal_activity = False
+        elif terminal_seen and event_type != "telemetry":
+            terminal_activity = True
     if row["status"] == "completed":
-        if any(event.get("type") == "session.error" for event in events):
+        if trace_invalid:
+            row["status"] = "invalid_trace"
+            row["errors"].append("trace contains a non-object or over-nested JSON record")
+        elif any(event.get("type") == "session.error" for event in recognized):
             row["status"] = "session_failed"
-        elif not any(event.get("type") == "session.idle" for event in events):
+        elif not recognized or not any(event.get("type") == "session.idle" for event in recognized):
             row["status"] = "missing_terminal_event"
+        elif recognized[-1].get("type") != "session.idle" or terminal_activity:
+            row["status"] = "invalid_lifecycle"
+        else:
+            session_ids = []
+            for event in recognized:
+                data = event.get("data")
+                identifier = event.get("sessionId")
+                if isinstance(data, dict):
+                    identifier = data.get("sessionId", identifier)
+                if identifier is not None:
+                    session_ids.append(identifier)
+            if any(not isinstance(identifier, str) or not identifier for identifier in session_ids) or len(set(session_ids)) > 1:
+                row["status"] = "invalid_lifecycle"
     try:
         raw_usage = _read_regular(directory / "usage.json", config["max_answer_bytes"])
         usage = json.loads(raw_usage)
@@ -342,7 +456,7 @@ def _collect(row: dict, process, question, gold, corpus, root: Path, config: dic
         row["usage"] = usage
     except FileNotFoundError:
         pass  # Unknown is distinct from zero.
-    except (OSError, ValueError, OverflowError, UnicodeError) as error:
+    except (OSError, ValueError, OverflowError, UnicodeError, RecursionError) as error:
         row["errors"].append(f"invalid usage: {error}")
         if row["status"] == "completed":
             row["status"] = "invalid_usage"
@@ -360,7 +474,7 @@ def _collect(row: dict, process, question, gold, corpus, root: Path, config: dic
         row["status"] = "missing_answer"
     except OverflowError:
         row["status"] = "answer_overflow"
-    except (ValueError, UnicodeError) as error:
+    except (ValueError, UnicodeError, RecursionError) as error:
         row["errors"].append(str(error))
         row["status"] = "unsafe_answer" if isinstance(error, ValueError) and (
             "link" in str(error) or "reparse" in str(error)) else "invalid_response"
@@ -382,13 +496,20 @@ def run_benchmark(config_path: Path, output: Path, data_root: Path, *,
     fake = _fake_command(fake_process) if fake_process else None
     fake_tool = _fake_command(fake_tool_process) if fake_tool_process else None
     verify_dataset_manifest(data_root)
-    questions = load_questions(data_root / "questions.jsonl")
-    if len(questions) != 20:
-        raise ValueError("this runner gate supports the initial20 slice only")
-    requested = config.get("question_ids", [q.id for q in questions])
-    if set(requested) - {q.id for q in questions}:
-        raise ValueError("unknown question_ids")
-    questions = [q for q in questions if q.id in requested]
+    source_guard = _protected_inventory(data_root)
+    available_questions = {question.id: question for question in load_questions(data_root / "questions.jsonl")}
+    missing_initial = set(INITIAL_20_QUESTION_IDS) - available_questions.keys()
+    if missing_initial:
+        raise ValueError(f"initial20 question set is incomplete: {sorted(missing_initial)}")
+    requested = config.get("question_ids", list(INITIAL_20_QUESTION_IDS))
+    outside_initial = set(requested) - set(INITIAL_20_QUESTION_IDS)
+    if outside_initial:
+        raise ValueError(f"runner gate supports only the pinned initial20 IDs: {sorted(outside_initial)}")
+    questions = [available_questions[question_id] for question_id in requested]
+    for question in questions:
+        actual_hash = _hash(question.as_dict())
+        if actual_hash != INITIAL_20_QUESTION_SHA256[question.id]:
+            raise ValueError(f"pinned initial20 question hash mismatch: {question.id}")
     corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
     gold = {q.id: derive_gold(q, corpus, data_root) for q in questions}
     planned = len(questions) * len(config["arms"])
@@ -410,6 +531,7 @@ def run_benchmark(config_path: Path, output: Path, data_root: Path, *,
     if tool:
         tool.update(expected_revision=config["tool"]["expected_revision"],
                     revision_status="unverified-declaration")
+    workspace_guards: dict[str, dict[str, str]] = {}
     snapshot = {
         "schema_version": 1,
         "runtime": {"python": platform.python_version(), "system": platform.system(),
@@ -418,7 +540,7 @@ def run_benchmark(config_path: Path, output: Path, data_root: Path, *,
         "config_sha256": _hash(config),
         "config": config,
         "prompt_sha256": {arm: _hash(_prompt(arm, config)) for arm in config["arms"]},
-        "permissions": PERMISSIONS,
+        "permissions": _effective_permissions(config),
         "copilot": executable_identity(config["copilot_command"]),
         "expected_copilot_version": config["copilot_version"],
         "actual_copilot_version": None,
@@ -431,7 +553,8 @@ def run_benchmark(config_path: Path, output: Path, data_root: Path, *,
         "question_sha256": {q.id: _hash(q.as_dict()) for q in questions},
         "gold_sha256": {q.id: _hash(gold[q.id].as_dict()) for q in questions},
         "corpus_hash": corpus.corpus_hash,
-        "dataset_assets_sha256": _inventory(data_root),
+        "dataset_assets_sha256": {name: digest for name, digest in source_guard.items()
+                                   if not name.endswith("/")},
         "mode": mode, "exposure": "adaptive-engineering",
         "fake_process_sha256": _file_hash(fake_process) if fake_process else None,
         "fake_tool_sha256": _file_hash(fake_tool_process) if fake_tool_process else None,
@@ -478,6 +601,7 @@ def run_benchmark(config_path: Path, output: Path, data_root: Path, *,
             manifest["question_sha256"] = _hash(public_question)
             manifest["export_kind"] = "runner public question package; evaluation labels omitted"
             _write_json(work / "prepared-manifest.json", manifest)
+            workspace_guards[str(directory)] = _protected_inventory(work, {"answer.json"})
             env = _environment(directory)
             _write_json(directory / "copilot-home" / "config.json", {"mcpServers": {}})
             if arm == "mcp" and "tool" in config:
@@ -517,18 +641,41 @@ def run_benchmark(config_path: Path, output: Path, data_root: Path, *,
             if version.failure or version.exit_code:
                 raise ValueError("fake executable version preflight failed")
             report["preflight"]["copilot_version"] = version.stdout.decode("utf-8").strip()
-            if fake_tool and "tool" in config:
-                report["preflight"]["mcp"] = _probe_mcp(fake_tool, probe, config, env)
-        except (OSError, ValueError, UnicodeError, subprocess.SubprocessError) as error:
+        except (OSError, ValueError, UnicodeError, subprocess.SubprocessError, RecursionError) as error:
             report["preflight"]["error"] = str(error)
+        if fake_tool and "tool" in config and not report["preflight"].get("error"):
+            try:
+                report["preflight"]["mcp"] = _probe_mcp(fake_tool, probe, config, env)
+            except (OSError, ValueError, UnicodeError, subprocess.SubprocessError, RecursionError) as error:
+                report["preflight"]["mcp_error"] = str(error)
+                report["preflight"]["mcp"] = {"mode": "offline-fake-process", "success": False,
+                                               "failure": "startup_error", "errors": [str(error)],
+                                               "real_tool_verified": False}
     integrity_stop = False
+    cleanup_stop = False
     for row in report["episodes"]:
         if not execute and not fake:
             continue
         if integrity_stop:
             row["status"] = "blocked_integrity"
             continue
+        if cleanup_stop:
+            row["status"] = "blocked_cleanup"
+            continue
         arm = row["arm"]
+        directory = Path(row["directory"])
+        work = Path(row["workspace"])
+        try:
+            source_matches = _protected_inventory(data_root) == source_guard
+            workspace_matches = _protected_inventory(work, {"answer.json"}) == workspace_guards[str(directory)]
+        except (OSError, ValueError, OverflowError) as error:
+            source_matches = workspace_matches = False
+            row["errors"].append(f"pre-dispatch integrity check: {error}")
+        if not source_matches or not workspace_matches:
+            row["status"] = "blocked_integrity"
+            row["errors"].append("protected source or prepared workspace changed before dispatch")
+            integrity_stop = True
+            continue
         if fake:
             if report["preflight"].get("error"):
                 row["status"] = "blocked_preflight"
@@ -538,20 +685,28 @@ def run_benchmark(config_path: Path, output: Path, data_root: Path, *,
                 report["preflight"]["mcp"] and report["preflight"]["mcp"]["success"]
             ):
                 row["status"] = "blocked_tool"
-                row["errors"].append("explicit offline specialist fixture preflight absent or failed; no fallback")
+                row["errors"].append(report["preflight"].get("mcp_error") or
+                                     "explicit offline specialist fixture preflight absent or failed; no fallback")
                 continue
-            directory = Path(row["directory"])
-            work = Path(row["workspace"])
-            before = {name: (work / name).read_bytes() for name in _inventory(work)}
             env = _environment(directory)
             try:
                 # Test-only substitution, never a fallback for the configured real executable.
                 argv = fake + row["copilot_argv"][len(config["copilot_command"]):]
                 process = capture_process(argv, work, env, config["wall_timeout_seconds"],
                                           config["max_trace_bytes"])
-                question = next(q for q in questions if q.id == row["question_id"])
-                _collect(row, process, question, gold[question.id], corpus, data_root, config, before)
-            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                if process.failure == "cleanup_failed":
+                    (directory / "stdout.jsonl").write_bytes(process.stdout)
+                    (directory / "stderr.txt").write_bytes(process.stderr)
+                    row.update(status="cleanup_failed", exit_code=process.exit_code,
+                               elapsed_seconds=process.elapsed_seconds,
+                               trace_truncated=process.trace_truncated)
+                    row["errors"].extend(process.errors)
+                    cleanup_stop = True
+                else:
+                    question = next(q for q in questions if q.id == row["question_id"])
+                    _collect(row, process, question, gold[question.id], corpus, data_root, config,
+                             source_guard, workspace_guards[str(directory)])
+            except (OSError, ValueError, subprocess.SubprocessError, RecursionError) as error:
                 row["status"] = "infrastructure_failed"
                 row["errors"].append(str(error))
             integrity_stop = row["status"] == "data_mutation"

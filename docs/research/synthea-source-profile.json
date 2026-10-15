@@ -1,0 +1,78 @@
+{
+  "profile_version": 1,
+  "inspected_on": "2026-10-15",
+  "source": {
+    "requested_url": "https://synthetichealth.github.io/synthea-sample-data/downloads/latest/synthea_sample_data_fhir_latest.zip",
+    "repository": "synthetichealth/synthea-sample-data",
+    "commit": "9959d9178ea28f4ec10f17ee238b6fabe6eb0de5",
+    "downloaded_url": "https://raw.githubusercontent.com/synthetichealth/synthea-sample-data/9959d9178ea28f4ec10f17ee238b6fabe6eb0de5/downloads/latest/synthea_sample_data_fhir_latest.zip",
+    "sha256": "56cb9e49f7ba6ad4e61c40aa80999f8c10a710823fed1becdf2502053777a521"
+  },
+  "method": "Python standard-library zipfile/json scan of every .json member, counting Bundle.entry.resource objects. Nested references and objects with system and code were counted recursively within those resources. No FHIR schema validation or MCP execution was performed.",
+  "archive": {
+    "compressed_bytes": 29595199,
+    "uncompressed_json_bytes": 386150705,
+    "json_files": 111,
+    "transaction_bundles": 109,
+    "batch_bundles": 2
+  },
+  "resources": {
+    "total": 119981,
+    "distinct_patient_ids": 109,
+    "missing_top_level_resource_ids": 0,
+    "duplicate_top_level_resource_type_id_pairs": 0,
+    "by_type": {
+      "Patient": 109,
+      "Encounter": 5635,
+      "Condition": 3540,
+      "DiagnosticReport": 11013,
+      "DocumentReference": 5635,
+      "Claim": 9493,
+      "ExplanationOfBenefit": 9493,
+      "Device": 532,
+      "SupplyDelivery": 2242,
+      "CareTeam": 352,
+      "CarePlan": 352,
+      "MedicationRequest": 3858,
+      "Procedure": 16063,
+      "Medication": 1026,
+      "MedicationAdministration": 1026,
+      "Observation": 46305,
+      "Immunization": 1562,
+      "ImagingStudy": 418,
+      "Provenance": 109,
+      "AllergyIntolerance": 105,
+      "Practitioner": 278,
+      "PractitionerRole": 278,
+      "Organization": 278,
+      "Location": 279
+    }
+  },
+  "patient_bundle_resource_counts": {
+    "minimum": 47,
+    "median": 624,
+    "maximum": 18551
+  },
+  "reference_occurrences": {
+    "urn_uuid": 445174,
+    "relative": 122715,
+    "contained": 18986
+  },
+  "bundle_entry_full_urls": {
+    "urn_uuid": 119981
+  },
+  "observations": {
+    "total": 46305,
+    "status_final": 46305,
+    "code_without_any_coding_display": 0
+  },
+  "limitations": [
+    "Counts describe this archive hash, not every future latest download.",
+    "A coding display is not independently validated terminology evidence.",
+    "No inferred FHIR release or US Core conformance has been certified.",
+    "The archive lacks observation-status diversity: all counted observations are final.",
+    "The recursive reference count is not a count of resolved or distinct targets.",
+    "Bundle resource counts include all entry resource types, not only clinical facts.",
+    "No real-patient MIMIC data was downloaded or processed."
+  ]
+}

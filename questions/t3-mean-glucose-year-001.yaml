@@ -5,7 +5,7 @@ tags: [AGG, TEMP, UNIT]
 tool_groups: [patient-context, search, fhirpath]
 persona: specialist
 patient: { mrn: "4be6b5fb-2a19-943a-9249-7068445be4cc", name: "Lamar193 Beer512", birth_date: "1971-02-16" }
-question: What has his average blood glucose been over the past year, in mg/dL?
+question: What's the average of his measured blood glucose results over the past year, in mg/dL?
 answer: { type: decimal, tolerance: 0.5 }
 oracle:
   name: observation-window-stats

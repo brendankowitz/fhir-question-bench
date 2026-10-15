@@ -25,8 +25,10 @@ public sealed record CorpusManifest(IReadOnlyList<CorpusFile> Files)
     {
         try
         {
-            return JsonSerializer.Deserialize<CorpusManifest>(File.ReadAllText(path), Options)
-                ?? throw new InvalidDataException($"Corpus manifest '{path}' is empty.");
+            var manifest = JsonSerializer.Deserialize<CorpusManifest>(File.ReadAllText(path), Options);
+            return manifest?.Files is null
+                ? throw new InvalidDataException($"Corpus manifest '{path}' is empty or has no files list.")
+                : manifest;
         }
         catch (JsonException ex)
         {
@@ -45,7 +47,7 @@ public sealed record CorpusManifest(IReadOnlyList<CorpusFile> Files)
     {
         var problems = new List<string>();
         var expected = Files.ToDictionary(f => f.Path, StringComparer.Ordinal);
-        foreach (var path in EnumerateData(dataDirectory))
+        foreach (var path in EnumerateDataIfExists(dataDirectory))
         {
             var relative = Relative(dataDirectory, path);
             if (!expected.Remove(relative, out var file))
@@ -64,6 +66,9 @@ public sealed record CorpusManifest(IReadOnlyList<CorpusFile> Files)
 
     internal static IEnumerable<string> EnumerateData(string dataDirectory) =>
         Directory.EnumerateFiles(dataDirectory, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal);
+
+    internal static IEnumerable<string> EnumerateDataIfExists(string dataDirectory) =>
+        Directory.Exists(dataDirectory) ? EnumerateData(dataDirectory) : [];
 
     internal static string Relative(string root, string path) =>
         System.IO.Path.GetRelativePath(root, path).Replace('\\', '/');

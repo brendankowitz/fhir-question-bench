@@ -3,9 +3,9 @@ namespace FhirAgentBench.Corpus;
 public sealed class CorpusGuard
 {
     private readonly string _dataDirectory;
-    private readonly Dictionary<string, string> _hashes;
+    private readonly Dictionary<string, string?> _hashes;
 
-    private CorpusGuard(string dataDirectory, Dictionary<string, string> hashes)
+    private CorpusGuard(string dataDirectory, Dictionary<string, string?> hashes)
     {
         _dataDirectory = dataDirectory;
         _hashes = hashes;
@@ -23,19 +23,39 @@ public sealed class CorpusGuard
             {
                 changes.Add($"{path}: deleted");
             }
+            else if (now is null)
+            {
+                changes.Add($"{path}: unreadable");
+            }
             else if (now != hash)
             {
                 changes.Add($"{path}: modified");
             }
         }
 
-        changes.AddRange(current.Keys.Where(path => !_hashes.ContainsKey(path)).Select(path => $"{path}: added"));
+        foreach (var (path, hash) in current.Where(f => !_hashes.ContainsKey(f.Key)))
+        {
+            changes.Add(hash is null ? $"{path}: added, unreadable" : $"{path}: added");
+        }
+
         return changes;
     }
 
-    private static Dictionary<string, string> Read(string dataDirectory) =>
-        CorpusManifest.EnumerateData(dataDirectory).ToDictionary(
+    private static Dictionary<string, string?> Read(string dataDirectory) =>
+        CorpusManifest.EnumerateDataIfExists(dataDirectory).ToDictionary(
             path => CorpusManifest.Relative(dataDirectory, path),
-            CorpusManifest.HashFile,
+            TryHash,
             StringComparer.Ordinal);
+
+    private static string? TryHash(string path)
+    {
+        try
+        {
+            return CorpusManifest.HashFile(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
 }

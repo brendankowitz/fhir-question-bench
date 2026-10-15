@@ -10,8 +10,7 @@ public static class CorpusFetcher
         ArgumentNullException.ThrowIfNull(corpus);
         ArgumentNullException.ThrowIfNull(http);
 
-        if (Directory.Exists(corpus.DataDirectory) && File.Exists(corpus.ManifestPath)
-            && CorpusManifest.Load(corpus.ManifestPath).Verify(corpus.DataDirectory).Count == 0)
+        if (IsPresentAndIntact(corpus))
         {
             return $"Corpus '{corpus.Id}' is already present and matches its manifest.";
         }
@@ -49,8 +48,65 @@ public static class CorpusFetcher
         return $"Fetched corpus '{corpus.Id}': {manifest.Files.Count} files.";
     }
 
+    private static bool IsPresentAndIntact(CorpusDefinition corpus)
+    {
+        if (!Directory.Exists(corpus.DataDirectory) || !File.Exists(corpus.ManifestPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            return CorpusManifest.Load(corpus.ManifestPath).Verify(corpus.DataDirectory).Count == 0;
+        }
+        catch (InvalidDataException)
+        {
+            return false;
+        }
+    }
+
+    private static string RawName(ZipArchiveEntry entry) => entry.FullName[(entry.FullName.LastIndexOf('/') + 1)..];
+
+    private static List<(ZipArchiveEntry Entry, string Target)> PlanExtraction(ZipArchive archive, string dataDirectory)
+    {
+        var root = Path.GetFullPath(dataDirectory) + Path.DirectorySeparatorChar;
+        var planned = new List<(ZipArchiveEntry Entry, string Target)>();
+        var seen = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
+        var candidates = archive.Entries.Where(e =>
+            (RawName(e).EndsWith(".json", StringComparison.OrdinalIgnoreCase) || RawName(e).EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase))
+            && !e.FullName.StartsWith("__MACOSX/", StringComparison.Ordinal)
+            && !RawName(e).StartsWith("._", StringComparison.Ordinal));
+        foreach (var entry in candidates)
+        {
+            var name = RawName(entry);
+            if (name.Contains(':') || Path.GetFileName(name) != name)
+            {
+                throw new InvalidDataException($"Corpus zip entry '{entry.FullName}' has an unsafe file name.");
+            }
+
+            if (!seen.TryAdd(name, entry))
+            {
+                throw new InvalidDataException(
+                    $"Corpus zip has two entries named '{name}': '{seen[name].FullName}' and '{entry.FullName}'.");
+            }
+
+            var target = Path.GetFullPath(Path.Combine(dataDirectory, name));
+            if (!target.StartsWith(root, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException($"Corpus zip entry '{entry.FullName}' would extract outside the data directory.");
+            }
+
+            planned.Add((entry, target));
+        }
+
+        return planned;
+    }
+
     private static void Extract(string zipPath, string dataDirectory)
     {
+        using var archive = ZipFile.OpenRead(zipPath);
+        var planned = PlanExtraction(archive, dataDirectory);
+
         if (Directory.Exists(dataDirectory))
         {
             foreach (var stale in Directory.EnumerateFiles(dataDirectory, "*", SearchOption.AllDirectories))
@@ -62,11 +118,8 @@ public static class CorpusFetcher
         }
 
         Directory.CreateDirectory(dataDirectory);
-        using var archive = ZipFile.OpenRead(zipPath);
-        foreach (var entry in archive.Entries.Where(e => e.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-                                                      || e.Name.EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase)))
+        foreach (var (entry, target) in planned)
         {
-            var target = Path.Combine(dataDirectory, entry.Name);
             entry.ExtractToFile(target, overwrite: true);
             File.SetAttributes(target, FileAttributes.ReadOnly);
         }

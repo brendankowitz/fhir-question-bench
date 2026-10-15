@@ -4431,7 +4431,7 @@ internal static class RunCommand
             Console.WriteLine($"Run {runId}: {questions.Count} questions x {k} -> {runDirectory}");
             var attempts = await new RunOrchestrator(harness, corpus, await File.ReadAllTextAsync(profile.PromptTemplatePath, cancellationToken))
                 .RunAsync(questions, k, runDirectory, cancellationToken);
-            var grades = new RunGrader(oracles, context).Grade(questions, attempts);
+            var grades = new RunGrader(oracles, context).Grade(questions, attempts, runDirectory);
             await File.WriteAllLinesAsync(
                 Path.Combine(runDirectory, "grades.jsonl"),
                 grades.Select(g => System.Text.Json.JsonSerializer.Serialize(g, JsonOptions.Default)),

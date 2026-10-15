@@ -8,40 +8,43 @@ public sealed record GradeRecord(string QuestionId, int Tier, int Repeat, GradeS
 
 public sealed class RunGrader(OracleRegistry oracles, OracleContext context)
 {
-    public IReadOnlyList<GradeRecord> Grade(IReadOnlyList<Question> questions, IReadOnlyList<AttemptRecord> attempts)
+    public IReadOnlyList<GradeRecord> Grade(
+        IReadOnlyList<Question> questions, IReadOnlyList<AttemptRecord> attempts, string runDirectory)
     {
         var byId = questions.ToDictionary(q => q.Id, StringComparer.Ordinal);
-        var gold = new Dictionary<string, Answer?>(StringComparer.Ordinal);
+        var gold = new Dictionary<string, Answer>(StringComparer.Ordinal);
         var grades = new List<GradeRecord>();
         foreach (var attempt in attempts)
         {
-            var question = byId[attempt.QuestionId];
-            if (!gold.TryGetValue(question.Id, out var expected))
+            if (!byId.TryGetValue(attempt.QuestionId, out var question))
             {
-                gold[question.Id] = expected = TryComputeGold(question);
+                throw new InvalidDataException($"Attempt {attempt.QuestionId}/r{attempt.Repeat} refers to a question that is not in the question set.");
             }
 
-            grades.Add(expected is null
-                ? new GradeRecord(question.Id, question.Tier, attempt.Repeat, GradeStatus.HarnessError, null)
-                : GradeOne(question, expected, attempt));
+            if (!gold.TryGetValue(question.Id, out var expected))
+            {
+                gold[question.Id] = expected = ComputeGold(question);
+            }
+
+            grades.Add(GradeOne(question, expected, attempt, runDirectory));
         }
 
         return grades;
     }
 
-    private Answer? TryComputeGold(Question question)
+    private Answer ComputeGold(Question question)
     {
         try
         {
             return oracles.Compute(context, question);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return null;
+            throw new InvalidOperationException($"Oracle failed for question '{question.Id}': {ex.Message}", ex);
         }
     }
 
-    private static GradeRecord GradeOne(Question question, Answer gold, AttemptRecord attempt)
+    private static GradeRecord GradeOne(Question question, Answer gold, AttemptRecord attempt, string runDirectory)
     {
         if (attempt.End != AttemptEnd.Completed)
         {
@@ -49,34 +52,30 @@ public sealed class RunGrader(OracleRegistry oracles, OracleContext context)
             return new GradeRecord(question.Id, question.Tier, attempt.Repeat, status, null);
         }
 
-        try
+        var agent = ReadAnswer(Path.Combine(runDirectory, attempt.AttemptDirectory, "answer.json"));
+        if (agent is null)
         {
-            var agent = ReadAnswer(Path.Combine(attempt.AttemptDirectory, "workspace", "answer.json"));
-            if (agent is not null)
-            {
-                return new GradeRecord(question.Id, question.Tier, attempt.Repeat, Grader.Grade(question.Answer, gold, agent), EvidenceRecall(gold, agent));
-            }
-        }
-        catch (Exception)
-        {
-            // Agent-authored input must never abort the run; any failure grades as format_invalid.
+            return new GradeRecord(question.Id, question.Tier, attempt.Repeat, GradeStatus.FormatInvalid, null);
         }
 
-        return new GradeRecord(question.Id, question.Tier, attempt.Repeat, GradeStatus.FormatInvalid, null);
+        try
+        {
+            return new GradeRecord(question.Id, question.Tier, attempt.Repeat, Grader.Grade(question.Answer, gold, agent), EvidenceRecall(gold, agent));
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Grading failed for question '{question.Id}' attempt r{attempt.Repeat}; the gold answer or answer spec is likely malformed: {ex.Message}", ex);
+        }
     }
 
     private static Answer? ReadAnswer(string path)
     {
-        if (!File.Exists(path))
-        {
-            return null;
-        }
-
         try
         {
             return AnswerJson.Parse(File.ReadAllText(path));
         }
-        catch (FormatException)
+        catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
         {
             return null;
         }

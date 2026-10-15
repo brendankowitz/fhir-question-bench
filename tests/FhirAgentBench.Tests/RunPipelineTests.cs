@@ -134,19 +134,148 @@ public sealed class RunPipelineTests : IDisposable
         Assert.Equal(GradeStatus.FormatInvalid, grades[1].Status);
         Assert.Equal(GradeStatus.FormatInvalid, grades[2].Status);
         Assert.Equal(GradeStatus.FormatInvalid, grades[3].Status);
+        Assert.Equal(GradeStatus.FormatInvalid, grades[4].Status);
         Assert.Equal(GradeStatus.FormatInvalid, grades[5].Status);
     }
 
     [Fact]
-    public async Task Grader_TreatsUnreadableAnswerFileAsFormatInvalid()
+    public async Task Grader_TreatsLockedAnswerFileAsFormatInvalid()
     {
-        var harness = new ScriptedHarness(new Dictionary<int, (AttemptEnd, string?)> { [1] = (AttemptEnd.Completed, null) });
+        var harness = new ScriptedHarness(new Dictionary<int, (AttemptEnd, string?)>
+        {
+            [1] = (AttemptEnd.Completed, "{\"status\":\"insufficient_data\",\"answer\":null,\"evidence\":[]}"),
+        });
         var attempts = await new RunOrchestrator(harness, Corpus, File.ReadAllText(PromptPath())).RunAsync([LatestA1c], 1, _runDirectory);
-        Directory.CreateDirectory(Path.Combine(attempts[0].AttemptDirectory, "workspace", "answer.json"));
+        using var locked = new FileStream(Path.Combine(_runDirectory, attempts[0].AttemptDirectory, "answer.json"), FileMode.Open, FileAccess.Read, FileShare.None);
 
-        var grades = new RunGrader(Oracles, Context).Grade([LatestA1c], attempts);
+        var grades = new RunGrader(Oracles, Context).Grade([LatestA1c], attempts, _runDirectory);
 
         Assert.Equal(GradeStatus.FormatInvalid, grades.Single().Status);
+    }
+
+    [Fact]
+    public async Task Grader_Throws_WhenGoldIsMalformed()
+    {
+        var question = Pharmacy with
+        {
+            Answer = new AnswerSpec
+            {
+                Type = AnswerType.Composite,
+                Fields = new Dictionary<string, AnswerSpec>
+                {
+                    ["value"] = new() { Type = AnswerType.Quantity, Unit = "%" },
+                    ["date"] = new() { Type = AnswerType.Quantity, Unit = "%" },
+                },
+            },
+            Oracle = LatestA1c.Oracle,
+        };
+        const string answer = "{\"status\":\"answered\",\"answer\":{\"value\":{\"value\":9.4,\"unit\":\"%\"},\"date\":{\"value\":1,\"unit\":\"%\"}},\"evidence\":[]}";
+        var harness = new ScriptedHarness(new Dictionary<int, (AttemptEnd, string?)> { [1] = (AttemptEnd.Completed, answer) });
+        var attempts = await new RunOrchestrator(harness, Corpus, File.ReadAllText(PromptPath())).RunAsync([question], 1, _runDirectory);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => new RunGrader(Oracles, Context).Grade([question], attempts, _runDirectory));
+
+        Assert.Contains(question.Id, ex.Message);
+        Assert.Contains("r1", ex.Message);
+    }
+
+    [Fact]
+    public async Task Grader_Throws_WhenOracleFails()
+    {
+        var question = LatestA1c with { Oracle = new OracleCall("latest-observation", OracleParameters.Empty) };
+        var attempts = await new RunOrchestrator(new AbstainHarness(), Corpus, File.ReadAllText(PromptPath())).RunAsync([question], 1, _runDirectory);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => new RunGrader(Oracles, Context).Grade([question], attempts, _runDirectory));
+
+        Assert.Contains(question.Id, ex.Message);
+    }
+
+    [Fact]
+    public async Task Grader_Throws_WhenQuestionIsMissingFromSet()
+    {
+        var attempts = await new RunOrchestrator(new AbstainHarness(), Corpus, File.ReadAllText(PromptPath())).RunAsync([LatestA1c], 1, _runDirectory);
+
+        var ex = Assert.Throws<InvalidDataException>(() => new RunGrader(Oracles, Context).Grade([Pharmacy], attempts, _runDirectory));
+
+        Assert.Contains("t1-a1c", ex.Message);
+    }
+
+    [Fact]
+    public async Task Orchestrator_UsesTempWorkspace_CopiesAnswer_AndDeletesWorkspace()
+    {
+        var harness = new RecordingHarness();
+
+        await RunAsync(harness, repeats: 1, [LatestA1c]);
+
+        var workspace = Path.GetFullPath(harness.Workspace!);
+        Assert.False(workspace.StartsWith(Path.GetFullPath(_runDirectory), StringComparison.OrdinalIgnoreCase));
+        Assert.False(Directory.Exists(workspace));
+        Assert.True(File.Exists(Path.Combine(_runDirectory, "attempts", "t1-a1c", "r1", "answer.json")));
+    }
+
+    [Fact]
+    public async Task Orchestrator_CopiesAnswerAndDeletesWorkspace_WhenHarnessThrows()
+    {
+        var harness = new RecordingHarness { Throw = true };
+
+        await Assert.ThrowsAsync<IOException>(() => RunAsync(harness, repeats: 1, [LatestA1c]));
+
+        Assert.False(Directory.Exists(harness.Workspace));
+        Assert.True(File.Exists(Path.Combine(_runDirectory, "attempts", "t1-a1c", "r1", "answer.json")));
+    }
+
+    [Fact]
+    public async Task Orchestrator_RejectsExistingAttemptDirectory()
+    {
+        Directory.CreateDirectory(Path.Combine(_runDirectory, "attempts", "t1-a1c", "r1"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(new AbstainHarness(), repeats: 1, [LatestA1c]));
+    }
+
+    [Fact]
+    public async Task Orchestrator_RejectsExistingAttemptLog()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_runDirectory, "attempts.jsonl"), "");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(new AbstainHarness(), repeats: 1, [LatestA1c]));
+    }
+
+    [Fact]
+    public async Task Grader_GradesRunFolderThatWasMoved()
+    {
+        await RunAsync(new OracleHarness(Oracles, Context), repeats: 1);
+        var attempts = (await File.ReadAllLinesAsync(Path.Combine(_runDirectory, "attempts.jsonl")))
+            .Select(line => System.Text.Json.JsonSerializer.Deserialize<AttemptRecord>(line, JsonOptions.Default)!)
+            .ToList();
+        var moved = Path.Combine(Path.GetTempPath(), "fab-moved-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            CopyDirectory(_runDirectory, moved);
+            Directory.Delete(_runDirectory, recursive: true);
+
+            var grades = new RunGrader(Oracles, Context).Grade([LatestA1c, Pharmacy], attempts, moved);
+
+            Assert.All(grades, g => Assert.Equal(GradeStatus.Correct, g.Status));
+            Assert.False(Path.IsPathRooted(attempts[0].AttemptDirectory));
+        }
+        finally
+        {
+            Directory.Delete(moved, recursive: true);
+            Directory.CreateDirectory(_runDirectory);
+        }
+    }
+
+    private static void CopyDirectory(string source, string target)
+    {
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories).Prepend(source))
+        {
+            Directory.CreateDirectory(Path.Combine(target, Path.GetRelativePath(source, directory)));
+        }
+
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            File.Copy(file, Path.Combine(target, Path.GetRelativePath(source, file)));
+        }
     }
 
     [Fact]
@@ -187,7 +316,7 @@ public sealed class RunPipelineTests : IDisposable
         questions ??= [LatestA1c, Pharmacy];
         var orchestrator = new RunOrchestrator(harness, Corpus, File.ReadAllText(PromptPath()));
         var attempts = await orchestrator.RunAsync(questions, repeats, _runDirectory);
-        return new RunGrader(Oracles, Context).Grade(questions, attempts);
+        return new RunGrader(Oracles, Context).Grade(questions, attempts, _runDirectory);
     }
 
     private static string PromptPath()
@@ -199,6 +328,20 @@ public sealed class RunPipelineTests : IDisposable
         }
 
         return Path.Combine(directory.FullName, "prompts", "default.md");
+    }
+
+    private sealed class RecordingHarness : IAgentHarness
+    {
+        public string? Workspace { get; private set; }
+
+        public bool Throw { get; init; }
+
+        public async Task<AttemptOutcome> RunAsync(AttemptRequest request, CancellationToken cancellationToken = default)
+        {
+            Workspace = request.WorkspaceDirectory;
+            await File.WriteAllTextAsync(Path.Combine(Workspace, "answer.json"), AnswerJson.Serialize(Answer.Insufficient()), cancellationToken);
+            return Throw ? throw new IOException("boom") : new AttemptOutcome(AttemptEnd.Completed, TimeSpan.Zero, null);
+        }
     }
 
     private sealed class TamperingHarness(string fileToTamper) : IAgentHarness

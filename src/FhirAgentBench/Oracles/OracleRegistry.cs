@@ -19,6 +19,11 @@ public sealed class OracleRegistry
         new MedicationsStartedWithinOracle(),
         new EverOnMedicationOracle(),
         new CohortLabAboveOrMissingOracle(),
+        new ConditionStatusOracle(),
+        new ConditionCrosswalkOracle(),
+        new ActiveMedicationsOracle(),
+        new MedicationReasonOracle(),
+        new ObservationBeforeMedicationOracle(),
         new UnanswerableOracle(),
     ]);
 

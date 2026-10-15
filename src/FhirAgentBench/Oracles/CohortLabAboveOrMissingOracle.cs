@@ -7,9 +7,6 @@ namespace FhirAgentBench.Oracles;
 
 public sealed class CohortLabAboveOrMissingOracle : IOracle
 {
-    private static readonly HashSet<string> ExcludedVerification = ["entered-in-error", "refuted"];
-    private static readonly HashSet<string> InactiveClinicalStatus = ["inactive", "resolved", "remission"];
-
     public string Name => "cohort-lab-above-or-missing";
 
     public Answer Compute(OracleContext context, Question question)
@@ -29,7 +26,7 @@ public sealed class CohortLabAboveOrMissingOracle : IOracle
         {
             var key = CorpusIndex.KeyOf(patient);
             if (!IsAliveAndInAgeRange(patient, context.Now, ageMin, ageMax)
-                || !HasActiveCondition(context, key, conditions))
+                || !Conditions.HasActive(context, key, conditions))
             {
                 continue;
             }
@@ -65,39 +62,4 @@ public sealed class CohortLabAboveOrMissingOracle : IOracle
         var age = FhirTime.AgeInYears(birthDate, now);
         return age >= ageMin && age <= ageMax;
     }
-
-    private static bool HasActiveCondition(OracleContext context, string patientKey, IReadOnlySet<string> codes) =>
-        context.Corpus.ForPatient(patientKey, "Condition").Any(condition =>
-            FhirElements.HasCoding(condition, "code", FhirElements.Snomed, codes)
-            && !IsExcludedVerification(condition)
-            && !IsInactiveClinicalStatus(condition)
-            && HasStarted(condition, context.Now)
-            && !IsAbated(condition, context.Now));
-
-    private static bool HasStarted(JsonElement condition, DateTimeOffset now)
-    {
-        var onset = FhirElements.String(condition, "onsetDateTime")
-            ?? (condition.TryGetProperty("onsetPeriod", out var period) ? FhirElements.String(period, "start") : null);
-        return onset is null || FhirTime.Parse(onset) <= now;
-    }
-
-    private static bool IsAbated(JsonElement condition, DateTimeOffset now)
-    {
-        if (condition.TryGetProperty("abatementBoolean", out var abated) && abated.ValueKind == JsonValueKind.True)
-        {
-            return true;
-        }
-
-        var end = FhirElements.String(condition, "abatementDateTime")
-            ?? (condition.TryGetProperty("abatementPeriod", out var period) ? FhirElements.String(period, "end") : null);
-        return end is not null && FhirTime.Parse(end) <= now;
-    }
-
-    private static bool IsInactiveClinicalStatus(JsonElement condition) =>
-        condition.TryGetProperty("clinicalStatus", out var status)
-        && FhirElements.Codings(status).Any(c => InactiveClinicalStatus.Contains(c.Code));
-
-    private static bool IsExcludedVerification(JsonElement condition) =>
-        condition.TryGetProperty("verificationStatus", out var status)
-        && FhirElements.Codings(status).Any(c => ExcludedVerification.Contains(c.Code));
 }

@@ -3,6 +3,11 @@ using FhirAgentBench.Corpus;
 
 namespace FhirAgentBench.Oracles;
 
+internal sealed record TimedOrder(JsonElement Resource, DateTimeOffset When)
+{
+    public string Key => CorpusIndex.KeyOf(Resource);
+}
+
 internal static class Medications
 {
     private static readonly HashSet<string> ExcludedStatuses = ["entered-in-error", "cancelled", "draft"];
@@ -32,4 +37,25 @@ internal static class Medications
 
     public static string? RxNormCode(CorpusIndex corpus, JsonElement request) =>
         RxNormCodes(corpus, request).FirstOrDefault();
+
+    public static bool IsActiveOrder(JsonElement request) => FhirElements.String(request, "status") == "active";
+
+    public static IEnumerable<TimedOrder> CountableOrders(
+        OracleContext context, string patientKey, IReadOnlySet<string> rxnorm, DateTimeOffset from)
+    {
+        foreach (var request in context.Corpus.ForPatient(patientKey, "MedicationRequest"))
+        {
+            if (IsCountableOrder(request)
+                && FhirTime.Effective(request) is { } when
+                && when <= context.Now
+                && when > from
+                && RxNormCodes(context.Corpus, request).Any(rxnorm.Contains))
+            {
+                yield return new TimedOrder(request, when);
+            }
+        }
+    }
+
+    public static IEnumerable<TimedOrder> NewestFirst(IEnumerable<TimedOrder> source) =>
+        source.OrderByDescending(o => o.When).ThenBy(o => o.Key, StringComparer.Ordinal);
 }

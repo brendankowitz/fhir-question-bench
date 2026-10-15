@@ -1767,7 +1767,7 @@ public sealed class OracleTests
     [Fact]
     public void WindowStats_MeanAndCountWithinWindow()
     {
-        var parameters = new Dictionary<string, object> { ["loinc"] = "2339-0", ["window_days"] = "1", ["statistic"] = "mean" };
+        var parameters = new Dictionary<string, object> { ["loinc"] = "2339-0", ["window_days"] = "1", ["statistic"] = "mean", ["unit"] = "mg/dL" };
         var mean = Oracles.Compute(Context, Ask("observation-window-stats", "MRN-ADA", parameters));
         parameters["statistic"] = "count";
         var count = Oracles.Compute(Context, Ask("observation-window-stats", "MRN-ADA", parameters));
@@ -2326,7 +2326,7 @@ public sealed class AuthoringTests
     public void Admit_AcceptsConsistentGold()
     {
         var result = Admitter.Admit(Ask(3, "observation-window-stats", "MRN-ADA", NullableDecimal,
-            new() { ["loinc"] = "2339-0", ["window_days"] = "1", ["statistic"] = "mean" }), lockedHash: null);
+            new() { ["loinc"] = "2339-0", ["window_days"] = "1", ["statistic"] = "mean", ["unit"] = "mg/dL" }), lockedHash: null);
 
         Assert.True(result.IsAdmitted, string.Join("; ", result.Problems));
         Assert.Equal(64, result.GoldHash.Length);
@@ -2365,7 +2365,7 @@ public sealed class AuthoringTests
         var question = Ask(6, "cohort-lab-above-or-missing", null, new AnswerSpec { Type = AnswerType.Integer }, new()
         {
             ["snomed"] = new List<object> { "44054006" }, ["loinc"] = "4548-4", ["threshold"] = "9",
-            ["window_days"] = "365", ["age_min"] = "18", ["age_max"] = "75",
+            ["window_days"] = "365", ["age_min"] = "18", ["age_max"] = "75", ["unit"] = "%",
         });
 
         Assert.Contains(Admitter.Admit(question, new string('0', 64)).Problems, p => p.Contains("drift"));
@@ -4618,7 +4618,7 @@ question: What was her highest potassium over the past year, in mmol/L? If she h
 answer: { type: decimal, tolerance: 0.05, nullable: true }
 oracle:
   name: observation-window-stats
-  parameters: { loinc: 6298-4, window_days: 365, statistic: max }
+  parameters: { loinc: 6298-4, window_days: 365, statistic: max, unit: mmol/L }
 verification: { status: unverified }
 ```
 
@@ -4653,7 +4653,7 @@ question: What has her average blood glucose been over the past year, in mg/dL?
 answer: { type: decimal, tolerance: 0.5 }
 oracle:
   name: observation-window-stats
-  parameters: { loinc: 2339-0, window_days: 365, statistic: mean }
+  parameters: { loinc: 2339-0, window_days: 365, statistic: mean, unit: mg/dL }
 verification: { status: unverified }
 ```
 
@@ -4670,7 +4670,7 @@ question: How many A1c tests has he had in the last three years?
 answer: { type: integer }
 oracle:
   name: observation-window-stats
-  parameters: { loinc: 4548-4, window_days: 1095, statistic: count }
+  parameters: { loinc: 4548-4, window_days: 1095, statistic: count, unit: "%" }
 verification: { status: unverified }
 ```
 
@@ -4709,7 +4709,7 @@ question: >-
 answer: { type: integer }
 oracle:
   name: cohort-lab-above-or-missing
-  parameters: { snomed: [<type 2 diabetes code(s) from step 3>], loinc: 4548-4, threshold: 9, window_days: 365, age_min: 18, age_max: 75 }
+  parameters: { snomed: [<type 2 diabetes code(s) from step 3>], loinc: 4548-4, threshold: 9, window_days: 365, age_min: 18, age_max: 75, unit: "%" }
 verification: { status: unverified }
 ```
 

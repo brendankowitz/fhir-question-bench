@@ -1,5 +1,11 @@
 # FHIR Question Bench
 
+> **Direction change:** the bench is being rebuilt in C#/.NET with Ignixa, a
+> React UI and a hostable container (bring-your-own Copilot token). See
+> [design](docs/superpowers/specs/2026-10-15-fhir-agent-bench-platform-design.md)
+> and [plan](docs/superpowers/plans/2026-10-15-fhir-agent-bench-platform.md).
+> The Python package below is the reference prototype and seed data.
+
 An offline, synthetic FHIR benchmark for auditing typed answers and source
 evidence. The active target is **150 items: 100 QA questions plus 50 operational
 tasks**, not an accepted or clinically validated benchmark. The QA set contains

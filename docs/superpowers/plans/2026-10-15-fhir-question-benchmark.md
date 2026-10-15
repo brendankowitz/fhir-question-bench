@@ -1,5 +1,8 @@
 # FHIR Question Benchmark Implementation Plan
 
+> **Historical (2026-10-15):** superseded by `2026-10-15-fhir-agent-bench-platform.md`
+> (C#/.NET, Ignixa, React UI, hosted container with bring-your-own token).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build an auditable 150-item synthetic FHIR benchmark that measures

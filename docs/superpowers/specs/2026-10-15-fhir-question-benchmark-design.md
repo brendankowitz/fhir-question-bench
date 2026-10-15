@@ -1,5 +1,9 @@
 # FHIR Question Bench: investigation and proposed design
 
+> **Superseded direction (2026-10-15):** the product is now the C#/.NET bench in
+> `2026-10-15-fhir-agent-bench-platform-design.md`. This document and the Python
+> package remain as the research record and reference prototype.
+
 **Status:** Provisional offline implementation; QA authoring expanded, independent professional review and live execution remain blocked.
 **Research date:** 2026-10-15 UTC (2026-10-14 in the user's local time).
 **Scope:** 150 original, professionally relevant items over synthetic FHIR

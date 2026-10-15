@@ -1,0 +1,13 @@
+id: t1-vaccine-date-001
+tier: 1
+template: vaccine-date
+tags: [MAP]
+tool_groups: [patient-context, search, terminology]
+persona: nursing
+patient: { mrn: "f30304ab-8e45-1cbd-9833-cadf568373b4", name: "Elodia940 Waters156", birth_date: "2015-02-06" }
+question: When did she last get a tetanus shot?
+answer: { type: date }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["113", "115", "09", "138", "139", "196", "20", "01", "22", "50", "102", "106", "107", "110", "120", "146", "28", "35", "112", "142", "130", "132", "170"], return: "latest_date" }
+verification: { status: unverified }

@@ -1,0 +1,16 @@
+id: t5-cha2ds2-vasc-001
+tier: 5
+template: cha2ds2-vasc
+tags: [CALC, TERM, MULTI]
+tool_groups: [patient-context, search, terminology]
+persona: cardiology
+patient: { mrn: "bca1691f-8839-1d66-ed01-471134d55738", name: "Cole117 Corwin846", birth_date: "1944-10-11" }
+question: >-
+  What is his CHA2DS2-VASc score? Use his age today and his active problem list for heart failure, hypertension
+  and diabetes. For the history items, count only a recorded stroke or TIA (S2) and a recorded myocardial
+  infarction as vascular disease (V); ignore other thromboembolism, PAD and aortic plaque.
+answer: { type: integer }
+oracle:
+  name: clinical-calculation
+  parameters: { formula: "cha2ds2-vasc", chf: ["88805009", "84114007", "42343007"], hypertension: ["59621000"], diabetes: ["44054006", "127013003", "90781000119102", "157141000119108", "368581000119106", "1551000119108"], stroke_tia: ["230690007", "266257000", "422504002"], vascular: ["22298006", "401314000", "401303003", "399211009"] }
+verification: { status: unverified }

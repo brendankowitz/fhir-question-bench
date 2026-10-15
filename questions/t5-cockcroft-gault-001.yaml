@@ -1,0 +1,15 @@
+id: t5-cockcroft-gault-001
+tier: 5
+template: cockcroft-gault
+tags: [CALC]
+tool_groups: [patient-context, search, terminology]
+persona: pharmacist
+patient: { mrn: "0f3d04a2-f42e-1429-acef-0becd0a0fcea", name: "Leland44 King743", birth_date: "1930-11-06" }
+question: >-
+  Estimate his creatinine clearance with Cockcroft-Gault: latest creatinine, latest actual body weight, age
+  today.
+answer: { type: decimal, tolerance: 1.0 }
+oracle:
+  name: clinical-calculation
+  parameters: { formula: "cockcroft-gault" }
+verification: { status: unverified }

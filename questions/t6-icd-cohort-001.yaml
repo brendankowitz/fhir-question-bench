@@ -1,0 +1,14 @@
+id: t6-icd-cohort-001
+tier: 6
+template: icd-cohort
+tags: [AGG, MAP, TERM]
+tool_groups: [sql-view, search, terminology]
+persona: quality
+question: >-
+  How many living patients have an active diagnosis that would code to ICD-10-CM E11 (type 2 diabetes, any
+  complication)?
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { conditions_any: ["44054006", "127013003", "90781000119102", "157141000119108", "368581000119106", "1551000119108"] }
+verification: { status: unverified }

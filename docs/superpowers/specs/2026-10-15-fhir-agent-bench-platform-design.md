@@ -103,7 +103,9 @@ contains it.
 | T7 | Unanswerable from the record: correct answer is to abstain | 8 |
 
 Tags, independent of tier:
-- Data mechanism: `TEMP`, `AGG`, `TERM`, `UNIT`, `ABS`, `CALC`, `MULTI`, `REF`.
+- Data mechanism: `TEMP`, `AGG`, `TERM`, `UNIT`, `ABS`, `CALC`, `MULTI`, `REF`, `MAP`.
+  `MAP` is clinician language, ICD-10-CM, brand names or drug classes that must be translated to the code
+  system the data uses.
 - `tool_groups`: which `cli-on-fhir` group the question exercises
   (`patient-context`, `search`, `fhirpath`, `sql-view`, `terminology`).
 
@@ -168,6 +170,8 @@ evidence ids is reported as a diagnostic.
 oracle profile at 100%, and the always-abstain profile at about 5%.
 
 ## 7. Oracles
+
+The v1-100 set uses 17 oracles (6 from phase 0, 4 of them extended, plus 11 new).
 
 An oracle is a C# class keyed by name with typed parameters from the question
 file. It reads a `CorpusIndex` that the bench owns. The index:

@@ -1,0 +1,17 @@
+id: t4-lab-before-med-002
+tier: 4
+template: lab-before-med-start
+tags: [MULTI, TEMP, TERM]
+tool_groups: [patient-context, search, terminology]
+persona: cardiology
+patient: { mrn: "9c5b16dc-8a47-896c-4d74-f96f8c98891b", name: "Boyce638 Nolan344", birth_date: "1980-01-13" }
+question: What was his LDL right before he was first put on a statin? Value and date, please.
+answer:
+  type: composite
+  fields:
+    value: { type: quantity, unit: "mg/dL", tolerance: 0.5 }
+    date: { type: date }
+oracle:
+  name: observation-before-medication
+  parameters: { loinc: ["18262-6", "13457-7", "2089-1"], rxnorm: ["312961", "314231", "904475", "859751", "617310", "617311", "859747"] }
+verification: { status: unverified }

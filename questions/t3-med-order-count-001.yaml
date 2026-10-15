@@ -1,0 +1,13 @@
+id: t3-med-order-count-001
+tier: 3
+template: class-order-count
+tags: [AGG, TERM, TEMP]
+tool_groups: [patient-context, search, terminology]
+persona: pharmacist
+patient: { mrn: "f6359fe4-4340-2820-8b76-593a45f5186c", name: "Angelique249 Gerhold939", birth_date: "2006-10-30" }
+question: How many opioid prescriptions has she had in the last three years?
+answer: { type: integer }
+oracle:
+  name: ever-on-medication
+  parameters: { rxnorm: ["245134", "856987", "1049221", "861467", "1049625", "835603", "1723208", "857005", "1729584", "1860491", "993770", "1735006", "1728805", "1860154", "351266"], window_days: 1095, return: "order_count" }
+verification: { status: unverified }

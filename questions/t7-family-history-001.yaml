@@ -1,0 +1,12 @@
+id: t7-family-history-001
+tier: 7
+template: missing-family-history
+tags: [ABS]
+tool_groups: [patient-context, search]
+persona: cardiology
+patient: { mrn: "23da8e71-dfb9-9773-1bc1-7b5e31d085b5", name: "Bo157 Klein929", birth_date: "1963-03-16" }
+question: >-
+  Does he have a family history of premature coronary disease - a father or brother affected before 55?
+answer: { type: boolean }
+oracle: { name: unanswerable }
+verification: { status: unverified }

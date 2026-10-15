@@ -1,0 +1,13 @@
+id: t2-vaccine-date-003
+tier: 2
+template: vaccine-date
+tags: [TEMP, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: nursing
+patient: { mrn: "7132442e-b0b9-a886-e28d-f83700e5a3bd", name: "Carman694 Bergnaum523", birth_date: "1988-12-25" }
+question: When did she get her first COVID shot?
+answer: { type: date }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["207", "208", "212", "210", "211", "213", "217", "218", "219", "221", "228", "229", "230", "300", "301", "302", "309", "310", "311", "312", "313"], return: "first_date" }
+verification: { status: unverified }

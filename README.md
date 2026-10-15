@@ -5,7 +5,10 @@ answers better when you change its tools (e.g. the `cli-on-fhir` MCP), skills, p
 
 - Design: `docs/superpowers/specs/2026-10-15-fhir-agent-bench-platform-design.md`
 - Research behind it: `docs/research/reports/FHIR agent bench revised plan.md`
-- Status: Phase 0 (10 questions, loop proven). Findings from the first real run will be written to
+- Status: `question-sets/v1-100.txt` holds 100 questions (13 T1, 20 T2, 20 T3, 20 T4, 13 T5, 8 T6, 6 T7)
+  across 17 oracles, including the 10 Phase 0 questions (`question-sets/phase0.txt`). Tiers are by mechanism
+  (see the design spec §5.1); the `MAP` tag marks questions in clinician language, ICD-10-CM, brand names or
+  drug classes that must be translated to the code system the data uses. Findings from the first real run will be written to
   `docs/superpowers/reports/` (plan Task 12); that folder does not exist yet.
 
 ## Quick start
@@ -13,8 +16,8 @@ answers better when you change its tools (e.g. the `cli-on-fhir` MCP), skills, p
     dotnet test
     dotnet run --project src/FhirAgentBench.Cli -- corpus fetch corpora/synthea-sample-v1
     dotnet run --project src/FhirAgentBench.Cli -- corpus verify corpora/synthea-sample-v1
-    dotnet run --project src/FhirAgentBench.Cli -- admit --corpus corpora/synthea-sample-v1 --set question-sets/phase0.txt
-    dotnet run --project src/FhirAgentBench.Cli -- run --profile profiles/b0-oracle.yaml --corpus corpora/synthea-sample-v1 --set question-sets/phase0.txt --repeats 1 --runs-dir <B0-RUNS-DIR>
+    dotnet run --project src/FhirAgentBench.Cli -- admit --corpus corpora/synthea-sample-v1 --set question-sets/v1-100.txt
+    dotnet run --project src/FhirAgentBench.Cli -- run --profile profiles/b0-oracle.yaml --corpus corpora/synthea-sample-v1 --set question-sets/v1-100.txt --repeats 1 --runs-dir <B0-RUNS-DIR>
 
 Replace `<B0-RUNS-DIR>` with an absolute path outside the repository, written for your shell:
 `"$env:TEMP\fab-b0"` in PowerShell, `"$TEMP/fab-b0"` in bash, `%TEMP%\fab-b0` in cmd. A form your shell

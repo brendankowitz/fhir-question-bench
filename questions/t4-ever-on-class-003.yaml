@@ -1,0 +1,17 @@
+id: t4-ever-on-class-003
+tier: 4
+template: ever-on-class
+tags: [TERM, TEMP]
+tool_groups: [patient-context, search, terminology]
+persona: pharmacist
+patient: { mrn: "8704c44c-8b97-e35a-3bac-7d5b24de06b3", name: "Rosanne862 Simonis280", birth_date: "1989-01-18" }
+question: Has she ever been prescribed an opioid? If so, when was the first?
+answer:
+  type: composite
+  fields:
+    ever: { type: boolean }
+    first: { type: date, nullable: true }
+oracle:
+  name: ever-on-medication
+  parameters: { rxnorm: ["245134", "856987", "1049221", "861467", "1049625", "835603", "1723208", "857005", "1729584", "1860491", "993770", "1735006", "1728805", "1860154", "351266"] }
+verification: { status: unverified }

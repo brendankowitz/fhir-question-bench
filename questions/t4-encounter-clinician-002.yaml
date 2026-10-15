@@ -1,0 +1,13 @@
+id: t4-encounter-clinician-002
+tier: 4
+template: encounter-clinician
+tags: [REF, MULTI]
+tool_groups: [patient-context, search]
+persona: hospitalist
+patient: { mrn: "31f368d9-3fdc-a15f-ccdc-fafa74a860e9", name: "Manuel446 Frami345", birth_date: "1981-01-08" }
+question: Who was the primary clinician on his last inpatient admission? Give the NPI.
+answer: { type: identifier }
+oracle:
+  name: encounter-query
+  parameters: { class: ["IMP"], return: "latest_practitioner" }
+verification: { status: unverified }

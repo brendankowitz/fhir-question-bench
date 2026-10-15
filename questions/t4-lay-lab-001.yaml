@@ -1,0 +1,17 @@
+id: t4-lay-lab-001
+tier: 4
+template: lay-term-lab
+tags: [MAP, TERM]
+tool_groups: [patient-context, search, terminology]
+persona: primary-care
+patient: { mrn: "3935e8a9-9b9f-fd00-fe22-bcb810d0330b", name: "Basilia559 Hagenes547", birth_date: "1968-09-24" }
+question: What was her last kidney function number - the filtration rate - and when?
+answer:
+  type: composite
+  fields:
+    value: { type: quantity, unit: "mL/min/{1.73_m2}", tolerance: 0.1 }
+    date: { type: date }
+oracle:
+  name: latest-observation
+  parameters: { loinc: ["33914-3", "48642-3", "48643-1", "62238-1", "98979-8", "69405-9", "50044-7", "88293-6", "88294-4", "77147-7"], unit: "mL/min/{1.73_m2}" }
+verification: { status: unverified }

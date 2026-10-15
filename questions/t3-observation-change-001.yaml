@@ -1,0 +1,15 @@
+id: t3-observation-change-001
+tier: 3
+template: observation-change
+tags: [AGG, TEMP]
+tool_groups: [patient-context, search]
+persona: primary-care
+patient: { mrn: "06476266-59b1-ded7-4138-3c7543fd4981", name: "Armand155 McGlynn426", birth_date: "1979-11-06" }
+question: >-
+  How much weight has he gained or lost over the past three years, first weigh-in to latest, in kg? Use a
+  negative number for a loss.
+answer: { type: decimal, tolerance: 0.2 }
+oracle:
+  name: observation-window-stats
+  parameters: { loinc: "29463-7", window_days: 1095, statistic: "change", unit: "kg" }
+verification: { status: unverified }

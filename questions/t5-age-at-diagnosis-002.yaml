@@ -1,0 +1,13 @@
+id: t5-age-at-diagnosis-002
+tier: 5
+template: age-at-diagnosis
+tags: [CALC, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: endocrinology
+patient: { mrn: "57efda89-b582-bb08-8a2d-e06b2c184bfc", name: "Pat3 Rutherford999", birth_date: "1975-10-22" }
+question: How old was he when he was diagnosed with type 2 diabetes?
+answer: { type: integer }
+oracle:
+  name: condition-status
+  parameters: { snomed: ["44054006", "127013003", "90781000119102", "157141000119108", "368581000119106", "1551000119108"], return: "age_at_first_onset" }
+verification: { status: unverified }

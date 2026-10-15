@@ -1,0 +1,18 @@
+id: t1-latest-bp-001
+tier: 1
+template: latest-bp
+tags: [REF]
+tool_groups: [patient-context, search, fhirpath]
+persona: nursing
+patient: { mrn: "d309f605-948b-962f-ca72-878ce8b8d154", name: "Tabatha105 Ruecker817", birth_date: "1961-07-02" }
+question: What was her last blood pressure, and when was it taken?
+answer:
+  type: composite
+  fields:
+    systolic: { type: quantity, unit: "mm[Hg]", tolerance: 0.5 }
+    diastolic: { type: quantity, unit: "mm[Hg]", tolerance: 0.5 }
+    date: { type: date }
+oracle:
+  name: latest-observation
+  parameters: { loinc: "85354-9", return: "components", components: { systolic: "8480-6", diastolic: "8462-4" } }
+verification: { status: unverified }

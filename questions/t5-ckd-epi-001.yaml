@@ -1,0 +1,15 @@
+id: t5-ckd-epi-001
+tier: 5
+template: egfr-ckd-epi-2021
+tags: [CALC]
+tool_groups: [patient-context, search, terminology]
+persona: nephrology
+patient: { mrn: "4be6b5fb-2a19-943a-9249-7068445be4cc", name: "Lamar193 Beer512", birth_date: "1971-02-16" }
+question: >-
+  Recalculate his eGFR with CKD-EPI 2021 (race-free) from his most recent creatinine, using his age on the day
+  it was drawn.
+answer: { type: decimal, tolerance: 1.0 }
+oracle:
+  name: clinical-calculation
+  parameters: { formula: "ckd-epi-2021" }
+verification: { status: unverified }

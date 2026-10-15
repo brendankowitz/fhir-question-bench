@@ -1,0 +1,13 @@
+id: t2-latest-episode-001
+tier: 2
+template: latest-episode
+tags: [TEMP, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: primary-care
+patient: { mrn: "f6359fe4-4340-2820-8b76-593a45f5186c", name: "Angelique249 Gerhold939", birth_date: "2006-10-30" }
+question: When did her most recent sinus infection start? Don't count chronic sinusitis.
+answer: { type: date }
+oracle:
+  name: condition-status
+  parameters: { snomed: ["444814009", "75498004", "36971009"], return: "latest_onset" }
+verification: { status: unverified }

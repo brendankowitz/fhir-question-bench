@@ -1,0 +1,13 @@
+id: t2-last-visit-type-001
+tier: 2
+template: last-visit-of-type
+tags: [TEMP]
+tool_groups: [patient-context, search]
+persona: ed
+patient: { mrn: "3314e296-2326-2826-271d-a7be5b896db9", name: "Micah422 Shanahan202", birth_date: "1990-05-27" }
+question: When was her last ED visit?
+answer: { type: date }
+oracle:
+  name: encounter-query
+  parameters: { class: ["EMER"], return: "latest_date" }
+verification: { status: unverified }

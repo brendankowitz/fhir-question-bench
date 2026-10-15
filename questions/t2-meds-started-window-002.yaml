@@ -1,0 +1,14 @@
+id: t2-meds-started-window-002
+tier: 2
+template: meds-started-window
+tags: [TEMP, REF]
+tool_groups: [patient-context, search]
+persona: pharmacist
+patient: { mrn: "6d04a400-ad21-5951-b092-c14b6358d4c5", name: "Marquitta546 Hickle134", birth_date: "2010-10-18" }
+question: >-
+  Which medications were first ordered for her in the past two years? Give the RxNorm codes as ordered.
+answer: { type: set }
+oracle:
+  name: medications-started-within
+  parameters: { window_days: 730 }
+verification: { status: unverified }

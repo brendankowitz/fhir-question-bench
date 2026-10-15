@@ -1,0 +1,13 @@
+id: t2-last-procedure-002
+tier: 2
+template: last-procedure
+tags: [TEMP, TERM]
+tool_groups: [patient-context, search, terminology]
+persona: cardiology
+patient: { mrn: "2fb99851-6f31-04a6-be96-6fef4663e208", name: "Michale231 Ankunding277", birth_date: "1962-05-09" }
+question: When did he last have an echo of any kind?
+answer: { type: date }
+oracle:
+  name: procedure-history
+  parameters: { snomed: ["40701008", "433236007", "105376000"], return: "latest_date" }
+verification: { status: unverified }

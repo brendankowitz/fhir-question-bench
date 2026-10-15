@@ -1,0 +1,13 @@
+id: t5-ckd-epi-002
+tier: 5
+template: egfr-ckd-epi-2021
+tags: [CALC]
+tool_groups: [patient-context, search, terminology]
+persona: primary-care
+patient: { mrn: "00bcbfc6-c7b9-bd0e-3d95-071f9fba6321", name: "Jesica465 Cormier289", birth_date: "1981-01-20" }
+question: Use CKD-EPI 2021 on her latest creatinine (age at the draw) - what eGFR does that give?
+answer: { type: decimal, tolerance: 1.0 }
+oracle:
+  name: clinical-calculation
+  parameters: { formula: "ckd-epi-2021" }
+verification: { status: unverified }

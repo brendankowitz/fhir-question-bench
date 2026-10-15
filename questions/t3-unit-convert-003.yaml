@@ -1,0 +1,13 @@
+id: t3-unit-convert-003
+tier: 3
+template: latest-in-other-unit
+tags: [UNIT]
+tool_groups: [patient-context, search, terminology]
+persona: nephrology
+patient: { mrn: "2fb99851-6f31-04a6-be96-6fef4663e208", name: "Michale231 Ankunding277", birth_date: "1962-05-09" }
+question: What is his latest creatinine in micromoles per litre?
+answer: { type: quantity, unit: "umol/L", tolerance: 1 }
+oracle:
+  name: latest-observation
+  parameters: { loinc: ["38483-4", "2160-0"], unit: "umol/L", return: "value" }
+verification: { status: unverified }

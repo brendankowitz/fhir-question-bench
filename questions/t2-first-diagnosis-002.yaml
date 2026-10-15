@@ -1,0 +1,13 @@
+id: t2-first-diagnosis-002
+tier: 2
+template: first-diagnosis
+tags: [MAP, TEMP]
+tool_groups: [patient-context, search, terminology]
+persona: endocrinology
+patient: { mrn: "355a4d50-2628-aa65-c336-deacf4d606fb", name: "Emmanuel930 Considine820", birth_date: "1956-10-18" }
+question: When was he first diagnosed with diabetes? I mean actual diabetes, not prediabetes.
+answer: { type: date }
+oracle:
+  name: condition-status
+  parameters: { snomed: ["44054006", "127013003", "90781000119102", "157141000119108", "368581000119106", "1551000119108"], return: "first_onset" }
+verification: { status: unverified }

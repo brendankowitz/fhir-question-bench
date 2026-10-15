@@ -1,0 +1,14 @@
+id: t1-smoking-status-002
+tier: 1
+template: smoking-status
+tags: []
+tool_groups: [patient-context, search]
+persona: cardiology
+patient: { mrn: "ca443842-f546-d34c-a69b-b044cfe007d9", name: "Gianna370 Murphy561", birth_date: "1985-11-30" }
+question: >-
+  Is she a current smoker, ex-smoker or never smoker? Give the coded value from her latest smoking-status entry.
+answer: { type: code }
+oracle:
+  name: latest-observation
+  parameters: { loinc: "72166-2", return: "code" }
+verification: { status: unverified }

@@ -1,0 +1,13 @@
+id: t1-vaccine-date-002
+tier: 1
+template: vaccine-date
+tags: [MAP]
+tool_groups: [patient-context, search, terminology]
+persona: primary-care
+patient: { mrn: "8c5b83b2-737e-46cf-953b-414e07ed78e7", name: "Raphael767 McLaughlin530", birth_date: "1973-11-12" }
+question: When did he last have a shingles shot?
+answer: { type: date }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["121", "187", "188"], return: "latest_date" }
+verification: { status: unverified }

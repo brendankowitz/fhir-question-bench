@@ -1,0 +1,20 @@
+id: t2-latest-lab-window-002
+tier: 2
+template: latest-lab-in-window
+tags: [TEMP, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: endocrinology
+patient: { mrn: "7af6b271-f16d-21e1-882a-7bff71005a7b", name: "Benedict104 Gibson10", birth_date: "1960-11-08" }
+question: >-
+  Has he had a urine microalbumin check in the past year? Give the latest albumin-to-creatinine ratio and its
+  date, or say none.
+answer:
+  type: composite
+  fields:
+    value: { type: quantity, unit: "mg/g", tolerance: 0.05 }
+    date: { type: date }
+  nullable: true
+oracle:
+  name: latest-observation
+  parameters: { loinc: "14959-1", window_days: 365 }
+verification: { status: unverified }

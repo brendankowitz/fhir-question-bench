@@ -1,0 +1,13 @@
+id: t4-icd-crosswalk-001
+tier: 4
+template: icd-code-for-condition
+tags: [MAP, TERM]
+tool_groups: [patient-context, search, terminology]
+persona: coder
+patient: { mrn: "87f7ad7b-85f9-d26d-5a41-9933f4039331", name: "Susan422 Barrows492", birth_date: "1969-04-25" }
+question: What ICD-10-CM code should I bill for her hypertension?
+answer: { type: code }
+oracle:
+  name: condition-crosswalk
+  parameters: { source_snomed: ["59621000"], target_system: "http://hl7.org/fhir/sid/icd-10-cm", target_code: "I10" }
+verification: { status: unverified }

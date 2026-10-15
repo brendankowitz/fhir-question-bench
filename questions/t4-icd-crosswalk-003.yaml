@@ -1,0 +1,13 @@
+id: t4-icd-crosswalk-003
+tier: 4
+template: icd-code-for-condition
+tags: [MAP, TERM]
+tool_groups: [patient-context, search, terminology]
+persona: coder
+patient: { mrn: "e503e9b3-d149-653b-92df-ca4a8cb68e16", name: "Nilda678 Wiza601", birth_date: "1984-10-08" }
+question: What's the ICD-10-CM code for her prediabetes?
+answer: { type: code }
+oracle:
+  name: condition-crosswalk
+  parameters: { source_snomed: ["714628002"], target_system: "http://hl7.org/fhir/sid/icd-10-cm", target_code: "R73.03" }
+verification: { status: unverified }

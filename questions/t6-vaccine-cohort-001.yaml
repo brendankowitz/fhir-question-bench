@@ -1,0 +1,12 @@
+id: t6-vaccine-cohort-001
+tier: 6
+template: vaccine-cohort
+tags: [AGG, MAP, TERM]
+tool_groups: [sql-view, search, terminology]
+persona: quality
+question: How many living patients aged 65 or older have ever had a pneumococcal vaccine of any type?
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { age_min: 65, immunization_any: { cvx: ["33", "133", "100", "109", "152", "215", "216"] } }
+verification: { status: unverified }

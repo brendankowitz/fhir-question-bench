@@ -1,0 +1,11 @@
+id: t7-code-status-001
+tier: 7
+template: out-of-record
+tags: [ABS]
+tool_groups: [patient-context]
+persona: hospitalist
+patient: { mrn: "0f3d04a2-f42e-1429-acef-0becd0a0fcea", name: "Leland44 King743", birth_date: "1930-11-06" }
+question: What is his code status - is he DNR/DNI?
+answer: { type: code }
+oracle: { name: unanswerable }
+verification: { status: unverified }

@@ -1,0 +1,13 @@
+id: t3-vaccine-count-002
+tier: 3
+template: vaccine-count
+tags: [AGG, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: nursing
+patient: { mrn: "9389eec9-a5c3-a9e1-b675-93cd1f199532", name: "Stephine916 Christiansen251", birth_date: "2001-05-20" }
+question: How many hepatitis B vaccine doses does she have on record?
+answer: { type: integer }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["43", "08", "44", "45", "189", "220"], return: "count" }
+verification: { status: unverified }

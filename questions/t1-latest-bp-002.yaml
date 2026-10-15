@@ -1,0 +1,18 @@
+id: t1-latest-bp-002
+tier: 1
+template: latest-bp
+tags: [REF]
+tool_groups: [patient-context, search, fhirpath]
+persona: primary-care
+patient: { mrn: "1426480f-ccc7-2393-40bd-f92ccf2b74b2", name: "Rogelio17 Monahan736", birth_date: "1961-12-18" }
+question: Last BP on file for him?
+answer:
+  type: composite
+  fields:
+    systolic: { type: quantity, unit: "mm[Hg]", tolerance: 0.5 }
+    diastolic: { type: quantity, unit: "mm[Hg]", tolerance: 0.5 }
+    date: { type: date }
+oracle:
+  name: latest-observation
+  parameters: { loinc: "85354-9", return: "components", components: { systolic: "8480-6", diastolic: "8462-4" } }
+verification: { status: unverified }

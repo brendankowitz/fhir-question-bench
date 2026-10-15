@@ -1,0 +1,13 @@
+id: t2-last-procedure-003
+tier: 2
+template: last-procedure
+tags: [TEMP, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: nephrology
+patient: { mrn: "57efda89-b582-bb08-8a2d-e06b2c184bfc", name: "Pat3 Rutherford999", birth_date: "1975-10-22" }
+question: When was his most recent dialysis session?
+answer: { type: date }
+oracle:
+  name: procedure-history
+  parameters: { snomed: ["265764009", "302497006", "71192002"], return: "latest_date" }
+verification: { status: unverified }

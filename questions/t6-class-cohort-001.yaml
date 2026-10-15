@@ -1,0 +1,12 @@
+id: t6-class-cohort-001
+tier: 6
+template: class-cohort
+tags: [AGG, TERM]
+tool_groups: [sql-view, search, terminology]
+persona: pharmacist
+question: How many living patients have an active order for any statin?
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { medications_active_any: ["312961", "314231", "904475", "859751", "617310", "617311", "859747"] }
+verification: { status: unverified }

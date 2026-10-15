@@ -1,0 +1,13 @@
+id: t1-drug-allergies-001
+tier: 1
+template: drug-allergy-list
+tags: [TERM]
+tool_groups: [patient-context, search]
+persona: pharmacist
+patient: { mrn: "82623afe-e51c-e02e-1dd7-15a4394d0e92", name: "Jordan900 Abbott774", birth_date: "1999-11-07" }
+question: What drug allergies does she have on file? Give the coded substances.
+answer: { type: set }
+oracle:
+  name: allergy-check
+  parameters: { category: "medication", return: "codes" }
+verification: { status: unverified }

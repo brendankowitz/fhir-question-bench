@@ -1,0 +1,15 @@
+id: t5-kdigo-stage-001
+tier: 5
+template: kdigo-g-stage
+tags: [CALC, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: nephrology
+patient: { mrn: "5693c080-f485-91e7-54b9-ad9a8c12af62", name: "Maurice742 Auer97", birth_date: "1973-03-25" }
+question: >-
+  Using only his most recent reported eGFR, which KDIGO G category is he in? Answer with the matching SNOMED CT
+  chronic kidney disease stage code (G3a and G3b have their own codes).
+answer: { type: code }
+oracle:
+  name: clinical-calculation
+  parameters: { formula: "kdigo-g-stage", source: "observed" }
+verification: { status: unverified }

@@ -19,7 +19,7 @@ DATA = Path(__file__).parents[1] / "src" / "fhir_question_bench" / "data"
 
 EXPECTED = {
     "direct-001": ("answered", "timestamp", "1978-04-12"),
-    "direct-002": ("answered", "aggregate", {"count": 14}),
+    "direct-002": ("answered", "aggregate", {"count": 66}),
     "direct-003": ("answered", "code", {"system": "urn:bench:condition", "code": "local-condition-a", "display": "Synthetic local condition A"}),
     "direct-004": ("answered", "quantity", {"value": "72.5", "unit": "kg"}),
     "temporal-001": ("answered", "quantity", {"value": "4.1", "unit": "mmol/L"}),
@@ -102,6 +102,7 @@ def test_duplicate_question_ids_are_rejected(tmp_path: Path) -> None:
 
 def test_exactly_twenty_original_questions_and_hand_calculated_gold() -> None:
     corpus, questions = setup()
+    questions = questions[:20]
     assert len(questions) == 20
     assert len({question.id for question in questions}) == 20
     for family in {

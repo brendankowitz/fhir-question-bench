@@ -17,6 +17,14 @@
     {
       "path": "terminology/ConceptMap.json",
       "sha256": "64c9c1a154c179db56b765f2f6ffafede1d483ff15948b4cc60300422cb91a09"
+    },
+    {
+      "path": "corpus/qa-expansion.ndjson",
+      "sha256": "a63549800b14930046e4c7f861e5cbdaaba474cb47ea79c6af2e8518daa89900"
+    },
+    {
+      "path": "terminology/qa-fixtures.json",
+      "sha256": "b318e821ca366b3c1b7fa3a2dd0db2707656236fdabf3666994cc0865a7299b8"
     }
   ]
 }

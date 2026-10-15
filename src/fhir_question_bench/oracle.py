@@ -66,6 +66,7 @@ def verify_dataset_manifest(data_root: Path | str | None = None) -> str:
         "agent/response-contract.json",
         "agent/selection-policies.json",
         "review/review-ledger.jsonl",
+        "review/qa-provenance.json",
     }
     if seen != required:
         raise OracleError(f"dataset manifest file set differs from the required assets: {sorted(seen)}")
@@ -505,7 +506,76 @@ def derive_gold(
     status = "answered"
     answer: dict[str, Any] | None
 
-    if operation == "patient-birth-date":
+    if operation in {"qa-translate", "qa-subsumes", "qa-code-resolve", "qa-ucum"}:
+        from .qa_terminology import derive_terminology
+
+        status, answer, pointers = derive_terminology(operation, params, corpus)
+    elif operation == "qa-report-results":
+        report = _single(corpus, params["report"])
+        patient = _resolve_required(report, report.resource["subject"]["reference"], corpus, "subject")
+        specimen = _resolve_required(report, report.resource["specimen"][0]["reference"], corpus, "specimen")
+        specimen_patient = _resolve_required(specimen, specimen.resource["subject"]["reference"], corpus, "subject")
+        if not _same_location(patient, specimen_patient):
+            raise OracleError("report specimen belongs to another patient")
+        pointers = _evidence_for(report, "/subject", "/specimen", "/result")
+        pointers.extend(_evidence_for(specimen, "/subject"))
+        results = []
+        for reference in report.resource["result"]:
+            result = _resolve_required(report, reference["reference"], corpus, "result")
+            result_patient = _resolve_required(result, result.resource["subject"]["reference"], corpus, "subject")
+            result_specimen = _resolve_required(result, result.resource["specimen"]["reference"], corpus, "specimen")
+            if not _same_location(patient, result_patient) or not _same_location(specimen, result_specimen):
+                raise OracleError("report result patient/specimen disagrees")
+            pointers.extend(_evidence_for(result, "/subject", "/specimen", "/code"))
+            results.append(result.identity)
+        answer = {"kind": "set", "value": sorted(set(results))}
+    elif operation == "qa-repeat-cohort":
+        from itertools import combinations
+
+        members = set()
+        for patient in _patient_resources(corpus):
+            pointers.extend(_evidence_for(patient, "/birthDate"))
+            birth = date.fromisoformat(patient.resource["birthDate"])
+            cutoff = question.cutoff.date()
+            age = cutoff.year - birth.year - ((cutoff.month, cutoff.day) < (birth.month, birth.day))
+            dates = []
+            for observation in corpus.resources:
+                if observation.resource.get("resourceType") != "Observation":
+                    continue
+                if not _coding_matches(observation.resource, params["system"], params["code"]):
+                    continue
+                if not _subject_is(observation, patient, corpus):
+                    continue
+                pointers.extend(_temporal_evidence(observation))
+                if not observation.resource.get("status"):
+                    raise OracleError("repeat cohort observation status is missing")
+                if observation.resource["status"] != "final":
+                    continue
+                instant = _instant(observation.resource.get("effectiveDateTime"))
+                if not _instant(params["start"]) <= instant <= question.cutoff:
+                    continue
+                encounter = _resolve_required(observation, observation.resource.get("encounter", {}).get("reference", ""), corpus, "encounter")
+                encounter_patient = _resolve_required(encounter, encounter.resource["subject"]["reference"], corpus, "subject")
+                if not _same_location(patient, encounter_patient):
+                    raise OracleError("repeat cohort encounter patient disagrees")
+                pointers.extend(_evidence_for(observation, "/encounter"))
+                pointers.extend(_evidence_for(encounter, "/subject", "/class"))
+                if encounter.resource["class"] != params["encounter_class"]:
+                    continue
+                if observation.resource.get("dataAbsentReason") and not observation.resource.get("valueQuantity"):
+                    continue
+                quantity = _quantity(observation)
+                if quantity["unit"] != params["unit"]:
+                    raise OracleError("repeat cohort requires exact units; no implicit conversion")
+                if Decimal(quantity["value"]) >= Decimal(str(params["minimum_value"])):
+                    dates.append(instant)
+            if age >= params["minimum_age"] and any(
+                abs((b - a).total_seconds()) >= params["minimum_days"] * 86400
+                for a, b in combinations(dates, 2)
+            ):
+                members.add(patient.identity)
+        answer = {"kind": "set", "value": sorted(members)}
+    elif operation == "patient-birth-date":
         patient = _single(corpus, params["patient"])
         pointers = _evidence_for(patient, "/birthDate")
         answer = {"kind": "timestamp", "value": patient.resource["birthDate"]}
@@ -890,6 +960,13 @@ def audit_dataset(data_root: Path | str | None = None) -> dict[str, Any]:
         raise OracleError("review ledger must include exactly one row per question")
     if any(item.get("review_state") != "provisional" for item in review_rows):
         raise OracleError("the smoke dataset review ledger must remain provisional")
+    reviews = {item["question_id"]: item for item in review_rows}
+    for question in questions:
+        review = reviews[question.id]
+        if review.get("verification_status", "provisional") != question.verification_status:
+            raise OracleError(f"verification status disagrees with review ledger for {question.id}")
+        if not question.capabilities_advantaged:
+            raise OracleError(f"missing capability rationale for {question.id}")
     gold_count = 0
     for question in questions:
         gold = derive_gold(question, corpus, root)
@@ -902,11 +979,18 @@ def audit_dataset(data_root: Path | str | None = None) -> dict[str, Any]:
         if not grade_response(question, gold, make_demo_response(question, gold), corpus).strict_success:
             raise OracleError(f"gold evidence failed validation for {question.id}")
         gold_count += 1
-    if len(questions) != 20 or len(set(families.values())) != 1 or set(families.values()) != {4}:
-        raise OracleError("smoke dataset must contain exactly four questions in each of five families")
+    tiers = {str(tier): sum(q.tier == tier for q in questions) for tier in range(1, 6)}
+    verification = {state: sum(q.verification_status == state for q in questions)
+                    for state in ("provisional", "unverified")}
+    if len(questions) != 100 or tiers != {"1": 15, "2": 20, "3": 20, "4": 20, "5": 25}:
+        raise OracleError("QA dataset must contain 100 questions across tiers 1-5 (15/20/20/20/25)")
+    if verification != {"provisional": 20, "unverified": 80}:
+        raise OracleError("QA dataset must preserve 20 provisional and 80 unverified items")
     return {
         "question_count": len(questions),
         "family_counts": families,
+        "tier_counts": tiers,
+        "verification_counts": verification,
         "corpus_id": corpus.corpus_id,
         "corpus_hash": corpus.corpus_hash,
         "dataset_hash": dataset_hash,

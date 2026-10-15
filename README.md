@@ -1,32 +1,47 @@
 # FHIR Question Bench
 
-An offline, synthetic FHIR benchmark smoke slice for auditing typed answers and
-source evidence. This implementation contains **20 provisional developer
-questions**, not an accepted or clinically validated benchmark. It tests
-resource navigation, source references, modest time/status selection,
+An offline, synthetic FHIR benchmark for auditing typed answers and source
+evidence. The active target is **150 items: 100 QA questions plus 50 operational
+tasks**, not an accepted or clinically validated benchmark. The QA set contains
+the original **20 provisional** items plus **80 unverified** generated items.
+It tests resource navigation, source references, time/status selection,
 benchmark-owned terminology mechanics, and scoped missing evidence. It does
 not make diagnoses or treatment recommendations and does not claim full FHIR
 validation.
 
 ## Status and scope
 
-- The 20 questions are split evenly across direct facts, temporal/status,
-  cross-resource joins, owned-local terminology, and cohort/missing evidence.
+- Exactly 100 QA questions span tiers 1–5: **15 / 20 / 20 / 20 / 25**.
+  Family counts are direct facts **14**, temporal/status **19**, cross-resource
+  joins **18**, owned-local terminology **29**, cohort/missing evidence **20**.
+  Tier is an expansion rubric; the original 20 retain their legacy `difficulty`
+  labels unchanged (for example, their cohort items are now tier 4).
 - The committed synthetic corpus includes NDJSON, a transaction Bundle with
   `urn:uuid` aliases, contained-resource and Type/id references, temporal/status
   and wrong-patient distractors, and a scoped absence case.
-- The CodeSystem and ConceptMap are benchmark-owned synthetic mechanics only;
-  they are not SNOMED CT, LOINC, RxNorm, or clinically authoritative mappings.
+- The 25 tier-5 questions exercise pinned ConceptMap translation and relation
+  strength, local hierarchy direction/transitivity, display/code disagreement,
+  inactive codes, system/version/context disambiguation, UCUM normalization and
+  unmapped/unsupported abstention. CodeSystems, displays and maps are owned
+  synthetic mechanics, **not clinical equivalence or standard-release coverage**.
+  Three public identifiers were observed in the pinned Synthea archive
+  (SNOMED/LOINC/RxNorm); no standard descriptions or patient records were copied.
+  No ICD-10 identifiers were found: its translation case deliberately abstains.
 - Questions, agent-visible FHIR/protocol/terminology, the versioned response
   contract, selection/completeness policies, and the review ledger are separate
   assets. Gold is recomputed from source bytes and is not committed in the
   agent-visible preparation directory.
-- Every review row is provisional; clinical/terminology review has not been
-  performed. The offline demo is an **oracle/self-check**, not measured agent
-  performance.
-- Paid inference, cloud calls, a Copilot CLI runner, expansion beyond this
-  first 20-question slice, and full release/freeze machinery are out of scope.
-  The current release target is 300 questions in staged batches.
+- Every review row remains provisional; clinical/terminology review has not
+  been performed. Additive `verification_status` is `provisional` for the
+  original 20 and `unverified` for the new 80. `tier` and
+  `capabilities_advantaged` are present on every question; `primary_family` is
+  the family field. Legacy question records remain parseable with defaults.
+  No expert-verification transition is implemented.
+- The offline demo is an **oracle/self-check**, not measured agent performance.
+  No paid inference or cloud calls were made; live execution stays blocked.
+  The former **300-item plan is historical**, superseded by the 150-item cap.
+  Eight new owned patient scenarios and related cohort variants are correlated
+  development fixtures, not independent sealed samples.
 
 ## Install and test
 
@@ -47,7 +62,7 @@ fhir-question-bench --help
 ## Offline commands
 
 ```powershell
-# Validate locked source hashes, question contracts, review states, and all 20 gold records
+# Validate locked source hashes, review metadata, tier/family counts and all 100 gold records
 python -m fhir_question_bench audit
 
 # Export one question with its corpus, protocol, response contract, and policies
@@ -117,7 +132,9 @@ instants; series order and exact units remain significant.
 
 The six accepted answer states are `answered`, `partial`,
 `insufficient_evidence`, `ambiguous`, `unsupported_capability`, and
-`invalid_data`. Absence/cohort claims also carry a scope check with the corpus hash, protocol,
+`invalid_data`. An ambiguous answer can be null when system/version/context
+cannot be selected, or a typed candidate set when requested; decisive evidence
+and a bound claim are still required. Absence/cohort claims also carry a scope check with the corpus hash, protocol,
 selection policy/version, resource type, patient scope, cutoff, criteria, an
 answer-claim binding, and an explicit complete-scan assertion. Unresolved
 references that could change membership stop gold derivation rather than being
@@ -171,9 +188,12 @@ engineering checks only**. Live inference is **blocked**, including when
 credentials and spending approval are present. There is no uncontained opt-in.
 A copied workspace, permission flags, Windows Job Object cancellation, and a
 successful fake test are **not** a read/write/private-gold/network boundary.
-The 20 items remain provisional adaptive engineering material, not accepted
-clinical questions. Stages remain 20 -> 100 -> 200 -> 300 (200 QA plus 100
-operational); this runner refuses expansion beyond the initial20 dataset.
+The selected 20 items remain provisional adaptive engineering material, not
+accepted clinical questions. `configs/smoke.json` explicitly pins their IDs so
+the larger QA set does not silently expand the 60-episode smoke plan.
+The historical 20 -> 100 -> 200 -> 300 sequence is superseded by the target
+**100 QA + 50 operations = 150 total**. QA authoring and runner/live acceptance
+are separate gates.
 
 From an installed development checkout (Python 3.12+ and the existing test
 extra), prepare the default B/C/D plan:
@@ -307,4 +327,4 @@ enforced network policy, plus negative access/write tests. Then verify CLI
 version/tool-name integration, real MCP handshake and representative search
 behavior, tool build/source identity, actual model/usage schema, and approved
 spending. Independent Astra review of this bounded offline milestone comes
-before expansion; clinical acceptance and live budget approval remain separate.
+before live evaluation; clinical acceptance and live budget approval remain separate.

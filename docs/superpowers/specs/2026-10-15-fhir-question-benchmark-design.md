@@ -1,38 +1,47 @@
 # FHIR Question Bench: investigation and proposed design
 
-**Status:** Proposed; research completed, implementation not started.
+**Status:** Provisional offline implementation; QA authoring expanded, independent professional review and live execution remain blocked.
 **Research date:** 2026-10-15 UTC (2026-10-14 in the user's local time).
-**Scope:** 300 original, professionally relevant items over synthetic FHIR
-folders: 200 patient/cohort questions and 100 operational tasks, with executable
+**Scope:** 150 original, professionally relevant items over synthetic FHIR
+folders: 100 patient/cohort questions and 50 operational tasks, with executable
 answer keys and auditable supporting evidence.
 
 ## User-directed delivery update: reviewed increments and operational tasks
 
-On 2026-10-15 UTC, the user requested Astra review, expansion from the initial
-20-item engineering slice to 100 questions, evaluation and fixes, then expansion
-by 100 questions per iteration. The user subsequently capped the release at
-**300 total**, retaining the final 100 operational items (items 201-300).
-This update supersedes the earlier 1,000-item target, read-only-only scope and
-category allocation below; the original allocation remains research history,
-not the active dataset quota.
+The binding 2026-10-15 scope brief supersedes the earlier **300-item plan**
+(200 QA + 100 operations), which is now historical, as is the 1,000-item
+research allocation below. The active target is **100 QA + 50 operations =
+150 total**, then stop. Generate now and verify later; no inference is authorized.
 
-The active target is **200 patient/cohort question-answering items plus 100
-operational items**. Cover all ten QA primary families; rebalance their counts
-and difficulty/persona/source-layer cross-tabs for 200 QA items and freeze them
-before the relevant batch is evaluated. Neither the previous 900-QA allocation
-nor the original 1,000-item cross-tabs is binding.
+The QA set now contains 20 original provisional records and 80 new records
+with `verification_status: unverified`. Every question records `tier`,
+`primary_family` and `capabilities_advantaged`, with exact source evidence
+derived privately by the independent oracle. Legacy difficulty labels and
+provisional review states are retained, not silently promoted to acceptance.
 
-Delivery totals are **20 -> 100 -> 200 -> 300**, then stop. The first 200 items
-are QA; the final increment adds the 100 operational tasks.
-At each gate, inspect new items and the cumulative set, evaluate the runnable
-agent arms, review failures, fix the dataset/harness/tools as appropriate, and
-rerun affected cases plus a fixed regression panel before adding the next batch.
+QA tier counts are **15 / 20 / 20 / 20 / 25** for tiers 1–5. Family counts are
+direct facts 14, temporal/status 19, cross-resource joins 18, owned-local
+terminology 29, and cohort/missing evidence 20. The 25 tier-5 questions cover
+synthetic map relation/direction/dependencies, owned hierarchy/subsumption,
+display conflicts, inactive codes, ambiguous systems/releases/context, linear
+UCUM normalization and unsupported/unmapped abstention. These are small
+auditable mechanics, not a claim of expert-level clinical reasoning or scale.
+Only three Synthea-observed SNOMED/LOINC/RxNorm identifiers are referenced;
+owned maps do not assert clinical equivalence. With no imported ICD-10 content,
+that translation case abstains rather than fabricating a crosswalk.
+
+Inspect new items and the cumulative set, recompute all gold and evidence,
+review failures, and rerun affected cases plus a fixed regression panel.
+The default runner smoke config stays pinned to the first 20 IDs (60 B/C/D
+slots); authoring 100 QA items does not authorize expanded or live execution.
 Astra reviews the initial implementation and consequential subsequent changes.
 No unresolved important correctness or evidence-integrity finding may silently
 carry into the next gate. Expert review and paid-run approvals remain separate
 gates; generated volume does not satisfy either.
 
-The final operational batch is proposed as 25 de-identification tasks, 25 FML
+Historical operational allocation (not the active quota; see the separately
+owned operational track for the current 50-task definition):
+the final operational batch was proposed as 25 de-identification tasks, 25 FML
 transform tasks, 25 SQL-on-FHIR ViewDefinition tasks, and 25 validation tasks.
 Each is an **execute-and-verify** episode, not a question about what command to
 run. Supply explicit configuration/maps/views/profiles and required capabilities
@@ -155,7 +164,7 @@ more diagnoses or recommending more treatments.
 | Goal | Measure patient-level and cohort-level question answering with reproducible clinical rules and source-level citations. |
 | Goal | Separate navigation benefit, terminology benefit, computational correctness, and tool-interface overhead. |
 | Goal | Show understandable failure examples: what was missed or guessed, why it matters, and what evidence was available. |
-| Goal | Produce 300 distinct items across diverse task families, not trivial paraphrases. |
+| Goal | Produce 150 items (100 QA + 50 operations) across auditable task families; disclose correlated scenario/threshold variants. |
 | Non-goal | Autonomous diagnosis, prescribing, order entry, or deploying a bedside assistant. |
 | Non-goal | Claiming synthetic-data performance establishes real-world safety or population validity. |
 | Anti-goal | LLM-generated answer keys certified only by another LLM, unsupported exact code mappings, hidden truncation, or silently incomplete cohorts. |
@@ -300,7 +309,7 @@ no MIMIC patient records and makes no blanket commercial-use claim about MIMIC.
 ## 3. Original 1,000-question blueprint (historical allocation)
 
 The quota table, persona/source counts and sealed split below describe the
-original research proposal, not the active 300-item release. The delivery update
+original research proposal, not the active 150-item release. The delivery update
 above governs current counts and evaluation exposure. Structural complexity,
 task-family definitions and lineage isolation still apply.
 
@@ -603,7 +612,7 @@ described above; this shape does not establish an actual patient result.
 8. Validate evidence pointers against original bytes; run mutation tests that
    change the decisive value, status, time, map relation, or patient link.
 
-All 300 accepted items need independent semantic review appropriate to their
+All 150 items need independent semantic review before acceptance appropriate to their
 domain (clinical professional or terminology/informatics expert). Model/agent
 review may triage but must retain its actual identity. Without the necessary
 professional reviewers, publish only a **provisional research set**, never a
@@ -656,7 +665,7 @@ Every item carries minimal capability requirements and answerability. Before
 running, conformance discovery creates an eligibility manifest. Report eligible
 count/total count, unsupported/blocked counts, and successful answers against
 the **fixed full denominator** as well as capability-eligible accuracy.
-Do not advertise a score "on 300 items" if most are excluded.
+Do not advertise a score "on 150 items" if most are excluded.
 
 For native Synthea, first pin a failing/passing test for fullUrl aliases.
 Prefer an upstream resolver fix. If a normalized derivative is used for
@@ -702,8 +711,8 @@ No guaranteed minimum uplift is assumed. A proposed practical target is at least
 10 percentage points improvement in strict grounded success on preregistered
 L4/L5 tasks, with uncertainty reported. It is a target, not a claimed result or
 a basis for removing questions. Estimate power after the development pilot
-using family counts and within-family correlation; 300 correlated items do
-not imply 300 independent samples.
+using family counts and within-family correlation; 150 correlated items do
+not imply 150 independent samples.
 
 Use fresh per-question sessions by default. Separate cold-start indexing,
 warm per-question execution, and batch-amortized total cost; include preparation
@@ -781,13 +790,14 @@ maximum request count, total output-token allowance, and cost ceiling. Current
 permission identifies a resource and purpose, not a numeric unlimited budget.
 No inference has been submitted in this investigation.
 
-Start with 20 authoring candidates; expand and independently review the
-development set to 100 accepted questions before the development pilot.
+The 100 authored QA questions are provisional/unverified development material.
+Independently review them before any accepted development pilot; generation
+and a successful oracle/self-check are not professional acceptance.
 The proposed pilot deployment is `gpt-5.6-sol`, with B/C/D and one run:
 **300 agent episodes**, not 300 completions. Proposed final evaluation is B/C/D
-on both `gpt-5.6-sol` and `gpt-6.1-sol`, three independent runs per sealed test
-item: **14,400 episodes** for 800 test questions, before optional diagnostics or
-ablations. This is a proposed scope for costing, not authorization to spend.
+on both `gpt-5.6-sol` and `gpt-6.1-sol` in the historical larger proposal:
+**14,400 episodes** for 800 test questions is historical, not a current quota.
+Re-cost the actual 150-item scope and accepted subsets before any spending.
 The inference smoke test must establish endpoint capability; funding approval
 may reduce this panel before preregistration, with the resulting narrower claim
 stated explicitly. Each episode may involve many inference calls. Fix exact
@@ -801,9 +811,9 @@ errors, costs, and clinical-review capacity.
 |---|---|---|
 | 0: protocol and source lock | Reproducible corpus profile, capability manifest, comparison protocol, contracts | Native-reference failure understood; no future capabilities mislabeled implemented |
 | 1: gold-first vertical slice | 20 independently checked questions, including unanswerable and exact-code traps | Every answer/evidence locator recomputes; mutation and boundary tests work |
-| 2: development pilot | 100 questions, 20 at each difficulty, B/C/D on one model | Equal access/budgets; no gold leakage; reviewer decision and measured cost |
-| 3: 200-item QA gate | 200 QA items with source and family coverage, release-specific assets | Evaluate/fix/regression gate passed; clinical and licensing gates met; required capabilities conformance-tested |
-| 4: 300-item final gate | Add 100 operational tasks to the 200 QA items; freeze active quotas and exposure ledger, then stop | Whole-output operation grading; 100% accepted records have required oracle, evidence, and review; no cross-split lineages |
+| 2: QA authoring gate | Exactly 100 QA; tiers 15/20/20/20/25; first 20 provisional, 80 new unverified | Recompute 100 gold/evidence records and audit metadata; do not claim professional acceptance |
+| 3: QA acceptance/evaluation gate | Review the 100 QA with release-specific assets | Clinical/licensing gates and capability conformance; containment and spending approval before any live run |
+| 4: 150-item final gate | 100 QA plus 50 operational tasks; freeze active quotas and exposure ledger, then stop | Separate QA/whole-output operation grading; acceptance requires appropriate independent review, not generated volume |
 | 5: comparative report | Paired runs, confidence intervals, cost curves, error atlas | All denominators and exclusions disclosed; failed/unsupported outcomes retained |
 
 Do not promise an implementation calendar before reviewer availability,

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build an auditable 300-item synthetic FHIR benchmark that measures
+**Goal:** Build an auditable 150-item synthetic FHIR benchmark that measures
 whether specialist CLI/MCP tools improve professional question answering and
-operational workflows: 200 QA items plus 100 operational tasks.
+operational workflows: 100 QA items plus 50 operational tasks.
 
 **Architecture:** Immutable FHIR corpora and terminology assets feed independent
 answer/evidence oracles. A Python harness runs equal-access agent arms through
@@ -22,18 +22,24 @@ approval. Each task is a reviewable milestone, not a claimed completed feature.
 
 ## Active execution update
 
-The user's latest direction supersedes the original big-bang release sequence:
-finish the 20-item engineering slice; obtain **Astra (`gpt-6-astra`) review**;
-fix important findings; expand to 100 and evaluate; then expand by 100 only after
-each evaluation/fix/regression gate, stopping at **300 total**. No question-generation or
-evaluation run is implied by a plan update.
+The binding scope brief revises the release to **100 QA + 50 operations = 150
+total**, then stop. The previous **300-item plan** and 20 -> 100 -> 200 -> 300
+sequence are historical. Generate now, verify later; no live inference calls.
+The QA expansion is 20 original provisional items plus 80 new `unverified`
+items. Independent clinician/terminologist acceptance remains a separate gate.
 
-Use 200 question-answering items plus a final 100 operational items (201-300).
-Stages are **20 -> 100 -> 200 -> 300**, then stop. See the
-design's delivery update for revised QA quotas, proposed 25/25/25/25 operational
-split, source/output separation, and independent artifact grading. Extend
-question/response contracts for operations before generating that final batch.
-Do not force operations into a scalar QA grader.
+QA tiers 1–5 contain **15/20/20/20/25** records. The five implemented primary
+families contain direct facts 14, temporal/status 19, joins 18, owned terminology
+29, and cohort/missing evidence 20. Keep `tier`, `verification_status`,
+`primary_family` and capability rationales on every record; legacy difficulty
+labels stay unchanged. Recompute gold privately from source bytes and validate
+exact evidence. The 25 tier-5 cases exercise synthetic mapping/hierarchy,
+system/version/context disambiguation, inactive/display conflicts, UCUM and
+abstention. Owned mechanics are not standard terminology release coverage.
+
+`configs/smoke.json` explicitly selects the original 20 IDs: QA authoring must
+not silently expand the runner's 60 planned B/C/D slots. Operations remain a
+separately owned, artifact-graded track; do not force them into the scalar QA grader.
 
 For every batch, record corpus/question/gold/config/tool hashes, exposure state,
 actual model/version, arm availability, review findings, fixes, and rerun results.
@@ -61,12 +67,13 @@ acknowledgement is not a substitute for a publication-quality boundary.
 
 ## Global constraints
 
-- Final target: 200 QA plus 100 operational items; stage targets are 20, 100,
-  200, and 300, with no further expansion. Acceptance class and exposure status are
+- Final target: 100 QA plus 50 operational items, 150 total, with no further
+  expansion. Acceptance class, verification status and exposure status are
   explicit; provisional engineering items are not professionally accepted items.
 - Freeze active batch quotas before evaluation; original sealed split and
-  1,000-QA matrix are historical. At final release require at least 100 task
-  families, no task family over 20, and at least 200 patient lineages.
+  1,000-QA matrix are historical. The former 100-family/200-lineage diversity
+  quotas are historical too, not valid assertions about this smaller owned
+  development set. Disclose shared patient/scenario/cohort-world variants.
 - Audit patient/template/variant/cohort-world grouping at every stage; final-only
   diversity constraints must not reject the deliberately small initial slice.
 - Default FHIR release R4, subject to explicit corpus validation; no silent
@@ -217,11 +224,13 @@ Task 5 or the minimal Task 7 implementation at 20 engineering items.
 - [ ] Run the same tests; print a 20-candidate estimate. Only after approval,
   execute a bounded smoke call and authoring run. Capture actual usage; no
   "clinical validation" claim from model review.
-- [ ] Expand the gold-first slice to 100 development questions with 20 per
-  difficulty level. Recompute gold and evidence, run decisive mutations, obtain
-  the required independent expert review, and fix task-family/lineage/world
-  groupings. Retain unreviewed items as provisional, not accepted. Offline
-  runner/grader conformance on the initial 20 items precedes this expansion.
+- [x] Expand the gold-first QA slice to exactly 100 development questions,
+  tiers 15/20/20/20/25, with 25 hard terminology mechanics cases. Recompute gold
+  and exact evidence and run decisive mutations. Every new question is
+  `unverified`; original 20 remain provisional.
+- [ ] Obtain required independent expert review and a later verification
+  transition system. Preserve shared task-family/lineage/cohort-world groupings;
+  generated fixtures and offline conformance are not accepted agent results.
 - [ ] Commit transport/pipeline changes with required trailers, not credentials
   or provider trace dumps.
 
@@ -254,7 +263,7 @@ Arm values are `filesystem`, `cli`, `mcp`; raw context is a separate diagnostic.
   inference calls and preparation costs. Commit runner/config, not transient
   workspaces.
 
-## Task 6: Scale, review, and freeze incremental batches through 300
+## Task 6: Review and freeze the capped 150-item set
 
 **Files:** dataset module, accepted public questions/review ledger, tests.
 **Depends on:** Tasks 1-5; expert staffing and required terminology access.
@@ -265,19 +274,21 @@ list[GoldAnswer], reviews: list[dict]) -> dict`;
 
 - [ ] Write stage-parameterized tests for current QA/operational quotas,
   acceptance class, exposure, batch membership and frozen manifests. At final
-  release test at least 100 families and 200 lineages, maximum family 20,
-  missing required clinical review, missing terminology license/version, and
-  duplicates. Split connected lineage/template/counterfactual/cohort components;
+  release test missing required clinical review, missing terminology
+  license/version, duplicates, and the declared active diversity limits.
+  The previous 100-family/200-lineage quotas are historical.
+  Split connected lineage/template/counterfactual/cohort components;
   reject leakage even when wording differs.
 - [ ] Run `python -m pytest tests\test_dataset.py -q`.
 - [ ] Expand scenario packs and native Synthea subsets, use bounded authoring
   and expert review, and accept records only after deterministic evidence
   verification and mutation checks. Maintain explicit blocked/provisional
-  states; do not lower review gates to hit 300.
+  states; do not lower review gates to hit 150.
 - [ ] Implement an explicit stage-target audit argument and document its actual
-  syntax before use. Audit targets 20, 100, 200, and 300, expecting
-  the requested record count and zero violations for the claimed acceptance
-  class. Freeze
+  syntax before use. The implemented `audit` command now checks 100 QA records,
+  tier/family/verification counts and recomputes all private gold. Operations
+  use their separate audit; overall target is 150, not a 150-row QA file.
+  Freeze
   wording, keys, terminology, splits, tool revision, budgets, and protocol.
 - [ ] Commit redistributable dataset/manifests and review provenance with
   required trailers; sealed keys remain out of agent-visible/public mounts
@@ -318,8 +329,9 @@ grades: list[Grade], frozen_manifest: dict) -> dict`.
 
 ## Completion criteria
 
-The benchmark is implemented only when all 300 records pass their actual
+The benchmark is accepted only when all 150 records pass their actual
 acceptance gates and the harness independently reproduces facts and evidence.
-A 100-item pilot is not a 300-item release. Tool capability completion is
+Authored 100-QA/50-operation volume is not professional verification or a live
+evaluation. The former 300-item release plan is historical. Tool capability completion is
 separate from benchmark authoring completion. Clinical effectiveness remains
 unproven without an appropriately governed real-world study.

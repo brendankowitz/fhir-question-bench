@@ -1,0 +1,645 @@
+{
+  "resourceType": "Bundle",
+  "id": "qa-terminology-fixtures",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "qa-lab",
+        "url": "urn:bench:qa:lab",
+        "version": "1",
+        "status": "active",
+        "content": "complete",
+        "description": "Benchmark-owned synthetic mechanics; displays are authored labels, not licensed terminology descriptions.",
+        "concept": [
+          {
+            "code": "renal",
+            "display": "Owned renal marker"
+          },
+          {
+            "code": "retired",
+            "display": "Owned retired marker",
+            "property": [
+              {
+                "code": "inactive",
+                "valueBoolean": true
+              }
+            ]
+          },
+          {
+            "code": "weight",
+            "display": "Owned weight"
+          }
+        ],
+        "property": [
+          {
+            "code": "inactive",
+            "type": "boolean"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "qa-hierarchy",
+        "url": "urn:bench:qa:hierarchy",
+        "version": "1",
+        "status": "active",
+        "content": "complete",
+        "description": "Benchmark-owned synthetic mechanics; displays are authored labels, not licensed terminology descriptions.",
+        "concept": [
+          {
+            "code": "panel",
+            "display": "Owned panel",
+            "concept": [
+              {
+                "code": "chemistry",
+                "display": "Owned chemistry branch",
+                "concept": [
+                  {
+                    "code": "renal",
+                    "display": "Owned renal leaf"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "code": "hematology",
+            "display": "Owned hematology branch"
+          }
+        ],
+        "hierarchyMeaning": "is-a"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "qa-ambiguous-1",
+        "url": "urn:bench:qa:ambiguous",
+        "version": "1",
+        "status": "active",
+        "content": "complete",
+        "description": "Benchmark-owned synthetic mechanics; displays are authored labels, not licensed terminology descriptions.",
+        "concept": [
+          {
+            "code": "X",
+            "display": "Owned specimen marker"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "qa-ambiguous-2",
+        "url": "urn:bench:qa:ambiguous",
+        "version": "2",
+        "status": "active",
+        "content": "complete",
+        "description": "Benchmark-owned synthetic mechanics; displays are authored labels, not licensed terminology descriptions.",
+        "concept": [
+          {
+            "code": "X",
+            "display": "Owned medication marker"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "qa-other",
+        "url": "urn:bench:qa:other",
+        "version": "1",
+        "status": "active",
+        "content": "complete",
+        "description": "Benchmark-owned synthetic mechanics; displays are authored labels, not licensed terminology descriptions.",
+        "concept": [
+          {
+            "code": "X",
+            "display": "Owned alternate-system marker"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "qa-source",
+        "url": "urn:bench:qa:source",
+        "version": "1",
+        "status": "active",
+        "content": "complete",
+        "description": "Benchmark-owned synthetic mechanics; displays are authored labels, not licensed terminology descriptions.",
+        "concept": [
+          {
+            "code": "sct-proxy",
+            "display": "Owned mapping input sct-proxy"
+          },
+          {
+            "code": "loinc-proxy",
+            "display": "Owned mapping input loinc-proxy"
+          },
+          {
+            "code": "rx-proxy",
+            "display": "Owned mapping input rx-proxy"
+          },
+          {
+            "code": "icd-proxy",
+            "display": "Owned mapping input icd-proxy"
+          },
+          {
+            "code": "broad",
+            "display": "Owned mapping input broad"
+          },
+          {
+            "code": "narrow",
+            "display": "Owned mapping input narrow"
+          },
+          {
+            "code": "many",
+            "display": "Owned mapping input many"
+          },
+          {
+            "code": "unmapped",
+            "display": "Owned mapping input unmapped"
+          },
+          {
+            "code": "contextual",
+            "display": "Owned mapping input contextual"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "qa-target",
+        "url": "urn:bench:qa:target",
+        "version": "1",
+        "status": "active",
+        "content": "complete",
+        "description": "Benchmark-owned synthetic mechanics; displays are authored labels, not licensed terminology descriptions.",
+        "concept": [
+          {
+            "code": "a",
+            "display": "Owned target a"
+          },
+          {
+            "code": "b",
+            "display": "Owned target b"
+          },
+          {
+            "code": "serum",
+            "display": "Owned target serum"
+          },
+          {
+            "code": "urine",
+            "display": "Owned target urine"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ConceptMap",
+        "id": "qa-map",
+        "url": "urn:bench:qa:map",
+        "version": "1",
+        "status": "active",
+        "description": "Owned synthetic relationships using three Synthea-observed identifiers only; NOT clinical equivalence, standard releases, or SNOMED/LOINC/RxNorm/ICD-10 mapping coverage.",
+        "group": [
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "http://snomed.info/sct",
+            "targetVersion": "synthea-source-identifiers",
+            "element": [
+              {
+                "code": "sct-proxy",
+                "target": [
+                  {
+                    "code": "390906007",
+                    "equivalence": "equivalent"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "http://loinc.org",
+            "targetVersion": "synthea-source-identifiers",
+            "element": [
+              {
+                "code": "loinc-proxy",
+                "target": [
+                  {
+                    "code": "34117-2",
+                    "equivalence": "equivalent"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "http://www.nlm.nih.gov/research/umls/rxnorm",
+            "targetVersion": "synthea-source-identifiers",
+            "element": [
+              {
+                "code": "rx-proxy",
+                "target": [
+                  {
+                    "code": "310325",
+                    "equivalence": "equivalent"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "http://hl7.org/fhir/sid/icd-10-cm",
+            "targetVersion": "synthea-source-identifiers",
+            "element": [
+              {
+                "code": "icd-proxy",
+                "target": []
+              }
+            ]
+          },
+          {
+            "source": "http://loinc.org",
+            "sourceVersion": "synthea-source-identifiers",
+            "target": "urn:bench:qa:source",
+            "targetVersion": "1",
+            "element": [
+              {
+                "code": "34117-2",
+                "target": [
+                  {
+                    "code": "loinc-proxy",
+                    "equivalence": "equivalent"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "source": "http://www.nlm.nih.gov/research/umls/rxnorm",
+            "sourceVersion": "synthea-source-identifiers",
+            "target": "urn:bench:qa:source",
+            "targetVersion": "1",
+            "element": [
+              {
+                "code": "310325",
+                "target": [
+                  {
+                    "code": "rx-proxy",
+                    "equivalence": "equivalent"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "urn:bench:qa:target",
+            "targetVersion": "1",
+            "element": [
+              {
+                "code": "broad",
+                "target": [
+                  {
+                    "code": "a",
+                    "equivalence": "wider"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "urn:bench:qa:target",
+            "targetVersion": "1",
+            "element": [
+              {
+                "code": "narrow",
+                "target": [
+                  {
+                    "code": "a",
+                    "equivalence": "narrower"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "urn:bench:qa:target",
+            "targetVersion": "1",
+            "element": [
+              {
+                "code": "many",
+                "target": [
+                  {
+                    "code": "a",
+                    "equivalence": "equivalent"
+                  },
+                  {
+                    "code": "b",
+                    "equivalence": "equivalent"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "urn:bench:qa:target",
+            "targetVersion": "1",
+            "element": [
+              {
+                "code": "unmapped",
+                "target": []
+              }
+            ]
+          },
+          {
+            "source": "urn:bench:qa:source",
+            "sourceVersion": "1",
+            "target": "urn:bench:qa:target",
+            "targetVersion": "1",
+            "element": [
+              {
+                "code": "contextual",
+                "target": [
+                  {
+                    "code": "serum",
+                    "equivalence": "equivalent",
+                    "dependsOn": [
+                      {
+                        "property": "specimen",
+                        "value": "serum"
+                      }
+                    ]
+                  },
+                  {
+                    "code": "urine",
+                    "equivalence": "equivalent",
+                    "dependsOn": [
+                      {
+                        "property": "specimen",
+                        "value": "urine"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "qa-term-patient",
+        "active": true,
+        "birthDate": "1980-01-01"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "qa-display-renal",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/qa-term-patient"
+        },
+        "effectiveDateTime": "2025-01-01T00:00:00Z",
+        "valueQuantity": {
+          "value": 1,
+          "unit": "mmol/L"
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "urn:bench:qa:lab",
+              "code": "renal",
+              "display": "Owned weight",
+              "version": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "qa-display-retired",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/qa-term-patient"
+        },
+        "effectiveDateTime": "2025-01-01T00:00:00Z",
+        "valueQuantity": {
+          "value": 1,
+          "unit": "mmol/L"
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "urn:bench:qa:lab",
+              "code": "retired",
+              "display": "Owned renal marker",
+              "version": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "qa-display-condition",
+        "subject": {
+          "reference": "Patient/qa-term-patient"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "urn:bench:condition-status",
+              "code": "resolved"
+            }
+          ]
+        },
+        "onsetDateTime": "2025-01-01T00:00:00Z",
+        "code": {
+          "coding": [
+            {
+              "system": "urn:bench:qa:other",
+              "code": "X",
+              "display": "Owned specimen marker",
+              "version": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "qa-units",
+        "url": "http://unitsofmeasure.org",
+        "version": "owned-linear-v1",
+        "status": "active",
+        "content": "fragment",
+        "description": "Benchmark-owned synthetic mechanics; displays are authored labels, not licensed terminology descriptions.",
+        "concept": [
+          {
+            "code": "g",
+            "display": "Owned unit factor g",
+            "property": [
+              {
+                "code": "dimension",
+                "valueString": "mass"
+              },
+              {
+                "code": "factor",
+                "valueDecimal": 1
+              }
+            ]
+          },
+          {
+            "code": "kg",
+            "display": "Owned unit factor kg",
+            "property": [
+              {
+                "code": "dimension",
+                "valueString": "mass"
+              },
+              {
+                "code": "factor",
+                "valueDecimal": 1000
+              }
+            ]
+          },
+          {
+            "code": "g/dL",
+            "display": "Owned unit factor g/dL",
+            "property": [
+              {
+                "code": "dimension",
+                "valueString": "mass/volume"
+              },
+              {
+                "code": "factor",
+                "valueDecimal": 10
+              }
+            ]
+          },
+          {
+            "code": "g/L",
+            "display": "Owned unit factor g/L",
+            "property": [
+              {
+                "code": "dimension",
+                "valueString": "mass/volume"
+              },
+              {
+                "code": "factor",
+                "valueDecimal": 1
+              }
+            ]
+          },
+          {
+            "code": "mmol/L",
+            "display": "Owned unit factor mmol/L",
+            "property": [
+              {
+                "code": "dimension",
+                "valueString": "amount/volume"
+              },
+              {
+                "code": "factor",
+                "valueDecimal": 1
+              }
+            ]
+          }
+        ],
+        "property": [
+          {
+            "code": "dimension",
+            "type": "string"
+          },
+          {
+            "code": "factor",
+            "type": "decimal"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "qa-unit-weight",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/qa-term-patient"
+        },
+        "effectiveDateTime": "2025-01-01T00:00:00Z",
+        "code": {
+          "coding": [
+            {
+              "system": "urn:bench:qa:lab",
+              "code": "weight"
+            }
+          ]
+        },
+        "valueQuantity": {
+          "value": 72500,
+          "system": "http://unitsofmeasure.org",
+          "code": "g",
+          "unit": "kg"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "qa-unit-hgb",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/qa-term-patient"
+        },
+        "effectiveDateTime": "2025-01-01T00:00:00Z",
+        "code": {
+          "coding": [
+            {
+              "system": "urn:bench:qa:lab",
+              "code": "renal"
+            }
+          ]
+        },
+        "valueQuantity": {
+          "value": 12.8,
+          "system": "http://unitsofmeasure.org",
+          "code": "g/dL",
+          "unit": "g/L"
+        }
+      }
+    }
+  ]
+}

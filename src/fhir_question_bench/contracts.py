@@ -162,6 +162,9 @@ class Question:
     review_state: str
     prompt: str
     parameters: dict[str, Any]
+    tier: int = 1
+    verification_status: str = "provisional"
+    capabilities_advantaged: tuple[str, ...] = ()
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> Question:
@@ -180,7 +183,7 @@ class Question:
             "prompt",
             "parameters",
         }
-        row = _object(value, "question", fields)
+        row = _object(value, "question", fields, {"tier", "verification_status", "capabilities_advantaged"})
         for key in fields - {"cutoff", "parameters", "difficulty", "primary_family", "answer_type"}:
             _nonempty(row[key], f"question.{key}")
         if not isinstance(row["primary_family"], str) or row["primary_family"] not in QUESTION_FAMILIES:
@@ -193,6 +196,17 @@ class Question:
             raise ContractError("this slice only accepts provisional questions")
         if not isinstance(row["parameters"], dict):
             raise ContractError("question.parameters must be an object")
+        tier = row.get("tier", int(row["difficulty"][1]))
+        if type(tier) is not int or tier not in range(1, 6):
+            raise ContractError("question.tier must be an integer from 1 through 5")
+        verification = row.get("verification_status", "provisional")
+        if verification not in ("provisional", "unverified"):
+            raise ContractError("question verification_status must be provisional or unverified; expert acceptance is not implemented")
+        capabilities = row.get("capabilities_advantaged", [])
+        if not isinstance(capabilities, list):
+            raise ContractError("question.capabilities_advantaged must be an array")
+        for capability in capabilities:
+            _nonempty(capability, "question.capabilities_advantaged entry")
         return cls(
             id=row["id"],
             primary_family=row["primary_family"],
@@ -207,6 +221,9 @@ class Question:
             review_state=row["review_state"],
             prompt=row["prompt"],
             parameters=row["parameters"],
+            tier=tier,
+            verification_status=verification,
+            capabilities_advantaged=tuple(capabilities),
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -224,6 +241,9 @@ class Question:
             "review_state": self.review_state,
             "prompt": self.prompt,
             "parameters": self.parameters,
+            "tier": self.tier,
+            "verification_status": self.verification_status,
+            "capabilities_advantaged": list(self.capabilities_advantaged),
         }
 
 
@@ -339,7 +359,7 @@ class GoldAnswer:
         if not isinstance(row["status"], str) or row["status"] not in ANSWER_STATES:
             raise ContractError(f"unknown answer state: {row['status']!r}")
         answer = validate_answer(row["answer"])
-        if row["status"] in {"answered", "partial", "ambiguous"} and answer is None:
+        if row["status"] in {"answered", "partial"} and answer is None:
             raise ContractError(f"{row['status']} gold requires an answer")
         if not isinstance(row["required_evidence"], list):
             raise ContractError("gold.required_evidence must be an array")
@@ -412,7 +432,7 @@ class AgentResponse:
             raise ContractError("response claims and evidence must be arrays")
         if not isinstance(row["limitations"], list) or any(not isinstance(x, str) for x in row["limitations"]):
             raise ContractError("response limitations must be an array of strings")
-        if row["status"] in {"answered", "partial", "ambiguous"} and row["answer"] is None:
+        if row["status"] in {"answered", "partial"} and row["answer"] is None:
             raise ContractError(f"{row['status']} response requires an answer")
         claims: list[dict[str, Any]] = []
         claim_ids: set[str] = set()

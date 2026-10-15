@@ -437,6 +437,126 @@
           }
         }
       }
+    },
+    "p-qa-report-v1": {
+      "operation": "qa-report-results",
+      "criteria": {
+        "definition": "Resolve DiagnosticReport subject/specimen/results and each result's subject/specimen. Require identical source locations. Return unique result Observation identities; inconsistent or unresolved references stop derivation."
+      },
+      "completeness": {
+        "scan": "all resources in the pinned corpus relevant to the explicit parameters",
+        "failure": "Unresolved potentially decisive references or unsupported versions never become non-matches."
+      },
+      "scope_template": {
+        "required": false
+      }
+    },
+    "p-qa-repeat-v1": {
+      "operation": "qa-repeat-cohort",
+      "criteria": {
+        "definition": "Unique patients aged minimum_age on cutoff with at least two final coded observations, each >= minimum_value in exact unit, within inclusive start/cutoff and linked to the specified encounter class and same patient. Require separation >= minimum_days * 86400 seconds; missing dataAbsentReason values do not qualify. No diagnosis is inferred."
+      },
+      "completeness": {
+        "scan": "all resources in the pinned corpus relevant to the explicit parameters",
+        "failure": "Unresolved potentially decisive references or unsupported versions never become non-matches."
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Observation",
+        "patient_reference": "*",
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "system": {
+            "parameter": "system"
+          },
+          "code": {
+            "parameter": "code"
+          },
+          "minimum_age": {
+            "parameter": "minimum_age"
+          },
+          "minimum_value": {
+            "parameter": "minimum_value"
+          },
+          "minimum_days": {
+            "parameter": "minimum_days"
+          },
+          "start": {
+            "parameter": "start"
+          },
+          "unit": {
+            "parameter": "unit"
+          },
+          "encounter_class": {
+            "parameter": "encounter_class"
+          }
+        }
+      }
+    },
+    "p-qa-translate-v1": {
+      "operation": "qa-translate",
+      "criteria": {
+        "definition": "Pinned synthetic ConceptMap, exact source system/version/code and target system/version; all dependsOn values must match context. Missing dependencies => ambiguous/null. Exactly one equal/equivalent target => code/mapping. No equivalent (including wider/narrower/relatedto/unmapped) => insufficient_evidence/null. These owned relationships do not establish clinical cross-system equivalence."
+      },
+      "completeness": {
+        "scan": "all resources in the pinned corpus relevant to the explicit parameters",
+        "failure": "Unresolved potentially decisive references or unsupported versions never become non-matches."
+      },
+      "scope_template": {
+        "required": false
+      }
+    },
+    "p-qa-translate-many-v1": {
+      "operation": "qa-translate",
+      "criteria": {
+        "definition": "Same pinned translation selection as p-qa-translate; multiple equivalent targets => ambiguous/set of all system/code/equivalence objects, sorted by system/code. Never arbitrarily choose one."
+      },
+      "completeness": {
+        "scan": "all resources in the pinned corpus relevant to the explicit parameters",
+        "failure": "Unresolved potentially decisive references or unsupported versions never become non-matches."
+      },
+      "scope_template": {
+        "required": false
+      }
+    },
+    "p-qa-subsumes-v1": {
+      "operation": "qa-subsumes",
+      "criteria": {
+        "definition": "In the exact owned CodeSystem version with hierarchyMeaning is-a, ancestor subsumes descendant if identical or a transitive parent. Reverse direction and unrelated branches are false; unknown concepts/hierarchy => insufficient_evidence/null."
+      },
+      "completeness": {
+        "scan": "all resources in the pinned corpus relevant to the explicit parameters",
+        "failure": "Unresolved potentially decisive references or unsupported versions never become non-matches."
+      },
+      "scope_template": {
+        "required": false
+      }
+    },
+    "p-qa-resolve-v1": {
+      "operation": "qa-code-resolve",
+      "criteria": {
+        "definition": "Resolve supplied system/code/version or the first Coding on the named resource against owned CodeSystem fixtures. Return authoritative owned display, not Coding.display. Missing version with multiple matching releases => ambiguous/null; inactive => invalid_data/null; absent concept => insufficient_evidence/null. No external terminology lookup or clinical assertion."
+      },
+      "completeness": {
+        "scan": "all resources in the pinned corpus relevant to the explicit parameters",
+        "failure": "Unresolved potentially decisive references or unsupported versions never become non-matches."
+      },
+      "scope_template": {
+        "required": false
+      }
+    },
+    "p-qa-ucum-v1": {
+      "operation": "qa-ucum",
+      "criteria": {
+        "definition": "Use valueQuantity.system/code, never display unit text. Pinned owned UCUM factor table: number * source factor / target factor, only within identical dimensions. Missing/incompatible units => insufficient_evidence/null; no analyte-specific mass-to-molar inference. Cite quantity and the complete unit table."
+      },
+      "completeness": {
+        "scan": "all resources in the pinned corpus relevant to the explicit parameters",
+        "failure": "Unresolved potentially decisive references or unsupported versions never become non-matches."
+      },
+      "scope_template": {
+        "required": false
+      }
     }
   }
 }

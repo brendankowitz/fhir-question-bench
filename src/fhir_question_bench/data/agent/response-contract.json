@@ -5,7 +5,7 @@
     "required": ["question_id", "status", "answer", "claims", "evidence", "limitations"],
     "optional": ["scope_checks"],
     "status_values": ["answered", "partial", "insufficient_evidence", "ambiguous", "unsupported_capability", "invalid_data"],
-    "answer": "null or {kind, value}; kind must match question.answer_type",
+    "answer": "null or {kind, value}; kind must match question.answer_type. answered/partial require a non-null answer. ambiguous may be null when no unique version/context can be selected, or a typed set of candidates when the question requests that set. Ambiguity and abstention still require exact decisive evidence and a bound claim.",
     "claims": {
       "cardinality": "exactly one",
       "required_fields": ["id", "answer_pointer", "evidence_ids", "rule_id"],

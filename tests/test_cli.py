@@ -26,7 +26,7 @@ def run_cli(*args: str, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
 def test_cli_audit_prepare_recompute_and_offline_demo(tmp_path: Path) -> None:
     audit = run_cli("audit")
     assert audit.returncode == 0, audit.stderr
-    assert json.loads(audit.stdout)["question_count"] == 20
+    assert json.loads(audit.stdout)["question_count"] == 100
 
     prepared = tmp_path / "prepared"
     result = run_cli("prepare", "--question-id", "direct-001", "--out", str(prepared))
@@ -46,7 +46,7 @@ def test_cli_audit_prepare_recompute_and_offline_demo(tmp_path: Path) -> None:
     gold_path = tmp_path / "gold.jsonl"
     result = run_cli("recompute", "--out", str(gold_path))
     assert result.returncode == 0, result.stderr
-    assert len(gold_path.read_text(encoding="utf-8").splitlines()) == 20
+    assert len(gold_path.read_text(encoding="utf-8").splitlines()) == 100
 
     protected_path = ROOT / "src" / "fhir_question_bench" / "data" / "agent" / "gold.jsonl"
     protected = run_cli("recompute", "--out", str(protected_path))

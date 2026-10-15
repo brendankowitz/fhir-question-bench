@@ -122,7 +122,7 @@ def test_installed_wheel_audits_from_outside_checkout(tmp_path):
         cwd=runner, env=env, capture_output=True, text=True, check=False,
     )
     assert audit.returncode == 0, audit.stderr
-    assert json.loads(audit.stdout)["question_count"] == 20
+    assert json.loads(audit.stdout)["question_count"] == 100
 
 
 def test_relative_references_are_resolved_in_the_source_rest_base():

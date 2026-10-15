@@ -96,7 +96,7 @@ public sealed class ClinicalCalculationOracle : IOracle
             throw new InvalidDataException($"Question '{subject.Question.Id}': readings must be at least 1, not {readings}.");
         }
 
-        var panels = Observations.InWindowWithCode(subject.Context, subject.Key, BloodPressurePanel, DateTimeOffset.MinValue)
+        var panels = Observations.InWindowWithCode(subject.Context, subject.Key, BloodPressurePanel, subject.Context.WindowStart(subject.Parameters))
             .Select(o => new Panel(o.Resource, o.When, Observations.ComponentQuantities(o.Resource, BloodPressureParts)))
             .Where(p => p.Parts.Count == BloodPressureParts.Count);
         var latest = Observations.NewestFirst(panels).Take(readings).ToList();

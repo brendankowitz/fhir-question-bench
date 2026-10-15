@@ -326,6 +326,23 @@ public sealed class ClinicalCalculationOracleTests : IDisposable
     }
 
     [Fact]
+    public void BloodPressure_WindowDays_OnlyPanelsInsideWindowQualify()
+    {
+        AddPatient();
+        AddPanel("old", "2025-06-01T00:00:00Z", "160", "100");
+        AddPanel("a", "2025-12-01T00:00:00Z", "120", "70");
+        AddPanel("b", "2026-01-01T00:00:00Z", "124", "74");
+
+        var two = Calculate(new() { ["formula"] = "acc-aha-2017-bp", ["readings"] = "2", ["window_days"] = "90" });
+        var three = Calculate(new() { ["formula"] = "acc-aha-2017-bp", ["readings"] = "3", ["window_days"] = "90" });
+        var wide = Calculate(new() { ["formula"] = "acc-aha-2017-bp", ["readings"] = "3", ["window_days"] = "365" });
+
+        Assert.Equal(122.0m, Value(two).GetProperty("systolic").GetDecimal());
+        Assert.Null(three.Value);
+        Assert.NotNull(wide.Value);
+    }
+
+    [Fact]
     public void BloodPressure_ReadingsBelowOne_NamesQuestionAndParameter()
     {
         AddPatient();

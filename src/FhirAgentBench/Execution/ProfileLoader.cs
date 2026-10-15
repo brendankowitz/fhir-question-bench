@@ -1,0 +1,83 @@
+using FhirAgentBench.Questions;
+
+namespace FhirAgentBench.Execution;
+
+public static class ProfileLoader
+{
+    private static readonly string[] KnownHarnesses = [Profile.CopilotCli, Profile.Oracle, Profile.Abstain];
+
+    public static Profile Load(string path)
+    {
+        var dto = Yaml.Read<ProfileDto>(path);
+        if (dto.Harness is null || !KnownHarnesses.Contains(dto.Harness))
+        {
+            throw new InvalidDataException(
+                $"'{path}': harness '{dto.Harness}' is not supported. Use one of: {string.Join(", ", KnownHarnesses)}.");
+        }
+
+        if (dto.Harness == Profile.CopilotCli && string.IsNullOrWhiteSpace(dto.Model))
+        {
+            throw new InvalidDataException($"'{path}': model is required for the {Profile.CopilotCli} harness.");
+        }
+
+        var prompt = Path.GetFullPath(Path.Combine(
+            Path.GetDirectoryName(Path.GetFullPath(path))!,
+            dto.PromptTemplate ?? throw new InvalidDataException($"'{path}': prompt_template is required.")));
+        if (!File.Exists(prompt))
+        {
+            throw new InvalidDataException($"'{path}': prompt template '{prompt}' does not exist.");
+        }
+
+        return new Profile
+        {
+            Id = dto.Id ?? throw new InvalidDataException($"'{path}': id is required."),
+            Harness = dto.Harness!,
+            Model = dto.Model,
+            ReasoningEffort = dto.ReasoningEffort,
+            Executable = dto.Executable ?? "copilot",
+            BuiltinTools = dto.BuiltinTools,
+            McpServers = dto.McpServers.ToDictionary(
+                s => s.Key,
+                s => new McpServer(
+                    s.Value.Command ?? throw new InvalidDataException($"'{path}': mcp_servers.{s.Key}.command is required."),
+                    s.Value.Args,
+                    s.Value.Tools)),
+            PromptTemplatePath = prompt,
+            MaxAiCredits = dto.MaxAiCredits ?? 30,
+            TimeoutMinutes = dto.TimeoutMinutes ?? 20,
+            SourcePath = Path.GetFullPath(path),
+        };
+    }
+
+    private sealed class ProfileDto
+    {
+        public string? Id { get; set; }
+
+        public string? Harness { get; set; }
+
+        public string? Model { get; set; }
+
+        public string? ReasoningEffort { get; set; }
+
+        public string? Executable { get; set; }
+
+        public List<string> BuiltinTools { get; set; } = [];
+
+        public Dictionary<string, McpServerDto> McpServers { get; set; } = [];
+
+        public string? PromptTemplate { get; set; }
+
+        public int? MaxAiCredits { get; set; }
+
+        public int? TimeoutMinutes { get; set; }
+    }
+
+    private sealed class McpServerDto
+    {
+        public string? Command { get; set; }
+
+        public List<string> Args { get; set; } = [];
+
+        public List<string> Tools { get; set; } = [];
+    }
+}

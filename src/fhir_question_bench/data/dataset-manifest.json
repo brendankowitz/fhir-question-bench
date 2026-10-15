@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "questions.jsonl",
+      "sha256": "2c1c5e172c85567eb1c04ab2cd00a7d90898f494041ae56bd2b45f2c89f34c04"
+    },
+    {
+      "path": "agent/protocols/protocols.json",
+      "sha256": "859ba3c176ea38c9a5a98e1f57021664c443d5c237b2327a435df7d8af16bcff"
+    },
+    {
+      "path": "agent/corpus-manifest.json",
+      "sha256": "fcd34e1b214e88fe9eb11a19dbe1ce08702b513feb62cd0668b2e32cf47aa4e8"
+    },
+    {
+      "path": "review/review-ledger.jsonl",
+      "sha256": "2940662808f40104163cf2cb8928cdf11f6e28bff25c03ca039e720f7e8c6d2e"
+    }
+  ]
+}

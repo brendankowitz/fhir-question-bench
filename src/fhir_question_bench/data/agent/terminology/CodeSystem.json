@@ -1,0 +1,21 @@
+{
+  "resourceType": "CodeSystem",
+  "id": "synthetic-local-labs",
+  "url": "urn:bench:local-lab",
+  "version": "1",
+  "status": "active",
+  "content": "complete",
+  "name": "SyntheticLocalLabMechanics",
+  "title": "Benchmark-owned synthetic local laboratory mechanics",
+  "description": "Synthetic codes for exercising lookup and mapping mechanics only; not clinical terminology.",
+  "concept": [
+    {"code": "local-a", "display": "Local analyte A"},
+    {"code": "local-many", "display": "Local concept with multiple target mechanics"},
+    {"code": "local-unmapped", "display": "Local concept without target mapping"},
+    {"code": "potassium", "display": "Potassium"},
+    {"code": "hemoglobin", "display": "Hemoglobin"},
+    {"code": "screening-score", "display": "Synthetic screening score"},
+    {"code": "body-weight", "display": "Synthetic body weight"},
+    {"code": "never-present", "display": "Synthetic absence trap"}
+  ]
+}

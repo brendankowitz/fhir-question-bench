@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "corpus_id": "fhir-question-bench-synthetic-v1",
+  "files": [
+    {
+      "path": "corpus/resources.ndjson",
+      "sha256": "a9fa650b6c091178dff4b85377d07f9e5a0245fe6a3fb5dfad4850853eaaa129"
+    },
+    {
+      "path": "corpus/transaction.json",
+      "sha256": "ba26e692dc7d5c803d1e1984bc016e34d6d6fa2d0a6d0118618278fea5c55bac"
+    },
+    {
+      "path": "terminology/CodeSystem.json",
+      "sha256": "596a350d3c71d5c98420dd051b1ecdc82e38d5447e595df18d287a0d7d383038"
+    },
+    {
+      "path": "terminology/ConceptMap.json",
+      "sha256": "64c9c1a154c179db56b765f2f6ffafede1d483ff15948b4cc60300422cb91a09"
+    }
+  ]
+}

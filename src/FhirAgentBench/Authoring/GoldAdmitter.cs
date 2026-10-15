@@ -52,6 +52,11 @@ public sealed class GoldAdmitter(OracleRegistry oracles, OracleContext context)
             problems.Add("gold is empty but expect_empty is false");
         }
 
+        if (question.ExpectEmpty && !abstains && !IsEmpty(gold.Value))
+        {
+            problems.Add("expect_empty is true but gold is non-empty");
+        }
+
         var hash = Hash(gold);
         if (lockedHash is not null && lockedHash != hash)
         {
@@ -71,9 +76,10 @@ public sealed class GoldAdmitter(OracleRegistry oracles, OracleContext context)
         _ => false,
     };
 
-    private static string Hash(Answer gold)
+    internal static string Hash(Answer gold)
     {
-        var canonical = $"{gold.Status}|{gold.Value?.GetRawText()}";
+        var evidence = gold.Evidence.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+        var canonical = JsonSerializer.Serialize(new { status = gold.Status.ToString(), value = gold.Value, evidence });
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
     }
 }

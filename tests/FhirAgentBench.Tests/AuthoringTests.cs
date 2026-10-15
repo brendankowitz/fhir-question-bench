@@ -115,6 +115,60 @@ public sealed class AuthoringTests
     }
 
     [Fact]
+    public void Admit_HashCoversEvidence()
+    {
+        var spec = new AnswerSpec { Type = AnswerType.Integer };
+        var question = Ask(6, "cohort-lab-above-or-missing", null, spec, new()
+        {
+            ["snomed"] = new List<object> { "44054006" }, ["loinc"] = "4548-4", ["threshold"] = "9",
+            ["window_days"] = "365", ["age_min"] = "18", ["age_max"] = "75", ["unit"] = "%",
+        });
+        var gold = Admitter.Admit(question, null).Gold;
+
+        var a = GoldAdmitter.Hash(gold with { Evidence = ["Patient/1"] });
+        var b = GoldAdmitter.Hash(gold with { Evidence = ["Patient/2"] });
+        var reordered = GoldAdmitter.Hash(gold with { Evidence = ["Patient/2", "Patient/1", "Patient/1"] });
+        var sorted = GoldAdmitter.Hash(gold with { Evidence = ["Patient/1", "Patient/2"] });
+
+        Assert.NotEqual(a, b);
+        Assert.Equal(sorted, reordered);
+    }
+
+    [Fact]
+    public void Admit_RejectsNonEmptyGoldWhenExpectEmpty()
+    {
+        var question = Ask(1, "latest-observation", "MRN-ADA", NullableDecimal, new() { ["loinc"] = "4548-4" }, expectEmpty: true);
+
+        Assert.Contains(Admitter.Admit(question, null).Problems, p => p.Contains("expect_empty is true"));
+    }
+
+    [Fact]
+    public void GoldLock_SavesLfOnlyAndLeavesNoTempFile()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("fab-lock-").FullName, "gold.lock.json");
+
+        GoldLock.Save(path, new Dictionary<string, string> { ["a"] = "1" });
+        GoldLock.Save(path, new Dictionary<string, string> { ["a"] = "1", ["b"] = "2" });
+
+        Assert.DoesNotContain((byte)0x0D, File.ReadAllBytes(path));
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("null")]
+    [InlineData("{\"a\":\"1\",\"a\":\"2\"}")]
+    [InlineData("{\"a\":1}")]
+    public void GoldLock_RejectsCorruptFiles(string content)
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("fab-lock-").FullName, "gold.lock.json");
+        File.WriteAllText(path, content);
+
+        var ex = Assert.Throws<InvalidDataException>(() => GoldLock.Load(path));
+        Assert.Contains("corrupt", ex.Message);
+    }
+
+    [Fact]
     public void CorpusQueries_FindPatientsAndCodes()
     {
         var rows = CorpusQueries.PatientsWithObservation(Context, "4548-4");

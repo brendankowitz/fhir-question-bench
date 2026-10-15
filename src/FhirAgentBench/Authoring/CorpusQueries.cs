@@ -61,6 +61,7 @@ public static class CorpusQueries
 
         return counts.Select(c => new CodeRow(c.Key.Item1, c.Key.Item2, c.Key.Item3, c.Value))
             .OrderByDescending(r => r.Count)
+            .ThenBy(r => r.Code, StringComparer.Ordinal)
             .ToList();
     }
 

@@ -172,6 +172,272 @@ def test_contained_resources_resolve_siblings_and_owner():
     assert owner_ref.targets[0] is owner
 
 
+def test_contained_source_resolves_empty_fragment_to_owner_and_inherits_rest_base():
+    owner = ResolvedResource(
+        {
+            "resourceType": "Observation",
+            "id": "o",
+            "contained": [{"resourceType": "Specimen", "id": "s"}],
+        },
+        "Observation/o", "a.json", "a" * 64, "c" * 64,
+        full_url="https://a.test/fhir/Observation/o", bundle_file="a.json",
+    )
+    remote = ResolvedResource(
+        {"resourceType": "Patient", "id": "p"},
+        "Patient/p", "b.json", "b" * 64, "c" * 64,
+        full_url="https://b.test/fhir/Patient/p", bundle_file="a.json",
+    )
+    local = ResolvedResource(
+        {"resourceType": "Patient", "id": "p"},
+        "Patient/p", "a.json", "a" * 64, "c" * 64,
+        full_url="https://a.test/fhir/Patient/p", bundle_file="a.json",
+    )
+    corpus = Corpus("c", "c" * 64, [owner, remote, local], Path("manifest.json"), {})
+    specimen = resolve_reference(owner, "#s", corpus).targets[0]
+    owner_result = resolve_reference(specimen, "#", corpus)
+    assert owner_result.status == "resolved"
+    assert owner_result.targets == (owner,)
+    patient_result = resolve_reference(specimen, "Patient/p", corpus)
+    assert patient_result.status == "resolved"
+    assert patient_result.targets == (local,)
+    assert specimen.file == owner.file and specimen.source_hash == owner.source_hash
+
+
+def _duplicate_patient_world(tmp_path, *, duplicate_condition=False):
+    data_root = copy_fixture_data(tmp_path)
+    source = data_root / "agent" / "corpus" / "resources.ndjson"
+    lines = source.read_text(encoding="utf-8").splitlines()
+    moved_ids = {
+        "Patient/p-bryn",
+        "Observation/o-hgb-a",
+        "Observation/o-hgb-b",
+        "Observation/o-hgb-prelim",
+        "Observation/o-screen-bryn",
+    }
+    kept, moved = [], []
+    for line in lines:
+        resource = json.loads(line)
+        identity = f"{resource.get('resourceType')}/{resource.get('id')}"
+        (moved if identity in moved_ids else kept).append(resource)
+    source.write_text("".join(json.dumps(item, separators=(",", ":")) + "\n" for item in kept), encoding="utf-8")
+    transaction_path = data_root / "agent" / "corpus" / "transaction.json"
+    bundle = json.loads(transaction_path.read_text(encoding="utf-8"))
+    for resource in moved:
+        identity = f"{resource.get('resourceType')}/{resource.get('id')}"
+        full_url = "urn:uuid:patient-bryn" if resource["resourceType"] == "Patient" else f"urn:uuid:{resource['id']}"
+        if resource["resourceType"] == "Patient":
+            resource["id"] = "p-bryn"
+        if identity == "Observation/o-screen-bryn":
+            resource["subject"]["reference"] = "urn:uuid:patient-bryn"
+        resource.pop("fullUrl", None)
+        bundle["entry"].append({"fullUrl": full_url, "resource": resource})
+    transaction_path.write_text(json.dumps(bundle, separators=(",", ":")), encoding="utf-8")
+    other_patient = {
+        "resourceType": "Patient",
+        "id": "p-ada" if duplicate_condition else "p-bryn",
+        "birthDate": "1978-04-12" if duplicate_condition else "1983-09-03",
+    }
+    other_bundle = {
+        "resourceType": "Bundle",
+        "type": "collection",
+        "entry": [
+            {"fullUrl": "urn:uuid:other-patient", "resource": other_patient},
+            {
+                "fullUrl": "urn:uuid:hgb-other-world",
+                "resource": {
+                    "resourceType": "Observation",
+                    "id": "hgb-other-world",
+                    "status": "final",
+                    "code": {"coding": [{"system": "urn:bench:local-lab", "code": "hemoglobin"}]},
+                    "subject": {"reference": "urn:uuid:other-patient"},
+                    "effectiveDateTime": "2026-01-05T00:00:00Z",
+                    "valueQuantity": {"value": 77.7, "unit": "g/dL"},
+                },
+            },
+            {
+                "fullUrl": "urn:uuid:screen-other-world",
+                "resource": {
+                    "resourceType": "Observation", "id": "screen-other-world", "status": "final",
+                    "code": {"coding": [{"system": "urn:bench:local-lab", "code": "screening-score"}]},
+                    "subject": {"reference": "urn:uuid:other-patient"},
+                    "effectiveDateTime": "2026-01-08T09:00:00Z",
+                    "valueQuantity": {"value": 2, "unit": "{score}"},
+                },
+            },
+        ],
+    }
+    other_path = data_root / "agent" / "corpus" / "other-world.json"
+    other_path.write_text(json.dumps(other_bundle, separators=(",", ":")), encoding="utf-8")
+    manifest_path = data_root / "agent" / "corpus-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for item in manifest["files"]:
+        source_path = data_root / "agent" / Path(*item["path"].split("/"))
+        item["sha256"] = hashlib.sha256(source_path.read_bytes()).hexdigest()
+    manifest["files"].append({
+        "path": "corpus/other-world.json",
+        "sha256": hashlib.sha256(other_path.read_bytes()).hexdigest(),
+    })
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    return data_root
+
+
+def test_question_patient_identity_is_bound_once_for_temporal_and_cohort_scopes(tmp_path):
+    data_root = _duplicate_patient_world(tmp_path)
+    corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
+    questions = load_questions(data_root / "questions.jsonl")
+    with pytest.raises(OracleError, match="Patient/p-bryn.*ambiguous"):
+        derive_gold(_question(questions, "temporal-002"), corpus, data_root)
+    with pytest.raises(OracleError, match="cohort Patient identity Patient/p-bryn is duplicated"):
+        derive_gold(_question(questions, "cohort-002"), corpus, data_root)
+
+
+def test_duplicate_patient_identity_with_local_alias_does_not_merge_cohort_worlds(tmp_path):
+    data_root = copy_fixture_data(tmp_path)
+    bundle_path = data_root / "agent" / "corpus" / "transaction.json"
+    bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+    bundle["entry"].append({
+        "fullUrl": "urn:uuid:patient-ada-duplicate",
+        "resource": {"resourceType": "Patient", "id": "p-ada", "birthDate": "1978-04-12"},
+    })
+    bundle["entry"].append({
+        "fullUrl": "urn:uuid:screen-ada-duplicate",
+        "resource": {
+            "resourceType": "Observation", "id": "screen-ada-duplicate", "status": "final",
+            "code": {"coding": [{"system": "urn:bench:local-lab", "code": "screening-score"}]},
+            "subject": {"reference": "urn:uuid:patient-ada-duplicate"},
+            "effectiveDateTime": "2026-01-08T09:00:00Z",
+            "valueQuantity": {"value": 2, "unit": "{score}"},
+        },
+    })
+    bundle_path.write_text(json.dumps(bundle, separators=(",", ":")), encoding="utf-8")
+    manifest_path = data_root / "agent" / "corpus-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    entry = next(item for item in manifest["files"] if item["path"] == "corpus/transaction.json")
+    entry["sha256"] = hashlib.sha256(bundle_path.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    corpus = load_corpus(manifest_path)
+    question = _question(load_questions(data_root / "questions.jsonl"), "cohort-002")
+    with pytest.raises(OracleError, match="subject reference is ambiguous"):
+        derive_gold(question, corpus, data_root)
+
+
+def test_duplicate_patient_identity_does_not_merge_active_condition_worlds(tmp_path):
+    data_root = _duplicate_patient_world(tmp_path, duplicate_condition=True)
+    corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
+    question = _question(load_questions(data_root / "questions.jsonl"), "temporal-003")
+    with pytest.raises(OracleError, match="Patient/p-ada.*ambiguous"):
+        derive_gold(question, corpus, data_root)
+
+
+@pytest.mark.parametrize("offset_days", [-1, 1])
+def test_temporal_unresolved_subject_is_only_relevant_before_cutoff(tmp_path, offset_days):
+    data_root = copy_fixture_data(tmp_path)
+    effective = "2026-01-14T00:00:00Z" if offset_days == -1 else "2026-01-16T00:00:00Z"
+    extra = {
+        "resourceType": "Observation",
+        "id": f"unresolved-{offset_days}",
+        "status": "final",
+        "code": {"coding": [{"system": "urn:bench:local-lab", "code": "potassium"}]},
+        "effectiveDateTime": effective,
+        "valueQuantity": {"value": 9.9, "unit": "mmol/L"},
+    }
+    source = data_root / "agent" / "corpus" / "resources.ndjson"
+    source.write_bytes(source.read_bytes() + json.dumps(extra).encode() + b"\n")
+    refresh_corpus_hash(data_root, "corpus/resources.ndjson")
+    corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
+    question = _question(load_questions(data_root / "questions.jsonl"), "temporal-001")
+    if offset_days < 0:
+        with pytest.raises(OracleError, match="no subject reference"):
+            derive_gold(question, corpus, data_root)
+    else:
+        assert derive_gold(question, corpus, data_root).answer["value"] == {"value": "4.1", "unit": "mmol/L"}
+
+
+def test_temporal_known_nonqualifying_status_excludes_unresolved_candidate(tmp_path):
+    data_root = copy_fixture_data(tmp_path)
+    extra = {
+        "resourceType": "Observation",
+        "id": "unresolved-preliminary",
+        "status": "preliminary",
+        "code": {"coding": [{"system": "urn:bench:local-lab", "code": "potassium"}]},
+    }
+    source = data_root / "agent" / "corpus" / "resources.ndjson"
+    source.write_bytes(source.read_bytes() + json.dumps(extra).encode() + b"\n")
+    refresh_corpus_hash(data_root, "corpus/resources.ndjson")
+    corpus = load_corpus(data_root / "agent" / "corpus-manifest.json")
+    question = _question(load_questions(data_root / "questions.jsonl"), "temporal-001")
+    assert derive_gold(question, corpus, data_root).answer["value"] == {"value": "4.1", "unit": "mmol/L"}
+
+
+def _template_value(value, question, policy):
+    if isinstance(value, dict) and set(value) == {"parameter"}:
+        return question["parameters"][value["parameter"]]
+    if isinstance(value, dict) and set(value) == {"policy_criteria"}:
+        return policy["criteria"][value["policy_criteria"]]
+    return value
+
+
+def test_every_prepared_scope_template_generates_a_gradable_scope(tmp_path):
+    from fhir_question_bench.demo import make_demo_response
+
+    corpus, questions = setup()
+    data_root = DATA
+    seen_policies = set()
+    for question in questions:
+        prepared = prepare_question(question, corpus, data_root, tmp_path / question.id)
+        public_corpus = load_corpus(prepared / "corpus-manifest.json")
+        public_question = json.loads((prepared / "question.json").read_text(encoding="utf-8"))
+        policies = json.loads((prepared / "selection-policies.json").read_text(encoding="utf-8"))
+        policy = policies["policies"][public_question["selection_policy"]]
+        template = policy["scope_template"]
+        assert isinstance(template["required"], bool)
+        protocol_registry = json.loads((prepared / "protocols" / "protocols.json").read_text(encoding="utf-8"))
+        protocol = next(item for item in protocol_registry["protocols"] if item["id"] == public_question["protocol_id"])
+        gold = derive_gold(question, corpus, data_root)
+        response = copy.deepcopy(make_demo_response(question, gold))
+        if not template["required"]:
+            response["scope_checks"] = [{
+                "id": "forbidden-public-scope",
+                "claim_id": response["claims"][0]["id"],
+                "corpus_hash": public_corpus.corpus_hash,
+                "protocol_id": protocol["id"],
+                "selection_policy": public_question["selection_policy"],
+                "selection_policy_version": policies["policy_version"],
+                "resource_type": "Observation",
+                "patient_reference": "*",
+                "cutoff": public_question["cutoff"],
+                "criteria": {},
+                "complete_scan": True,
+            }]
+            grade = grade_response(question, gold, response, public_corpus, data_root)
+            assert not grade.strict_success
+            assert "scope/completeness check does not match the required absence or cohort obligation" in grade.errors
+            continue
+        seen_policies.add(public_question["selection_policy"])
+        scope = {
+            "protocol_id": protocol["id"],
+            "selection_policy": public_question["selection_policy"],
+            "selection_policy_version": policies["policy_version"],
+            "resource_type": _template_value(template["resource_type"], public_question, policy),
+            "patient_reference": _template_value(template["patient_reference"], public_question, policy),
+            "cutoff": public_question["cutoff"],
+            "criteria": {
+                key: _template_value(value, public_question, policy)
+                for key, value in template["criteria"].items()
+            },
+        }
+        response["scope_checks"] = [{
+            "id": "public-template-scope",
+            "claim_id": response["claims"][0]["id"],
+            "corpus_hash": public_corpus.corpus_hash,
+            **scope,
+            "complete_scan": True,
+        }]
+        grade = grade_response(question, gold, response, public_corpus, data_root)
+        assert grade.strict_success, (question.id, grade.errors)
+    assert seen_policies
+
+
 @pytest.mark.parametrize(
     ("question_id", "mutate", "message"),
     [
@@ -319,15 +585,22 @@ def test_series_and_timestamp_answers_use_semantic_numeric_and_instant_equality(
     question = _question(questions, "temporal-002")
     gold = derive_gold(question, corpus)
     immutable_gold = GoldAnswer.from_dict(copy.deepcopy(gold.as_dict()))
-    response = make_demo_response(question, gold)
+    before_negative_cases = copy.deepcopy(gold.as_dict())
+    response = copy.deepcopy(make_demo_response(question, gold))
     response["answer"]["value"][0]["value"] = "12.10"
     response["answer"]["value"][0]["time"] = "2026-01-01T10:00:00+01:00"
     assert grade_response(question, immutable_gold, response, corpus).strict_success
-    response["answer"]["value"].reverse()
-    assert not grade_response(question, immutable_gold, response, corpus).strict_success
-    response = make_demo_response(question, immutable_gold)
+    reversed_response = copy.deepcopy(make_demo_response(question, immutable_gold))
+    reversed_response["answer"]["value"].reverse()
+    reversed_grade = grade_response(question, immutable_gold, reversed_response, corpus)
+    assert not reversed_grade.strict_success
+    assert "typed answer does not match the independent gold" in reversed_grade.errors
+    response = copy.deepcopy(make_demo_response(question, immutable_gold))
     response["answer"]["value"][0]["unit"] = "mg/dL"
-    assert not grade_response(question, immutable_gold, response, corpus).strict_success
+    unit_grade = grade_response(question, immutable_gold, response, corpus)
+    assert not unit_grade.strict_success
+    assert "typed answer does not match the independent gold" in unit_grade.errors
+    assert gold.as_dict() == before_negative_cases
 
     question = _question(questions, "direct-001")
     gold = derive_gold(question, corpus)

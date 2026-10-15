@@ -121,6 +121,13 @@ def load_selection_policies(data_root: Path | str | None = None) -> dict[str, An
             raise OracleError(f"selection policy {policy_id!r} requires criteria")
         if not isinstance(policy.get("completeness"), dict):
             raise OracleError(f"selection policy {policy_id!r} requires completeness rules")
+        template = policy.get("scope_template")
+        if not isinstance(template, dict) or not isinstance(template.get("required"), bool):
+            raise OracleError(f"selection policy {policy_id!r} requires a scope template")
+        if template["required"] and not {
+            "resource_type", "patient_reference", "cutoff", "criteria"
+        } <= template.keys():
+            raise OracleError(f"scope template for {policy_id!r} is incomplete")
     return policies
 
 
@@ -139,19 +146,28 @@ def _coding_matches(resource: dict[str, Any], system: str, code: str) -> bool:
     return any(item.get("system") == system and item.get("code") == code for item in _code(resource))
 
 
-def _subject_is(resource: ResolvedResource, patient_ref: str, corpus: Corpus) -> bool:
+def _bind_patient(patient_ref: str, corpus: Corpus) -> ResolvedResource:
+    matches = corpus.find(patient_ref)
+    if len(matches) != 1:
+        state = "missing" if not matches else "ambiguous"
+        raise OracleError(f"question patient scope {patient_ref!r} is {state} across source locations")
+    return matches[0]
+
+
+def _subject_is(
+    resource: ResolvedResource,
+    patient: ResolvedResource,
+    corpus: Corpus,
+) -> bool:
     ref = resource.resource.get("subject", {}).get("reference")
     if not ref:
         raise OracleError(f"{resource.identity} has no subject reference; patient membership is indeterminate")
     result = _resolve_reference(resource, ref, corpus)
     if result.status != "resolved":
         raise OracleError(f"{resource.identity} subject reference is {result.status}; patient membership is indeterminate")
-    if result.targets[0].identity != patient_ref:
+    if result.targets[0].identity != patient.identity:
         return False
-    requested = _resolve_reference(resource, patient_ref, corpus)
-    if requested.status != "resolved":
-        raise OracleError(f"patient scope {patient_ref!r} is {requested.status} in source context")
-    return _same_location(result.targets[0], requested.targets[0])
+    return _same_location(result.targets[0], patient)
 
 
 def _same_location(left: ResolvedResource, right: ResolvedResource) -> bool:
@@ -248,19 +264,34 @@ def _pointer_exists(resource: dict[str, Any], pointer: str) -> bool:
 
 def _scope(
     question: Question,
-    resource_type: str,
-    patient_reference: str,
-    criteria: dict[str, Any],
+    policy: dict[str, Any],
+    parameters: dict[str, Any],
     selection_policy_version: int = 1,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
+    template = policy["scope_template"]
+    if not template["required"]:
+        return None
+
+    def resolve(value: Any) -> Any:
+        if value == "question.cutoff":
+            return question.cutoff.isoformat()
+        if isinstance(value, dict) and set(value) == {"parameter"}:
+            return parameters[value["parameter"]]
+        if isinstance(value, dict) and set(value) == {"policy_criteria"}:
+            return policy["criteria"][value["policy_criteria"]]
+        return value
+
     return {
         "protocol_id": question.protocol_id,
         "selection_policy": question.selection_policy,
         "selection_policy_version": selection_policy_version,
-        "resource_type": resource_type,
-        "patient_reference": patient_reference,
-        "cutoff": question.cutoff.isoformat(),
-        "criteria": criteria,
+        "resource_type": resolve(template["resource_type"]),
+        "patient_reference": resolve(template["patient_reference"]),
+        "cutoff": resolve(template["cutoff"]),
+        "criteria": {
+            key: resolve(value)
+            for key, value in template["criteria"].items()
+        },
     }
 
 
@@ -268,7 +299,7 @@ def _query_observations(
     question: Question,
     corpus: Corpus,
     *,
-    patient_ref: str | None = None,
+    patient: ResolvedResource | None = None,
     system: str | None = None,
     code: str | None = None,
     required_status: str | None = None,
@@ -280,15 +311,17 @@ def _query_observations(
             continue
         if system is not None and code is not None and not _coding_matches(resource, system, code):
             continue
-        if patient_ref is not None and not _subject_is(item, patient_ref, corpus):
+        if required_status and resource.get("status") and resource["status"] != required_status:
+            matches.append(item)
             continue
         effective = resource.get("effectiveDateTime")
         if system is not None and code is not None and not effective:
-            if required_status and resource.get("status") and resource["status"] != required_status:
-                matches.append(item)
-                continue
             raise OracleError(f"{item.identity} has no effectiveDateTime; cutoff membership is indeterminate")
         if effective and _instant(effective) > _question_time(question):
+            continue
+        if required_status and not resource.get("status"):
+            raise OracleError(f"{item.identity} has no status; temporal eligibility is indeterminate")
+        if patient is not None and not _subject_is(item, patient, corpus):
             continue
         matches.append(item)
     return matches
@@ -373,8 +406,20 @@ def derive_gold(
         raise OracleError("question selection policy does not declare this protocol operation")
     policy_version = 1
     params = question.parameters
+    patient_scoped_operations = {
+        "latest-final-observation",
+        "final-observation-series",
+        "active-conditions",
+        "missing-weight",
+        "absence-code",
+    }
+    bound_patient = (
+        _bind_patient(params["patient"], corpus)
+        if operation in patient_scoped_operations
+        else None
+    )
     pointers: list[tuple[ResolvedResource, str]] = []
-    scope: dict[str, Any] | None = None
+    scope = _scope(question, policy, params, policy_version)
     status = "answered"
     answer: dict[str, Any] | None
 
@@ -385,12 +430,6 @@ def derive_gold(
     elif operation == "count-observations":
         observations = [item for item in corpus.resources if item.resource.get("resourceType") == "Observation"]
         pointers = [(item, "/resourceType") for item in observations]
-        scope = _scope(
-            question,
-            "Observation",
-            "*",
-            {"count_bundle_containers": False, "count_contained_resources": False},
-        )
         answer = {"kind": "aggregate", "value": {"count": len(observations)}}
     elif operation == "condition-code":
         condition = _single(corpus, params["condition"])
@@ -412,7 +451,7 @@ def derive_gold(
         candidates = _query_observations(
             question,
             corpus,
-            patient_ref=params["patient"],
+            patient=bound_patient,
             system=params["system"],
             code=params["code"],
             required_status=policy["criteria"]["required_status"],
@@ -439,24 +478,12 @@ def derive_gold(
             for item in candidates
             for pair in _temporal_evidence(item)
         ]
-        scope = _scope(
-            question,
-            "Observation",
-            params["patient"],
-            {
-                "system": params["system"],
-                "code": params["code"],
-                "required_status": required_status,
-                "cutoff_inclusive": True,
-            },
-            policy_version,
-        )
         answer = {"kind": "quantity", "value": _quantity(chosen)}
     elif operation == "final-observation-series":
         candidates = _query_observations(
             question,
             corpus,
-            patient_ref=params["patient"],
+            patient=bound_patient,
             system=params["system"],
             code=params["code"],
             required_status=policy["criteria"]["required_status"],
@@ -480,18 +507,6 @@ def derive_gold(
             for item in candidates
             for pair in _temporal_evidence(item)
         ]
-        scope = _scope(
-            question,
-            "Observation",
-            params["patient"],
-            {
-                "system": params["system"],
-                "code": params["code"],
-                "required_status": required_status,
-                "cutoff_inclusive": True,
-            },
-            policy_version,
-        )
         answer = {
             "kind": "series",
             "value": [
@@ -503,7 +518,7 @@ def derive_gold(
         conditions = [
             item for item in corpus.resources
             if item.resource.get("resourceType") == "Condition"
-            and _subject_is(item, params["patient"], corpus)
+            and _subject_is(item, bound_patient, corpus)
             and item.resource.get("clinicalStatus", {}).get("coding", [{}])[0].get("code") == "active"
             and (not item.resource.get("onsetDateTime") or _instant(item.resource["onsetDateTime"]) <= question.cutoff)
         ]
@@ -511,15 +526,9 @@ def derive_gold(
             pair
             for item in corpus.resources
             if item.resource.get("resourceType") == "Condition"
-            and _subject_is(item, params["patient"], corpus)
+            and _subject_is(item, bound_patient, corpus)
             for pair in _evidence_for(item, "/subject/reference", "/clinicalStatus", "/onsetDateTime")
         ]
-        scope = _scope(
-            question,
-            "Condition",
-            params["patient"],
-            {"clinical_status": "active", "onset_at_or_before_cutoff": True},
-        )
         answer = {"kind": "set", "value": sorted(item.identity for item in conditions)}
     elif operation == "encounter-status":
         encounter = _single(corpus, params["encounter"])
@@ -722,32 +731,17 @@ def derive_gold(
             for patient in patients
             for pair in _evidence_for(patient, "/birthDate")
         )
-        scope = _scope(
-            question,
-            "Observation",
-            "*",
-            {
-                "system": params["system"],
-                "code": params["code"],
-                "minimum_value": params["minimum_value"],
-                "minimum_age": params["minimum_age"],
-                "cutoff_inclusive": True,
-                "unique_patients": True,
-                "required_status": required_status,
-            },
-            policy_version,
-        )
         if operation == "adult-screen-count":
             answer = {"kind": "aggregate", "value": {"count": len(members)}}
         else:
             answer = {"kind": "set", "value": members}
     elif operation in {"missing-weight", "absence-code"}:
         patient_ref = params["patient"]
-        patient = _single(corpus, patient_ref)
+        patient = bound_patient
         code_matches = _query_observations(
             question,
             corpus,
-            patient_ref=patient_ref,
+            patient=patient,
             system=params["system"],
             code=params["code"],
         )
@@ -772,18 +766,12 @@ def derive_gold(
                 for item in _query_observations(
                     question,
                     corpus,
-                    patient_ref=patient_ref,
+                    patient=patient,
                     system=params["system"],
                     code=params["code"],
                 )
                 for pair in _evidence_for(item, "/subject/reference", "/code", "/effectiveDateTime")
             )
-        scope = _scope(
-            question,
-            "Observation",
-            patient_ref,
-            {"system": params["system"], "code": params["code"], "cutoff_inclusive": True},
-        )
     else:
         raise OracleError(f"unsupported protocol operation {operation!r}")
 

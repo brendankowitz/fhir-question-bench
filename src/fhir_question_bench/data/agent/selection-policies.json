@@ -7,6 +7,9 @@
       "criteria": {},
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "observation-count-v1": {
@@ -18,6 +21,20 @@
       "completeness": {
         "scan": "all exported top-level Observation resources",
         "bundle_containers_and_contained_resources": "excluded"
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Observation",
+        "patient_reference": "*",
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "count_bundle_containers": {
+            "policy_criteria": "count_bundle_containers"
+          },
+          "count_contained_resources": {
+            "policy_criteria": "count_contained_resources"
+          }
+        }
       }
     },
     "condition-code-v1": {
@@ -25,6 +42,9 @@
       "criteria": {},
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "direct-quantity-v1": {
@@ -34,6 +54,9 @@
       },
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "latest-final-before-cutoff-v1": {
@@ -49,6 +72,28 @@
         "scan": "all observations matching patient and code through cutoff",
         "missing_effectiveDateTime": "indeterminate for potentially qualifying status; a known nonqualifying status remains excluded",
         "candidate_status_and_value": "cite qualifying and excluded candidates"
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Observation",
+        "patient_reference": {
+          "parameter": "patient"
+        },
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "system": {
+            "parameter": "system"
+          },
+          "code": {
+            "parameter": "code"
+          },
+          "required_status": {
+            "policy_criteria": "required_status"
+          },
+          "cutoff_inclusive": {
+            "policy_criteria": "cutoff_inclusive"
+          }
+        }
       }
     },
     "final-series-before-cutoff-v1": {
@@ -67,6 +112,28 @@
         "scan": "all observations matching patient and code through cutoff",
         "missing_effectiveDateTime": "indeterminate for potentially qualifying status; a known nonqualifying status remains excluded",
         "candidate_status_and_value": "cite qualifying and excluded candidates"
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Observation",
+        "patient_reference": {
+          "parameter": "patient"
+        },
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "system": {
+            "parameter": "system"
+          },
+          "code": {
+            "parameter": "code"
+          },
+          "required_status": {
+            "policy_criteria": "required_status"
+          },
+          "cutoff_inclusive": {
+            "policy_criteria": "cutoff_inclusive"
+          }
+        }
       }
     },
     "active-condition-at-cutoff-v1": {
@@ -78,6 +145,22 @@
       "completeness": {
         "scan": "all exported Condition resources",
         "unresolved_subject_reference": "indeterminate"
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Condition",
+        "patient_reference": {
+          "parameter": "patient"
+        },
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "clinical_status": {
+            "policy_criteria": "clinical_status"
+          },
+          "onset_at_or_before_cutoff": {
+            "policy_criteria": "onset_at_or_before_cutoff"
+          }
+        }
       }
     },
     "encounter-recorded-status-v1": {
@@ -85,6 +168,9 @@
       "criteria": {},
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "encounter-medication-resource-set-v1": {
@@ -96,6 +182,9 @@
       "completeness": {
         "scan": "all exported MedicationRequest and MedicationAdministration resources",
         "unresolved_subject_or_context": "indeterminate"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "resolve-administration-medication-v1": {
@@ -103,6 +192,9 @@
       "criteria": {},
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "bundle-scoped-fullurl-v1": {
@@ -112,6 +204,9 @@
       },
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "encounter-diagnosis-reference-v1": {
@@ -121,6 +216,9 @@
       },
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "owned-code-lookup-v1": {
@@ -130,6 +228,9 @@
       },
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "owned-map-equivalence-v1": {
@@ -142,6 +243,9 @@
       },
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "owned-map-all-targets-v1": {
@@ -151,6 +255,9 @@
       },
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "owned-map-unmatched-v1": {
@@ -160,6 +267,9 @@
       },
       "completeness": {
         "scan": "all resources in the declared source scope"
+      },
+      "scope_template": {
+        "required": false
       }
     },
     "adult-screen-set-v1": {
@@ -175,6 +285,41 @@
         "scan": "all exported top-level Observation resources",
         "unresolved_relevant_reference": "indeterminate; do not certify a complete count or set",
         "cohort_unit": "unique resolved Patient source location"
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Observation",
+        "patient_reference": "*",
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "system": {
+            "parameter": "system"
+          },
+          "code": {
+            "parameter": "code"
+          },
+          "minimum_value": {
+            "parameter": "minimum_value"
+          },
+          "minimum_age": {
+            "parameter": "minimum_age"
+          },
+          "required_status": {
+            "policy_criteria": "required_status"
+          },
+          "cutoff_inclusive": {
+            "policy_criteria": "cutoff_inclusive"
+          },
+          "unique_patients": {
+            "policy_criteria": "unique_patients"
+          },
+          "minimum_value_field": {
+            "policy_criteria": "minimum_value_field"
+          },
+          "minimum_age_as_of": {
+            "policy_criteria": "minimum_age_as_of"
+          }
+        }
       }
     },
     "adult-screen-count-v1": {
@@ -190,6 +335,41 @@
         "scan": "all exported top-level Observation resources",
         "unresolved_relevant_reference": "indeterminate; do not certify a complete count or set",
         "cohort_unit": "unique resolved Patient source location"
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Observation",
+        "patient_reference": "*",
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "system": {
+            "parameter": "system"
+          },
+          "code": {
+            "parameter": "code"
+          },
+          "minimum_value": {
+            "parameter": "minimum_value"
+          },
+          "minimum_age": {
+            "parameter": "minimum_age"
+          },
+          "required_status": {
+            "policy_criteria": "required_status"
+          },
+          "cutoff_inclusive": {
+            "policy_criteria": "cutoff_inclusive"
+          },
+          "unique_patients": {
+            "policy_criteria": "unique_patients"
+          },
+          "minimum_value_field": {
+            "policy_criteria": "minimum_value_field"
+          },
+          "minimum_age_as_of": {
+            "policy_criteria": "minimum_age_as_of"
+          }
+        }
       }
     },
     "scoped-missing-weight-v1": {
@@ -201,6 +381,28 @@
       "completeness": {
         "scan": "all exported observations within patient, code, and cutoff scope",
         "unresolved_relevant_reference": "indeterminate"
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Observation",
+        "patient_reference": {
+          "parameter": "patient"
+        },
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "system": {
+            "parameter": "system"
+          },
+          "code": {
+            "parameter": "code"
+          },
+          "cutoff_inclusive": {
+            "policy_criteria": "cutoff_inclusive"
+          },
+          "scope": {
+            "policy_criteria": "scope"
+          }
+        }
       }
     },
     "scoped-absence-query-v1": {
@@ -212,6 +414,28 @@
       "completeness": {
         "scan": "all exported observations within patient, code, and cutoff scope",
         "unresolved_relevant_reference": "indeterminate"
+      },
+      "scope_template": {
+        "required": true,
+        "resource_type": "Observation",
+        "patient_reference": {
+          "parameter": "patient"
+        },
+        "cutoff": "question.cutoff",
+        "criteria": {
+          "system": {
+            "parameter": "system"
+          },
+          "code": {
+            "parameter": "code"
+          },
+          "cutoff_inclusive": {
+            "policy_criteria": "cutoff_inclusive"
+          },
+          "scope": {
+            "policy_criteria": "scope"
+          }
+        }
       }
     }
   }

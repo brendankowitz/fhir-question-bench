@@ -29,11 +29,14 @@ def _resolve_reference(
 ) -> ReferenceResolution:
     if not isinstance(reference, str) or not reference:
         return ReferenceResolution("missing", ())
+    context = source
+    while context.parent is not None:
+        context = context.parent
     if reference.startswith("#"):
         contained_id = reference[1:]
-        owner = source
-        while owner.parent is not None:
-            owner = owner.parent
+        owner = context
+        if not contained_id and source.parent is not None:
+            return ReferenceResolution("resolved", (owner,))
         owner_id = owner.resource.get("id")
         owner_targets = (owner,) if contained_id == owner_id else ()
         matches = [
@@ -62,34 +65,34 @@ def _resolve_reference(
         targets = tuple(
             item
             for item in corpus.resources
-            if item.bundle_file == source.bundle_file and item.full_url == reference
+            if item.bundle_file == context.bundle_file and item.full_url == reference
         )
         return _result(targets)
     if reference.startswith(("http://", "https://")):
         targets = tuple(item for item in corpus.resources if item.full_url == reference)
         return _result(targets)
-    if source.full_url and source.full_url.startswith(("http://", "https://")):
-        parsed = urlparse(source.full_url)
-        source_suffix = f"/{source.identity}"
+    if context.full_url and context.full_url.startswith(("http://", "https://")):
+        parsed = urlparse(context.full_url)
+        source_suffix = f"/{context.identity}"
         if parsed.path.endswith(source_suffix):
             base_path = parsed.path[: -len(source_suffix)].rstrip("/")
             target_url = urlunparse(parsed._replace(path=f"{base_path}/{reference}"))
             matches = tuple(item for item in corpus.resources if item.full_url == target_url)
             if matches:
                 return _result(matches)
-        if source.bundle_file:
+        if context.bundle_file:
             unlocated = tuple(
                 item for item in corpus.resources
-                if item.bundle_file == source.bundle_file
+                if item.bundle_file == context.bundle_file
                 and item.full_url is None
                 and item.identity == reference
             )
             return _result(unlocated)
         return ReferenceResolution("missing", ())
-    if source.bundle_file:
+    if context.bundle_file:
         matches = tuple(
             item for item in corpus.resources
-            if item.bundle_file == source.bundle_file and item.identity == reference
+            if item.bundle_file == context.bundle_file and item.identity == reference
         )
     else:
         matches = tuple(item for item in corpus.resources if item.identity == reference)

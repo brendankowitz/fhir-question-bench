@@ -25,7 +25,8 @@
       "complete_scan": "boolean assertion; only assert true after applying the public selection policy to the complete exported scope",
       "resource_type": "FHIR resource type or pipe-separated set declared by the selection policy",
       "patient_reference": "question.parameters.patient when patient-scoped; * for a corpus-wide scope",
-      "criteria": "exactly the public selection criteria combined with question parameters and required policy flags"
+      "criteria": "exactly the criteria keys and bindings declared by the matching public selection policy scope_template; scope is required or forbidden exactly as that template declares",
+      "scope_template": "selection-policies.json declares required, resource_type, patient_reference, cutoff, and exact criteria bindings per policy"
     },
     "answer_value_shapes": {
       "boolean": "JSON boolean",

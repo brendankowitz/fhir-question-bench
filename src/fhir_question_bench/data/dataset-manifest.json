@@ -15,11 +15,11 @@
     },
     {
       "path": "agent/response-contract.json",
-      "sha256": "791b9504d7c91d6e72b8cc9e27cbd61a9ef668d50c58f665a4e65e092f55f616"
+      "sha256": "e32b5ca1f6156ada8fd245cb8ee6cdcc4d077fa88b7a48b3c3dfd0a576711feb"
     },
     {
       "path": "agent/selection-policies.json",
-      "sha256": "f4e165f70c7b5cd3a6f225bc2defb249d7b20cd0b5dfa235a253bf119c21e5bb"
+      "sha256": "002bc93f6acbe06a8226401de3501783c1780b5a898af3ff1efd14190fda8efc"
     },
     {
       "path": "review/review-ledger.jsonl",

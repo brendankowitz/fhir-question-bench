@@ -1,18 +1,19 @@
 using FhirAgentBench.Answers;
-using FhirAgentBench.Oracles;
 using FhirAgentBench.Questions;
 
 namespace FhirAgentBench.Execution;
 
 public sealed record GradeRecord(string QuestionId, int Tier, int Repeat, GradeStatus Status, double? EvidenceRecall);
 
-public sealed class RunGrader(OracleRegistry oracles, OracleContext context)
+/// <summary>Grades attempts against gold that was computed and checked against the gold lock before the run started.</summary>
+public sealed class RunGrader(IReadOnlyDictionary<string, Answer> gold)
 {
+    public const string CopyErrorFileName = "answer.copy-error.txt";
+
     public IReadOnlyList<GradeRecord> Grade(
         IReadOnlyList<Question> questions, IReadOnlyList<AttemptRecord> attempts, string runDirectory)
     {
         var byId = questions.ToDictionary(q => q.Id, StringComparer.Ordinal);
-        var gold = new Dictionary<string, Answer>(StringComparer.Ordinal);
         var grades = new List<GradeRecord>();
         foreach (var attempt in attempts)
         {
@@ -23,61 +24,51 @@ public sealed class RunGrader(OracleRegistry oracles, OracleContext context)
 
             if (!gold.TryGetValue(question.Id, out var expected))
             {
-                gold[question.Id] = expected = ComputeGold(question);
+                throw new InvalidOperationException($"No gold answer was computed for question '{question.Id}'.");
             }
 
-            grades.Add(GradeOne(question, expected, attempt, runDirectory));
+            grades.Add(GradeOne(question, expected, attempt, Path.Combine(runDirectory, attempt.AttemptDirectory)));
         }
 
         return grades;
     }
 
-    private Answer ComputeGold(Question question)
+    private static GradeRecord GradeOne(Question question, Answer gold, AttemptRecord attempt, string attemptDirectory)
     {
-        try
-        {
-            return oracles.Compute(context, question);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Oracle failed for question '{question.Id}': {ex.Message}", ex);
-        }
-    }
+        GradeRecord Record(GradeStatus status, double? recall = null) => new(question.Id, question.Tier, attempt.Repeat, status, recall);
 
-    private static GradeRecord GradeOne(Question question, Answer gold, AttemptRecord attempt, string runDirectory)
-    {
         if (attempt.End != AttemptEnd.Completed)
         {
-            var status = attempt.End == AttemptEnd.TimedOut ? GradeStatus.TurnLimit : GradeStatus.HarnessError;
-            return new GradeRecord(question.Id, question.Tier, attempt.Repeat, status, null);
+            return Record(attempt.End == AttemptEnd.TimedOut ? GradeStatus.TurnLimit : GradeStatus.HarnessError);
         }
 
-        var agent = ReadAnswer(Path.Combine(runDirectory, attempt.AttemptDirectory, "answer.json"));
-        if (agent is null)
+        if (File.Exists(Path.Combine(attemptDirectory, CopyErrorFileName)))
         {
-            return new GradeRecord(question.Id, question.Tier, attempt.Repeat, GradeStatus.FormatInvalid, null);
+            return Record(GradeStatus.HarnessError);
+        }
+
+        Answer agent;
+        try
+        {
+            agent = AnswerJson.Parse(File.ReadAllText(Path.Combine(attemptDirectory, "answer.json")));
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or FormatException)
+        {
+            return Record(GradeStatus.FormatInvalid);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Record(GradeStatus.HarnessError);
         }
 
         try
         {
-            return new GradeRecord(question.Id, question.Tier, attempt.Repeat, Grader.Grade(question.Answer, gold, agent), EvidenceRecall(gold, agent));
+            return Record(Grader.Grade(question.Answer, gold, agent), EvidenceRecall(gold, agent));
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException(
                 $"Grading failed for question '{question.Id}' attempt r{attempt.Repeat}; the gold answer or answer spec is likely malformed: {ex.Message}", ex);
-        }
-    }
-
-    private static Answer? ReadAnswer(string path)
-    {
-        try
-        {
-            return AnswerJson.Parse(File.ReadAllText(path));
-        }
-        catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
-        {
-            return null;
         }
     }
 

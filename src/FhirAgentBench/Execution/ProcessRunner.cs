@@ -6,7 +6,9 @@ public sealed record ProcessResult(int ExitCode, bool TimedOut, TimeSpan Duratio
 
 public static class ProcessRunner
 {
-    private static readonly TimeSpan s_treeExitGrace = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan TreeExitGrace = TimeSpan.FromSeconds(15);
+
+    private static readonly TimeSpan CaptureTimeout = TimeSpan.FromSeconds(30);
 
     public static async Task<ProcessResult> RunAsync(
         string fileName,
@@ -63,7 +65,11 @@ public static class ProcessRunner
         }
     }
 
-    public static async Task<string> CaptureAsync(string fileName, IReadOnlyList<string> arguments, CancellationToken cancellationToken = default)
+    public static Task<string> CaptureAsync(string fileName, IReadOnlyList<string> arguments, CancellationToken cancellationToken = default) =>
+        CaptureAsync(fileName, arguments, CaptureTimeout, cancellationToken);
+
+    internal static async Task<string> CaptureAsync(
+        string fileName, IReadOnlyList<string> arguments, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var info = new ProcessStartInfo(fileName) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         foreach (var argument in arguments)
@@ -71,16 +77,37 @@ public static class ProcessRunner
             info.ArgumentList.Add(argument);
         }
 
+        var commandLine = $"{fileName} {string.Join(' ', arguments)}";
         using var process = Process.Start(info) ?? throw new InvalidOperationException($"Could not start '{fileName}'.");
-        var output = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-        if (process.ExitCode != 0)
+        using var tree = ProcessTree.Attach(process);
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(timeout);
+        var output = process.StandardOutput.ReadToEndAsync(timeoutSource.Token);
+        var error = process.StandardError.ReadToEndAsync(timeoutSource.Token);
+        try
         {
-            throw new InvalidOperationException($"'{fileName} {string.Join(' ', arguments)}' exited with code {process.ExitCode}.");
+            await Task.WhenAll(output, error, process.WaitForExitAsync(timeoutSource.Token)).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new InvalidOperationException($"'{commandLine}' did not finish within {timeout.TotalSeconds:0} seconds.");
+        }
+        finally
+        {
+            tree.Terminate();
         }
 
-        return output.Trim();
+        if (process.ExitCode != 0)
+        {
+            var detail = (await error.ConfigureAwait(false)).Trim();
+            throw new InvalidOperationException(
+                $"'{commandLine}' exited with code {process.ExitCode}{(detail.Length > 0 ? ": " + FirstLine(detail) : ".")}");
+        }
+
+        return (await output.ConfigureAwait(false)).Trim();
     }
+
+    private static string FirstLine(string text) => text.Split('\n', 2)[0].TrimEnd('\r');
 
     private static async Task<bool> WaitForExitAsync(Process process, TimeSpan timeout, CancellationToken cancellationToken)
     {
@@ -102,12 +129,12 @@ public static class ProcessRunner
     {
         try
         {
-            await copies.WaitAsync(s_treeExitGrace, cancellationToken).ConfigureAwait(false);
+            await copies.WaitAsync(TreeExitGrace, cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
             throw new InvalidOperationException(
-                $"Child processes of '{fileName}' were still holding its output {s_treeExitGrace.TotalSeconds:0} seconds after the process tree was terminated; the attempt cannot be trusted.");
+                $"Child processes of '{fileName}' were still holding its output {TreeExitGrace.TotalSeconds:0} seconds after the process tree was terminated; the attempt cannot be trusted.");
         }
     }
 
@@ -124,6 +151,7 @@ public static class ProcessRunner
         }
         catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException)
         {
+            // Only reached on an already-failing path (or after WaitForPipesAsync gave up); the original exception matters more.
         }
     }
 }

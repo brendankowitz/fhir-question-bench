@@ -4,6 +4,8 @@ namespace FhirAgentBench.Authoring;
 
 public static class GoldLock
 {
+    public const string FileName = "gold.lock.json";
+
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true, NewLine = "\n" };
 
     public static Dictionary<string, string> Load(string path)

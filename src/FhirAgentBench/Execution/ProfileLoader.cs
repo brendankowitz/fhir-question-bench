@@ -4,6 +4,8 @@ namespace FhirAgentBench.Execution;
 
 public static class ProfileLoader
 {
+    private const int MinimumCopilotAiCredits = 30;
+
     private static readonly string[] KnownHarnesses = [Profile.CopilotCli, Profile.Oracle, Profile.Abstain];
 
     public static Profile Load(string path)
@@ -18,6 +20,12 @@ public static class ProfileLoader
         if (dto.Harness == Profile.CopilotCli && string.IsNullOrWhiteSpace(dto.Model))
         {
             throw new InvalidDataException($"'{path}': model is required for the {Profile.CopilotCli} harness.");
+        }
+
+        if (dto.Harness == Profile.CopilotCli && dto.MaxAiCredits is < MinimumCopilotAiCredits)
+        {
+            throw new InvalidDataException(
+                $"'{path}': max_ai_credits is {dto.MaxAiCredits}, but Copilot CLI's minimum is {MinimumCopilotAiCredits}.");
         }
 
         if (dto.Id is not null && !IsSafePathSegment(dto.Id))
@@ -49,7 +57,7 @@ public static class ProfileLoader
                     s.Value.Args ?? [],
                     s.Value.Tools ?? [])),
             PromptTemplatePath = prompt,
-            MaxAiCredits = dto.MaxAiCredits ?? 30,
+            MaxAiCredits = dto.MaxAiCredits ?? MinimumCopilotAiCredits,
             TimeoutMinutes = dto.TimeoutMinutes ?? 20,
             SourcePath = Path.GetFullPath(path),
         };

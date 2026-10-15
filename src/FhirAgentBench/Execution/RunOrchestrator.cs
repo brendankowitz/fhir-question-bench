@@ -88,7 +88,7 @@ public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corp
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             TryDelete(target);
-            File.WriteAllText(Path.Combine(attemptDirectory, "answer.copy-error.txt"), ex.Message);
+            File.WriteAllText(Path.Combine(attemptDirectory, RunGrader.CopyErrorFileName), ex.Message);
         }
     }
 
@@ -112,6 +112,7 @@ public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corp
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            // A partial answer.json left behind is harmless: answer.copy-error.txt makes the grader score it HarnessError.
         }
     }
 }

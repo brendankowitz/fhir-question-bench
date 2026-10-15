@@ -5,12 +5,16 @@ namespace FhirAgentBench.Execution;
 
 public static partial class McpConfig
 {
-    private static readonly HashSet<string> s_forbiddenVariables = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> ForbiddenVariables = new(StringComparer.OrdinalIgnoreCase)
     {
         CopilotArguments.TokenVariable, "GH_TOKEN", "GITHUB_TOKEN",
     };
 
-    public static void Write(Profile profile, string corpusDataDirectory, string path)
+    public static void Write(Profile profile, string corpusDataDirectory, string path) =>
+        File.WriteAllText(path, Build(profile, corpusDataDirectory));
+
+    /// <summary>Expands the profile's MCP servers into Copilot's config JSON; throws if a referenced variable is unset or forbidden.</summary>
+    public static string Build(Profile profile, string corpusDataDirectory)
     {
         var servers = profile.McpServers.ToDictionary(
             s => s.Key,
@@ -21,7 +25,7 @@ public static partial class McpConfig
                 args = s.Value.Args.Select(a => Expand(a, corpusDataDirectory, profile)).ToList(),
                 tools = new[] { "*" },
             });
-        File.WriteAllText(path, JsonSerializer.Serialize(new { mcpServers = servers }));
+        return JsonSerializer.Serialize(new { mcpServers = servers });
     }
 
     public static IEnumerable<string> ReferencedVariables(Profile profile) =>
@@ -34,7 +38,7 @@ public static partial class McpConfig
         EnvironmentReference().Replace(value.Replace("{corpus}", corpusDataDirectory, StringComparison.Ordinal), match =>
         {
             var name = match.Groups[1].Value;
-            if (s_forbiddenVariables.Contains(name))
+            if (ForbiddenVariables.Contains(name))
             {
                 throw new InvalidDataException($"Profile '{profile.Id}' must not expand credential variable '{name}' into the MCP config.");
             }

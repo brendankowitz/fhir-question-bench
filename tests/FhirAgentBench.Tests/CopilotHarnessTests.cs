@@ -23,7 +23,7 @@ public sealed class CopilotHarnessTests : IDisposable
         BuiltinTools = ["view", "rg", "glob", "powershell", "read_powershell", "stop_powershell", "apply_patch"],
         McpServers = servers.ToDictionary(s => s.Name, s => s.Server),
         PromptTemplatePath = "prompt.md",
-        MaxAiCredits = 25,
+        MaxAiCredits = 40,
         SourcePath = "p.yaml",
     };
 
@@ -71,7 +71,8 @@ public sealed class CopilotHarnessTests : IDisposable
         Assert.Contains("--no-custom-instructions", args);
         Assert.Contains("--disable-builtin-mcps", args);
         Assert.Equal(@"C:\corpus\data", args[args.ToList().IndexOf("--add-dir") + 1]);
-        Assert.Equal("25", args[args.ToList().IndexOf("--max-ai-credits") + 1]);
+        Assert.Equal("40", args[args.ToList().IndexOf("--max-ai-credits") + 1]);
+        Assert.Contains("--no-auto-update", args);
         Assert.Equal("COPILOT_GITHUB_TOKEN", args[args.ToList().IndexOf("--secret-env-vars") + 1]);
         Assert.DoesNotContain(args, a => a is "--allow-all" or "--yolo" or "--allow-all-paths" or "--allow-all-urls");
         Assert.DoesNotContain("--additional-mcp-config", args);
@@ -359,5 +360,71 @@ public sealed class CopilotHarnessTests : IDisposable
             .Where(file => File.ReadAllText(file).Contains(Token, StringComparison.Ordinal))
             .ToList();
         Assert.Empty(leaks);
+    }
+
+    [Theory]
+    [InlineData("GitHub Copilot CLI 1.0.96.")]
+    [InlineData("GitHub Copilot CLI 1.1.0.")]
+    [InlineData("GitHub Copilot CLI 2.0.0-beta.1")]
+    public void CopilotVersion_AcceptsMinimumAndNewer(string line) => CopilotVersion.EnsureSupported(line);
+
+    [Fact]
+    public void CopilotVersion_RejectsOlderBundledVersion_WithUpgradeAdvice()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => CopilotVersion.EnsureSupported("GitHub Copilot CLI 1.0.69."));
+
+        Assert.Equal(
+            "Copilot CLI 1.0.69 runs with --no-auto-update; 1.0.96+ required. Run 'winget upgrade GitHub.Copilot'.",
+            ex.Message);
+    }
+
+    [Fact]
+    public void CopilotVersion_RejectsOutputWithoutVersion()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => CopilotVersion.EnsureSupported("command not found"));
+
+        Assert.Contains("command not found", ex.Message);
+    }
+
+    [Fact]
+    public void CopilotVersion_KeepsOnlyTheFirstLine() =>
+        Assert.Equal(
+            "GitHub Copilot CLI 1.0.96.",
+            CopilotVersion.FirstLine("GitHub Copilot CLI 1.0.96.\r\nRun 'copilot update' to check for updates.\r\n"));
+
+    [Fact]
+    public async Task Capture_ReadsLargeStderrWithoutDeadlock()
+    {
+        var noisy = WriteScript(
+            "noisy",
+            "for /L %%i in (1,1,3000) do @echo 0123456789012345678901234567890123456789012345678901234567890123456789 1>&2\r\necho done\r\n",
+            "i=0; while [ $i -lt 3000 ]; do echo 0123456789012345678901234567890123456789012345678901234567890123456789 >&2; i=$((i+1)); done\necho done\n");
+
+        var output = await ProcessRunner.CaptureAsync(noisy, [], TimeSpan.FromSeconds(60));
+
+        Assert.Equal("done", output);
+    }
+
+    [Fact]
+    public async Task Capture_TimesOutWithClearError()
+    {
+        var (file, args) = OperatingSystem.IsWindows()
+            ? ("cmd", new[] { "/c", "ping -n 30 127.0.0.1 > nul" })
+            : ("sh", new[] { "-c", "sleep 30" });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => ProcessRunner.CaptureAsync(file, args, TimeSpan.FromSeconds(1)));
+
+        Assert.Contains("did not finish within 1 seconds", ex.Message);
+    }
+
+    [Fact]
+    public async Task Capture_NonZeroExit_IncludesStderr()
+    {
+        var failing = WriteScript("failing", "echo bad things 1>&2\r\nexit /b 4\r\n", "echo bad things >&2\nexit 4\n");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => ProcessRunner.CaptureAsync(failing, []));
+
+        Assert.Contains("code 4", ex.Message);
+        Assert.Contains("bad things", ex.Message);
     }
 }

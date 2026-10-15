@@ -4,7 +4,7 @@ namespace FhirAgentBench.Execution;
 
 public static class CopilotEnvironment
 {
-    private static readonly HashSet<string> s_allowedNames = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> AllowedNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "PATH", "PATHEXT", "SystemRoot", "windir", "ComSpec", "SystemDrive", "TEMP", "TMP",
         "USERPROFILE", "HOME", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA",
@@ -13,7 +13,7 @@ public static class CopilotEnvironment
         "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "LANG",
     };
 
-    private static readonly string[] s_allowedPrefixes = ["LC_", "CommonProgramFiles"];
+    private static readonly string[] AllowedPrefixes = ["LC_", "CommonProgramFiles"];
 
     public static IReadOnlyDictionary<string, string> Build(Profile profile, string copilotHome, string token)
     {
@@ -33,7 +33,7 @@ public static class CopilotEnvironment
     }
 
     private static bool IsAllowed(string name, HashSet<string> referenced) =>
-        s_allowedNames.Contains(name)
+        AllowedNames.Contains(name)
         || referenced.Contains(name)
-        || s_allowedPrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        || AllowedPrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 }

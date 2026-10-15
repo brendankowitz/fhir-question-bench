@@ -17,18 +17,7 @@ public static class HarnessFactory
                 return new AbstainHarness();
             case Profile.CopilotCli:
                 RejectShellScriptExecutable(profile);
-                if (profile.McpServers.Count > 0)
-                {
-                    var probe = Path.Combine(Path.GetTempPath(), $"fab-mcp-check-{Guid.NewGuid():N}.json");
-                    try
-                    {
-                        McpConfig.Write(profile, corpus.DataDirectory, probe);
-                    }
-                    finally
-                    {
-                        File.Delete(probe);
-                    }
-                }
+                McpConfig.Build(profile, corpus.DataDirectory);
 
                 var token = await ResolveTokenAsync(Environment.GetEnvironmentVariable, "gh", cancellationToken).ConfigureAwait(false);
                 return new CopilotCliHarness(profile, corpus.DataDirectory, token);

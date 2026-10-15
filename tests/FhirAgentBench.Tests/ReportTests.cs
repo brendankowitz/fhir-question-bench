@@ -217,4 +217,31 @@ public sealed class ReportTests
         Assert.Contains("p1-shell", markdown);
         Assert.Contains("100.0%", markdown);
     }
+
+    private static RunSnapshot Snapshot(string runId, string manifest, string questions) =>
+        new(runId, "p", "ph", "c", manifest, ["q1"], questions, "lock", 1, null, null, DateTimeOffset.UnixEpoch);
+
+    [Fact]
+    public void RequireComparable_AcceptsSameInputs() =>
+        RunReport.RequireComparable(Snapshot("a", "m1", "q1"), Snapshot("b", "m1", "q1"));
+
+    [Fact]
+    public void RequireComparable_RefusesDifferentCorpus_NamingBothValues()
+    {
+        var error = Assert.Throws<InvalidOperationException>(
+            () => RunReport.RequireComparable(Snapshot("a", "m1", "q1"), Snapshot("b", "m2", "q1")));
+
+        Assert.Contains("m1", error.Message);
+        Assert.Contains("m2", error.Message);
+    }
+
+    [Fact]
+    public void RequireComparable_RefusesDifferentQuestions_NamingBothValues()
+    {
+        var error = Assert.Throws<InvalidOperationException>(
+            () => RunReport.RequireComparable(Snapshot("a", "m1", "qa"), Snapshot("b", "m1", "qb")));
+
+        Assert.Contains("qa", error.Message);
+        Assert.Contains("qb", error.Message);
+    }
 }

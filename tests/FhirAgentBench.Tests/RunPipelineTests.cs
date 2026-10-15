@@ -24,6 +24,9 @@ public sealed class RunPipelineTests : IDisposable
         Directory.Delete(_workspaceRoot, recursive: true);
     }
 
+    private static RunGrader GraderFor(IReadOnlyList<Question> questions) =>
+        new(questions.ToDictionary(q => q.Id, q => Oracles.Compute(Context, q)));
+
     private RunOrchestrator NewOrchestrator(IAgentHarness harness, CorpusDefinition? corpus = null) =>
         new(harness, corpus ?? Corpus, File.ReadAllText(PromptPath()), _workspaceRoot);
 
@@ -148,7 +151,7 @@ public sealed class RunPipelineTests : IDisposable
     }
 
     [Fact]
-    public async Task Grader_TreatsLockedAnswerFileAsFormatInvalid()
+    public async Task Grader_TreatsUnreadableAnswerFileAsHarnessError()
     {
         var harness = new ScriptedHarness(new Dictionary<int, (AttemptEnd, string?)>
         {
@@ -157,9 +160,37 @@ public sealed class RunPipelineTests : IDisposable
         var attempts = await NewOrchestrator(harness).RunAsync([LatestA1c], 1, _runDirectory);
         using var locked = new FileStream(Path.Combine(_runDirectory, attempts[0].AttemptDirectory, "answer.json"), FileMode.Open, FileAccess.Read, FileShare.None);
 
-        var grades = new RunGrader(Oracles, Context).Grade([LatestA1c], attempts, _runDirectory);
+        var grades = GraderFor([LatestA1c]).Grade([LatestA1c], attempts, _runDirectory);
 
-        Assert.Equal(GradeStatus.FormatInvalid, grades.Single().Status);
+        Assert.Equal(GradeStatus.HarnessError, grades.Single().Status);
+    }
+
+    [Fact]
+    public async Task Grader_ScoresFailedAnswerCopyAsHarnessError()
+    {
+        var harness = new RecordingHarness { LockAnswer = true };
+        try
+        {
+            var grades = await RunAsync(harness, repeats: 1, [LatestA1c]);
+
+            Assert.True(File.Exists(Path.Combine(_runDirectory, "attempts", "t1-a1c", "r1", RunGrader.CopyErrorFileName)));
+            Assert.Equal(GradeStatus.HarnessError, grades.Single().Status);
+        }
+        finally
+        {
+            harness.ReleaseLock();
+        }
+    }
+
+    [Fact]
+    public async Task Grader_ScoresHarnessError_WhenCopyErrorExistsBesideAValidAnswer()
+    {
+        var attempts = await NewOrchestrator(new OracleHarness(Oracles, Context)).RunAsync([LatestA1c], 1, _runDirectory);
+        await File.WriteAllTextAsync(Path.Combine(_runDirectory, attempts[0].AttemptDirectory, RunGrader.CopyErrorFileName), "disk full");
+
+        var grades = GraderFor([LatestA1c]).Grade([LatestA1c], attempts, _runDirectory);
+
+        Assert.Equal(GradeStatus.HarnessError, grades.Single().Status);
     }
 
     [Fact]
@@ -182,21 +213,21 @@ public sealed class RunPipelineTests : IDisposable
         var harness = new ScriptedHarness(new Dictionary<int, (AttemptEnd, string?)> { [1] = (AttemptEnd.Completed, answer) });
         var attempts = await NewOrchestrator(harness).RunAsync([question], 1, _runDirectory);
 
-        var ex = Assert.Throws<InvalidOperationException>(() => new RunGrader(Oracles, Context).Grade([question], attempts, _runDirectory));
+        var ex = Assert.Throws<InvalidOperationException>(() => GraderFor([question]).Grade([question], attempts, _runDirectory));
 
         Assert.Contains(question.Id, ex.Message);
         Assert.Contains("r1", ex.Message);
     }
 
     [Fact]
-    public async Task Grader_Throws_WhenOracleFails()
+    public async Task Grader_Throws_WhenGoldIsMissing()
     {
-        var question = LatestA1c with { Oracle = new OracleCall("latest-observation", OracleParameters.Empty) };
-        var attempts = await NewOrchestrator(new AbstainHarness()).RunAsync([question], 1, _runDirectory);
+        var attempts = await NewOrchestrator(new AbstainHarness()).RunAsync([LatestA1c], 1, _runDirectory);
 
-        var ex = Assert.Throws<InvalidOperationException>(() => new RunGrader(Oracles, Context).Grade([question], attempts, _runDirectory));
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => new RunGrader(new Dictionary<string, Answer>()).Grade([LatestA1c], attempts, _runDirectory));
 
-        Assert.Contains(question.Id, ex.Message);
+        Assert.Contains(LatestA1c.Id, ex.Message);
     }
 
     [Fact]
@@ -204,7 +235,7 @@ public sealed class RunPipelineTests : IDisposable
     {
         var attempts = await NewOrchestrator(new AbstainHarness()).RunAsync([LatestA1c], 1, _runDirectory);
 
-        var ex = Assert.Throws<InvalidDataException>(() => new RunGrader(Oracles, Context).Grade([Pharmacy], attempts, _runDirectory));
+        var ex = Assert.Throws<InvalidDataException>(() => GraderFor([Pharmacy]).Grade([Pharmacy], attempts, _runDirectory));
 
         Assert.Contains("t1-a1c", ex.Message);
     }
@@ -287,7 +318,7 @@ public sealed class RunPipelineTests : IDisposable
             CopyDirectory(_runDirectory, moved);
             Directory.Delete(_runDirectory, recursive: true);
 
-            var grades = new RunGrader(Oracles, Context).Grade([LatestA1c, Pharmacy], attempts, moved);
+            var grades = GraderFor([LatestA1c, Pharmacy]).Grade([LatestA1c, Pharmacy], attempts, moved);
 
             Assert.All(grades, g => Assert.Equal(GradeStatus.Correct, g.Status));
             Assert.False(Path.IsPathRooted(attempts[0].AttemptDirectory));
@@ -350,7 +381,7 @@ public sealed class RunPipelineTests : IDisposable
         questions ??= [LatestA1c, Pharmacy];
         var orchestrator = NewOrchestrator(harness);
         var attempts = await orchestrator.RunAsync(questions, repeats, _runDirectory);
-        return new RunGrader(Oracles, Context).Grade(questions, attempts, _runDirectory);
+        return GraderFor(questions).Grade(questions, attempts, _runDirectory);
     }
 
     private static string PromptPath()

@@ -336,4 +336,26 @@ public sealed class FileModelTests : IDisposable
         var ex = Assert.Throws<InvalidDataException>(() => ProfileLoader.Load(path));
         Assert.Contains("claude-code", ex.Message);
     }
+
+    [Fact]
+    public void Profile_CopilotCreditsBelowCopilotMinimum_AreRejectedWithFileName()
+    {
+        Write("prompts/default.md", "prompt");
+        var path = Write("profiles/cheap.yaml", "id: cheap\nharness: copilot-cli\nmodel: m\nprompt_template: ../prompts/default.md\nmax_ai_credits: 29\n");
+
+        var ex = Assert.Throws<InvalidDataException>(() => ProfileLoader.Load(path));
+
+        Assert.Contains(path, ex.Message);
+        Assert.Contains("max_ai_credits", ex.Message);
+        Assert.Contains("30", ex.Message);
+    }
+
+    [Fact]
+    public void Profile_CopilotCreditsAtMinimum_AreAccepted()
+    {
+        Write("prompts/default.md", "prompt");
+        var path = Write("profiles/min.yaml", "id: min\nharness: copilot-cli\nmodel: m\nprompt_template: ../prompts/default.md\nmax_ai_credits: 30\n");
+
+        Assert.Equal(30, ProfileLoader.Load(path).MaxAiCredits);
+    }
 }

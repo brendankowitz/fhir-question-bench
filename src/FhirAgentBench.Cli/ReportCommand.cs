@@ -14,21 +14,22 @@ internal static class ReportCommand
         var command = new Command("report", "Summarise a run, or compare two runs pairwise.") { first, second };
         command.SetAction(async (parse, cancellationToken) =>
         {
-            var (summaryA, gradesA) = await LoadAsync(parse.GetValue(first)!, cancellationToken);
+            var (snapshotA, summaryA, gradesA) = await LoadAsync(parse.GetValue(first)!, cancellationToken);
             if (parse.GetValue(second) is not { } secondDirectory)
             {
                 Console.WriteLine(RunReport.ToMarkdown(summaryA));
                 return 0;
             }
 
-            var (summaryB, gradesB) = await LoadAsync(secondDirectory, cancellationToken);
+            var (snapshotB, summaryB, gradesB) = await LoadAsync(secondDirectory, cancellationToken);
+            RunReport.RequireComparable(snapshotA, snapshotB);
             Console.WriteLine(RunReport.ToMarkdown(summaryA, summaryB, RunReport.Compare(gradesA, gradesB)));
             return 0;
         });
         return command;
     }
 
-    private static async Task<(RunSummary, IReadOnlyList<GradeRecord>)> LoadAsync(string runDirectory, CancellationToken cancellationToken)
+    private static async Task<(RunSnapshot, RunSummary, IReadOnlyList<GradeRecord>)> LoadAsync(string runDirectory, CancellationToken cancellationToken)
     {
         var snapshot = await RunSnapshot.ReadAsync(runDirectory, cancellationToken);
         var gradesPath = Path.Combine(runDirectory, "grades.jsonl");
@@ -41,6 +42,6 @@ internal static class ReportCommand
             .Where(line => line.Length > 0)
             .Select(line => JsonSerializer.Deserialize<GradeRecord>(line, JsonOptions.Default)!)
             .ToList();
-        return (RunReport.Summarize(snapshot.RunId, snapshot.ProfileId, grades), grades);
+        return (snapshot, RunReport.Summarize(snapshot.RunId, snapshot.ProfileId, grades), grades);
     }
 }

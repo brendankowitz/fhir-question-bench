@@ -123,4 +123,44 @@ public sealed class AdmitCommandTests : IDisposable
         Assert.Equal("keep", locked["other"]);
         Assert.Equal(HashOf("a"), locked["a"]);
     }
+
+    [Fact]
+    public void ComputeLockedGold_ReturnsGold_WhenEveryHashMatches()
+    {
+        var gold = Admitter.ComputeLockedGold([Unanswerable("a")], new Dictionary<string, string> { ["a"] = HashOf("a") }, LockPath);
+
+        Assert.Equal(AnswerStatus.InsufficientData, gold["a"].Status);
+    }
+
+    [Fact]
+    public void ComputeLockedGold_RefusesDrift()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Admitter.ComputeLockedGold(
+            [Unanswerable("a")], new Dictionary<string, string> { ["a"] = "stale" }, LockPath));
+
+        Assert.Contains("a: gold drift", ex.Message);
+        Assert.Contains("fab admit", ex.Message);
+        Assert.Contains("--update-lock", ex.Message);
+    }
+
+    [Fact]
+    public void ComputeLockedGold_RefusesQuestionMissingFromLock()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Admitter.ComputeLockedGold(
+            [Unanswerable("a"), Unanswerable("b")], new Dictionary<string, string> { ["a"] = HashOf("a") }, LockPath));
+
+        Assert.Contains("b: not in the gold lock", ex.Message);
+        Assert.DoesNotContain("  a:", ex.Message);
+    }
+
+    [Fact]
+    public void ComputeLockedGold_ReportsOracleFailure()
+    {
+        var broken = Unanswerable("a", tier: 1) with { Oracle = new OracleCall("latest-observation", OracleParameters.Empty) };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Admitter.ComputeLockedGold(
+            [broken], new Dictionary<string, string> { ["a"] = "any" }, LockPath));
+
+        Assert.Contains("oracle failed", ex.Message);
+    }
 }

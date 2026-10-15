@@ -1,10 +1,4 @@
-# Generated private oracle keys and one-off agent workspaces
-private/
-prepared/
-artifacts/
-gold.jsonl
-gold-*.jsonl
-run-traces/
+# Run folders if --runs-dir points inside the repo (the default is %LOCALAPPDATA%\fab\runs)
 runs/
 .test-work*/
 bin/

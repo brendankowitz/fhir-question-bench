@@ -8,7 +8,7 @@ public sealed class RunSnapshotTests
     public async Task Snapshot_RoundTrips()
     {
         var directory = Directory.CreateTempSubdirectory("fab-snap-").FullName;
-        var snapshot = new RunSnapshot("r", "p1", "aa", "c", "bb", ["q1", "q2"], "cc", 3, "GitHub Copilot CLI 1.0.96.", "abc123", DateTimeOffset.UnixEpoch);
+        var snapshot = new RunSnapshot("r", "p1", "aa", "c", "bb", ["q1", "q2"], "cc", "dd", 3, "GitHub Copilot CLI 1.0.96.", "abc123", DateTimeOffset.UnixEpoch);
 
         await snapshot.WriteAsync(directory);
         var read = await RunSnapshot.ReadAsync(directory);

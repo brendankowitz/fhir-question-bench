@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using FhirAgentBench.Answers;
+using FhirAgentBench.Authoring;
 using FhirAgentBench.Corpus;
 using FhirAgentBench.Execution;
 using FhirAgentBench.Oracles;
@@ -46,13 +47,17 @@ internal static class RunCommand
                 return 2;
             }
 
+            var harnessVersion = profile.Harness == Profile.CopilotCli
+                ? await CopilotVersion.CaptureAsync(profile.Executable, cancellationToken)
+                : null;
+            var manifest = VerifiedManifest(corpus);
+
             Console.WriteLine($"Loading corpus '{corpus.Id}'...");
             var context = new OracleContext(CorpusIndex.Load(corpus.DataDirectory), corpus.Now, corpus.MrnSystem);
             var oracles = OracleRegistry.CreateDefault();
+            var lockPath = Path.Combine(parse.GetValue(questionsDir)!, GoldLock.FileName);
+            var gold = new GoldAdmitter(oracles, context).ComputeLockedGold(questions, GoldLock.Load(lockPath), lockPath);
             var harness = await HarnessFactory.CreateAsync(profile, corpus, oracles, context, cancellationToken);
-            var harnessVersion = profile.Harness == Profile.CopilotCli
-                ? await ProcessRunner.CaptureAsync(profile.Executable, ["--version"], cancellationToken)
-                : null;
             var promptTemplate = await File.ReadAllTextAsync(profile.PromptTemplatePath, cancellationToken);
 
             var runId = NewRunId(profile.Id);
@@ -62,9 +67,10 @@ internal static class RunCommand
                     profile.Id,
                     RunSnapshot.HashFiles([profile.SourcePath, profile.PromptTemplatePath]),
                     corpus.Id,
-                    CorpusManifest.Load(corpus.ManifestPath).Sha256,
+                    manifest.Sha256,
                     questions.Select(q => q.Id).ToList(),
                     RunSnapshot.HashFiles(questions.Select(q => q.SourcePath)),
+                    RunSnapshot.HashFiles([lockPath]),
                     k,
                     harnessVersion,
                     Environment.GetEnvironmentVariable("FAB_CLI_ON_FHIR_COMMIT"),
@@ -74,7 +80,7 @@ internal static class RunCommand
             Console.WriteLine($"Run {runId}: {questions.Count} questions x {k} -> {runDirectory}");
             var attempts = await new RunOrchestrator(harness, corpus, promptTemplate)
                 .RunAsync(questions, k, runDirectory, cancellationToken);
-            var grades = new RunGrader(oracles, context).Grade(questions, attempts, runDirectory);
+            var grades = new RunGrader(gold).Grade(questions, attempts, runDirectory);
             await File.WriteAllLinesAsync(
                 Path.Combine(runDirectory, "grades.jsonl"),
                 grades.Select(g => JsonSerializer.Serialize(g, JsonOptions.Default)),
@@ -83,6 +89,17 @@ internal static class RunCommand
             return grades.Any(g => g.Status is GradeStatus.HarnessError or GradeStatus.TurnLimit) ? 3 : 0;
         });
         return command;
+    }
+
+    private static CorpusManifest VerifiedManifest(CorpusDefinition corpus)
+    {
+        var manifest = CorpusManifest.Load(corpus.ManifestPath);
+        var problems = manifest.Verify(corpus.DataDirectory);
+        return problems.Count == 0
+            ? manifest
+            : throw new InvalidOperationException(
+                $"Corpus '{corpus.Id}' does not match {corpus.ManifestPath}:{Environment.NewLine}  {string.Join(Environment.NewLine + "  ", problems)}{Environment.NewLine}" +
+                "Re-fetch it with 'fab corpus fetch' and check it with 'fab corpus verify'.");
     }
 
     internal static bool RequiresConfirmation(Profile profile) => profile.Harness == Profile.CopilotCli;

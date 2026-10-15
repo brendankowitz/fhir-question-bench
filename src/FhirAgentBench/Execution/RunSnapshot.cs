@@ -11,6 +11,7 @@ public sealed record RunSnapshot(
     string CorpusManifestSha256,
     IReadOnlyList<string> QuestionIds,
     string QuestionsSha256,
+    string? GoldLockSha256,
     int Repeats,
     string? HarnessVersion,
     string? CliOnFhirCommit,

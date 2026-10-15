@@ -52,11 +52,9 @@ internal sealed class ProcessTree : IDisposable
                 _process.Kill(entireProcessTree: true);
             }
         }
-        catch (InvalidOperationException)
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
-        }
-        catch (System.ComponentModel.Win32Exception)
-        {
+            // The tree already exited (or is exiting); there is nothing left to terminate.
         }
     }
 

@@ -24,7 +24,7 @@ internal static class AdmitCommand
         {
             var corpus = CorpusDefinition.Load(parse.GetValue(corpusDir)!);
             var questions = QuestionLoader.LoadSet(parse.GetValue(questionsDir)!, parse.GetValue(set)!);
-            var lockPath = Path.Combine(parse.GetValue(questionsDir)!, "gold.lock.json");
+            var lockPath = Path.Combine(parse.GetValue(questionsDir)!, GoldLock.FileName);
             var admitter = new GoldAdmitter(OracleRegistry.CreateDefault(), new OracleContext(CorpusIndex.Load(corpus.DataDirectory), corpus.Now, corpus.MrnSystem));
             return Execute(admitter, questions, lockPath, parse.GetValue(updateLock), parse.GetValue(show), Console.Out, Console.Error);
         });

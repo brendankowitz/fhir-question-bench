@@ -46,6 +46,26 @@ public static class RunReport
         return new PairedComparison(pairs.Count, bothCorrect, onlyA, onlyB, pairs.Count - bothCorrect - onlyA - onlyB, difference, McNemar.ExactTwoSided(onlyA, onlyB));
     }
 
+    public static void RequireComparable(RunSnapshot a, RunSnapshot b)
+    {
+        var differences = new List<string>();
+        if (a.CorpusManifestSha256 != b.CorpusManifestSha256)
+        {
+            differences.Add($"corpus manifest {a.CorpusManifestSha256} vs {b.CorpusManifestSha256}");
+        }
+
+        if (a.QuestionsSha256 != b.QuestionsSha256)
+        {
+            differences.Add($"questions {a.QuestionsSha256} vs {b.QuestionsSha256}");
+        }
+
+        if (differences.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Runs {a.RunId} and {b.RunId} cannot be compared: they used different inputs ({string.Join("; ", differences)}).");
+        }
+    }
+
     public static string ToMarkdown(RunSummary summary)
     {
         var harnessErrors = summary.ByStatus.GetValueOrDefault(GradeStatus.HarnessError);

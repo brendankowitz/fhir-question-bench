@@ -13,6 +13,7 @@ public sealed class LatestObservationOracle : IOracle
         var patient = context.PatientKey(question.Patient);
         var latest = Observations.Valid(context, patient, question.Oracle.Parameters.GetString("loinc"))
             .OrderByDescending(o => o.When)
+            .ThenBy(o => o.Key, StringComparer.Ordinal)
             .FirstOrDefault();
         return latest is null
             ? Answer.Of(null, [])

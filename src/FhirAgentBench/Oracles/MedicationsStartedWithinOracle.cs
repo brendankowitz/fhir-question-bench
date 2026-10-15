@@ -13,23 +13,26 @@ public sealed class MedicationsStartedWithinOracle : IOracle
         var parameters = question.Oracle.Parameters;
         var from = context.Now.AddDays(-parameters.GetInt("window_days"));
         var requiredStatus = parameters.GetOptionalString("status");
-        var codes = new SortedSet<string>(StringComparer.Ordinal);
+
+        var ordersByCode = context.Corpus.ForPatient(context.PatientKey(question.Patient), "MedicationRequest")
+            .Where(Medications.IsCountableOrder)
+            .Select(r => new { Resource = r, When = FhirTime.Effective(r), Code = Medications.RxNormCode(context.Corpus, r) })
+            .Where(r => r.Code is not null && r.When is not null && r.When <= context.Now)
+            .GroupBy(r => r.Code!, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal);
+
+        var codes = new List<string>();
         var evidence = new List<string>();
-        foreach (var request in context.Corpus.ForPatient(context.PatientKey(question.Patient), "MedicationRequest"))
+        foreach (var orders in ordersByCode)
         {
-            var status = FhirElements.String(request, "status");
-            if (status == "entered-in-error"
-                || (requiredStatus is not null && status != requiredStatus)
-                || FhirTime.Effective(request) is not { } when
-                || when <= from
-                || when > context.Now
-                || Medications.RxNormCode(context.Corpus, request) is not { } code)
+            if (orders.Min(o => o.When) <= from
+                || (requiredStatus is not null && !orders.Any(o => FhirElements.String(o.Resource, "status") == requiredStatus)))
             {
                 continue;
             }
 
-            codes.Add(code);
-            evidence.Add(CorpusIndex.KeyOf(request));
+            codes.Add(orders.Key);
+            evidence.AddRange(orders.Select(o => CorpusIndex.KeyOf(o.Resource)));
         }
 
         return Answer.Of(codes.Select(code => new { system = FhirElements.RxNorm, code }).ToList(), evidence);

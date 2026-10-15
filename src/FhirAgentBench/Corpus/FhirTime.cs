@@ -48,7 +48,7 @@ public static class FhirTime
     }
 
     public static string ToDate(DateTimeOffset value) =>
-        value.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     public static int AgeInYears(string birthDate, DateTimeOffset now)
     {

@@ -45,7 +45,7 @@ public sealed class OracleTests
     [Fact]
     public void WindowStats_MeanAndCountWithinWindow()
     {
-        var parameters = new Dictionary<string, object> { ["loinc"] = "2339-0", ["window_days"] = "1", ["statistic"] = "mean" };
+        var parameters = new Dictionary<string, object> { ["loinc"] = "2339-0", ["window_days"] = "1", ["statistic"] = "mean", ["unit"] = "mg/dL" };
         var mean = Oracles.Compute(Context, Ask("observation-window-stats", "MRN-ADA", parameters));
         parameters["statistic"] = "count";
         var count = Oracles.Compute(Context, Ask("observation-window-stats", "MRN-ADA", parameters));
@@ -92,6 +92,7 @@ public sealed class OracleTests
         {
             ["snomed"] = new List<object> { "44054006" },
             ["loinc"] = "4548-4",
+            ["unit"] = "%",
             ["threshold"] = "9",
             ["window_days"] = "365",
             ["age_min"] = "18",

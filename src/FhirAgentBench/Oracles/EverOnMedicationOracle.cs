@@ -12,9 +12,11 @@ public sealed class EverOnMedicationOracle : IOracle
     {
         var codes = question.Oracle.Parameters.GetStrings("rxnorm").ToHashSet(StringComparer.Ordinal);
         var orders = context.Corpus.ForPatient(context.PatientKey(question.Patient), "MedicationRequest")
-            .Where(r => FhirElements.String(r, "status") != "entered-in-error")
-            .Select(r => new { Resource = r, When = FhirTime.Effective(r), Code = Medications.RxNormCode(context.Corpus, r) })
-            .Where(r => r.Code is not null && codes.Contains(r.Code) && r.When is not null && r.When <= context.Now)
+            .Where(Medications.IsCountableOrder)
+            .Select(r => new { Resource = r, When = FhirTime.Effective(r) })
+            .Where(r => r.When is not null
+                && r.When <= context.Now
+                && Medications.RxNormCodes(context.Corpus, r.Resource).Any(codes.Contains))
             .OrderBy(r => r.When)
             .ToList();
         var first = orders.Count > 0 ? FhirTime.ToDate(orders[0].When!.Value) : null;

@@ -90,6 +90,18 @@ internal static class AdmitCommand
             {
                 foreach (var result in results.Where(r => r.GoldHash.Length > 0))
                 {
+                    if (locked.TryGetValue(result.QuestionId, out var previous))
+                    {
+                        if (previous != result.GoldHash)
+                        {
+                            output.WriteLine($"UPDATED {result.QuestionId}: {Short(previous)} -> {Short(result.GoldHash)}");
+                        }
+                    }
+                    else
+                    {
+                        output.WriteLine($"NEW {result.QuestionId}: {Short(result.GoldHash)}");
+                    }
+
                     locked[result.QuestionId] = result.GoldHash;
                 }
 
@@ -97,11 +109,14 @@ internal static class AdmitCommand
                 output.WriteLine($"Updated {lockPath}.");
             }
         }
-        else if (!hasLock && failed == 0)
+        else if (!hasLock)
         {
-            output.WriteLine($"{lockPath} is empty; run with --update-lock to lock these answers.");
+            error.WriteLine($"Gold lock '{lockPath}' is empty or missing, so nothing is checked for drift. Run with --update-lock to bootstrap it.");
+            return 1;
         }
 
         return failed == 0 ? 0 : 1;
     }
+
+    private static string Short(string hash) => hash.Length <= 12 ? hash : hash[..12];
 }

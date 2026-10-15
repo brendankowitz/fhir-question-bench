@@ -152,6 +152,21 @@ public sealed class FileModelTests : IDisposable
         Assert.Empty(server.Tools);
     }
 
+    [Theory]
+    [InlineData("..")]
+    [InlineData(".")]
+    [InlineData("a/b")]
+    [InlineData("a b")]
+    public void Profile_UnsafeId_IsRejectedWithFileName(string id)
+    {
+        Write("prompts/default.md", "prompt");
+        var path = Write("profiles/unsafe.yaml", $"id: \"{id}\"\nharness: oracle\nprompt_template: ../prompts/default.md\n");
+
+        var ex = Assert.Throws<InvalidDataException>(() => ProfileLoader.Load(path));
+
+        Assert.Contains("unsafe.yaml", ex.Message);
+    }
+
     [Fact]
     public void QuestionSet_MissingQuestionFile_NamesSetAndId()
     {

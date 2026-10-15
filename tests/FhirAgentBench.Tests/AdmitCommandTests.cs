@@ -40,12 +40,26 @@ public sealed class AdmitCommandTests : IDisposable
     private string HashOf(string id) => Admitter.Admit(Unanswerable(id), null).GoldHash;
 
     [Fact]
-    public void EmptyLock_WithoutFlag_DoesNotWriteLock()
+    public void EmptyLock_WithoutFlag_FailsAndDoesNotWriteLock()
     {
         var result = Run([Unanswerable("a")]);
 
-        Assert.Equal(0, result.Exit);
+        Assert.Equal(1, result.Exit);
+        Assert.Contains("--update-lock", result.Err);
         Assert.False(File.Exists(LockPath));
+    }
+
+    [Fact]
+    public void UpdateLock_PrintsOnlyChangedEntries()
+    {
+        GoldLock.Save(LockPath, new Dictionary<string, string> { ["same"] = HashOf("same"), ["drift"] = "stale" });
+
+        var result = Run([Unanswerable("same"), Unanswerable("drift"), Unanswerable("fresh")], updateLock: true);
+
+        Assert.Contains($"UPDATED drift: stale -> {HashOf("drift")[..12]}", result.Out);
+        Assert.Contains($"NEW fresh: {HashOf("fresh")[..12]}", result.Out);
+        Assert.DoesNotContain("UPDATED same", result.Out);
+        Assert.DoesNotContain("NEW same", result.Out);
     }
 
     [Fact]

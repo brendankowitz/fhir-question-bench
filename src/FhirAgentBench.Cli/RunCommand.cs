@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Text.Json;
+using FhirAgentBench.Answers;
 using FhirAgentBench.Corpus;
 using FhirAgentBench.Execution;
 using FhirAgentBench.Oracles;
@@ -23,15 +24,12 @@ internal static class RunCommand
             DefaultValueFactory = _ => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "fab", "runs"),
         };
         var yes = new Option<bool>("--yes") { Description = "Confirm the paid run after reading the cost estimate." };
-        var command = new Command("run", "Run a profile over a question set, then grade and summarise it.")
+        var command = new Command("run", "Run a profile over a question set, then grade and summarise it. Exit codes: 0 success; 1 error; 2 usage or paid run not confirmed with --yes; 3 completed but some attempts were harness_error or turn_limit.")
         {
             profilePath, corpusDir, set, questionsDir, repeats, runsDir, yes,
         };
         command.SetAction(async (parse, cancellationToken) =>
         {
-            var profile = ProfileLoader.Load(parse.GetValue(profilePath)!);
-            var corpus = CorpusDefinition.Load(parse.GetValue(corpusDir)!);
-            var questions = QuestionLoader.LoadSet(parse.GetValue(questionsDir)!, parse.GetValue(set)!);
             var k = parse.GetValue(repeats);
             if (k < 1)
             {
@@ -39,7 +37,10 @@ internal static class RunCommand
                 return 2;
             }
 
-            if (profile.Harness == Profile.CopilotCli && !parse.GetValue(yes))
+            var profile = ProfileLoader.Load(parse.GetValue(profilePath)!);
+            var corpus = CorpusDefinition.Load(parse.GetValue(corpusDir)!);
+            var questions = QuestionLoader.LoadSet(parse.GetValue(questionsDir)!, parse.GetValue(set)!);
+            if (RequiresConfirmation(profile) && !parse.GetValue(yes))
             {
                 Console.Error.WriteLine($"{questions.Count * k} attempts, each capped at {profile.MaxAiCredits} AI credits (worst case {questions.Count * k * profile.MaxAiCredits}). Re-run with --yes to start.");
                 return 2;
@@ -54,8 +55,8 @@ internal static class RunCommand
                 : null;
             var promptTemplate = await File.ReadAllTextAsync(profile.PromptTemplatePath, cancellationToken);
 
-            var runId = $"{DateTime.UtcNow:yyyyMMdd-HHmmss}-{profile.Id}";
-            var runDirectory = Directory.CreateDirectory(Path.Combine(parse.GetValue(runsDir)!, runId)).FullName;
+            var runId = NewRunId(profile.Id);
+            var runDirectory = CreateRunDirectory(parse.GetValue(runsDir)!, runId);
             await new RunSnapshot(
                     runId,
                     profile.Id,
@@ -79,8 +80,24 @@ internal static class RunCommand
                 grades.Select(g => JsonSerializer.Serialize(g, JsonOptions.Default)),
                 cancellationToken);
             Console.WriteLine(RunReport.ToMarkdown(RunReport.Summarize(runId, profile.Id, grades)));
-            return 0;
+            return grades.Any(g => g.Status is GradeStatus.HarnessError or GradeStatus.TurnLimit) ? 3 : 0;
         });
         return command;
+    }
+
+    internal static bool RequiresConfirmation(Profile profile) => profile.Harness == Profile.CopilotCli;
+
+    internal static string NewRunId(string profileId) =>
+        $"{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}-{profileId}-{Guid.NewGuid().ToString("N")[..4]}";
+
+    internal static string CreateRunDirectory(string runsDirectory, string runId)
+    {
+        var path = Path.GetFullPath(Path.Combine(runsDirectory, runId));
+        if (Directory.Exists(path))
+        {
+            throw new InvalidOperationException($"Run directory '{path}' already exists. Each run needs a fresh run directory.");
+        }
+
+        return Directory.CreateDirectory(path).FullName;
     }
 }

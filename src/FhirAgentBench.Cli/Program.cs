@@ -11,7 +11,8 @@ try
 {
     return await root.Parse(args).InvokeAsync(new InvocationConfiguration { EnableDefaultExceptionHandler = false });
 }
-catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or IOException or HttpRequestException or System.ComponentModel.Win32Exception)
+catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or IOException or HttpRequestException
+    or System.ComponentModel.Win32Exception or System.Text.Json.JsonException or UnauthorizedAccessException)
 {
     await Console.Error.WriteLineAsync($"error: {ex.Message}");
     return 1;

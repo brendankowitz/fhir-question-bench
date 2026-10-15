@@ -20,6 +20,12 @@ public static class ProfileLoader
             throw new InvalidDataException($"'{path}': model is required for the {Profile.CopilotCli} harness.");
         }
 
+        if (dto.Id is not null && !IsSafePathSegment(dto.Id))
+        {
+            throw new InvalidDataException(
+                $"'{path}': id '{dto.Id}' must contain only letters, digits, '-', '_' and '.', and not be '.' or '..', because it names run folders.");
+        }
+
         var prompt = Path.GetFullPath(Path.Combine(
             Path.GetDirectoryName(Path.GetFullPath(path))!,
             dto.PromptTemplate ?? throw new InvalidDataException($"'{path}': prompt_template is required.")));
@@ -48,6 +54,9 @@ public static class ProfileLoader
             SourcePath = Path.GetFullPath(path),
         };
     }
+
+    private static bool IsSafePathSegment(string id) =>
+        id.Length > 0 && id is not ("." or "..") && id.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.');
 
     private sealed class ProfileDto
     {

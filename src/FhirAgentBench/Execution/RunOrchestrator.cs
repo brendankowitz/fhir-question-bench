@@ -35,10 +35,11 @@ public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corp
                 }
 
                 Directory.CreateDirectory(attemptDirectory);
-                var prompt = PromptRenderer.Render(promptTemplate, question, corpus);
+                var workspace = Directory.CreateDirectory(Path.Combine(_workspaceRoot, Guid.NewGuid().ToString("N"))).FullName;
+                var prompt = PromptRenderer.Render(promptTemplate, question, corpus, workspace);
                 await File.WriteAllTextAsync(Path.Combine(attemptDirectory, "prompt.md"), prompt, cancellationToken).ConfigureAwait(false);
 
-                var outcome = await RunInWorkspaceAsync(question, repeat, attemptDirectory, prompt, cancellationToken).ConfigureAwait(false);
+                var outcome = await RunInWorkspaceAsync(question, repeat, attemptDirectory, workspace, prompt, cancellationToken).ConfigureAwait(false);
 
                 var changes = guard.Changes();
                 if (changes.Count > 0)
@@ -59,9 +60,8 @@ public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corp
     }
 
     private async Task<AttemptOutcome> RunInWorkspaceAsync(
-        Question question, int repeat, string attemptDirectory, string prompt, CancellationToken cancellationToken)
+        Question question, int repeat, string attemptDirectory, string workspace, string prompt, CancellationToken cancellationToken)
     {
-        var workspace = Directory.CreateDirectory(Path.Combine(_workspaceRoot, Guid.NewGuid().ToString("N"))).FullName;
         try
         {
             return await harness.RunAsync(new AttemptRequest(question, repeat, attemptDirectory, workspace, prompt), cancellationToken)

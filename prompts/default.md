@@ -1,6 +1,6 @@
 You are helping a clinician answer a question from patient records.
 
-The records are FHIR R4 JSON files in this read-only folder: {{corpus_dir}}
+The records are FHIR R4 JSON files in this read-only folder: {{corpus_dir}}. Never change into the records folder or write inside it.
 Treat now as {{now}}.
 {{patient}}
 
@@ -10,7 +10,7 @@ The question comes from a {{persona}} colleague:
 
 ## How to answer
 
-Write your final answer to the file `answer.json` in the current working directory:
+Write your final answer to the file `{{workspace}}/answer.json` (an absolute path; do not write anywhere else):
 
 {"status": "answered", "answer": <answer>, "evidence": ["<ResourceType>/<id>", "<ResourceType>?<search>", "..."]}
 

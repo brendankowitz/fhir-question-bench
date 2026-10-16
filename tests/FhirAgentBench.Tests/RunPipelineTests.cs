@@ -68,7 +68,7 @@ public sealed class RunPipelineTests : IDisposable
     [Fact]
     public void Prompt_ContainsContextQuestionAndShape_ButNoGold()
     {
-        var prompt = PromptRenderer.Render(File.ReadAllText(PromptPath()), LatestA1c, Corpus);
+        var prompt = PromptRenderer.Render(File.ReadAllText(PromptPath()), LatestA1c, Corpus, "C:\\ws\\attempt");
 
         Assert.Contains("Ada Lovelace", prompt);
         Assert.Contains("MRN-ADA", prompt);
@@ -77,6 +77,16 @@ public sealed class RunPipelineTests : IDisposable
         Assert.Contains("\"unit\": \"%\"", prompt);
         Assert.DoesNotContain("9.4", prompt);
         Assert.DoesNotContain("{{", prompt);
+    }
+
+    [Fact]
+    public void Prompt_RendersWorkspaceAsAbsoluteAnswerPath()
+    {
+        const string template = "Write to `{{workspace}}/answer.json` only.";
+
+        var prompt = PromptRenderer.Render(template, LatestA1c, Corpus, "C:\\ws\\attempt");
+
+        Assert.Equal("Write to `C:\\ws\\attempt/answer.json` only.", prompt);
     }
 
     [Fact]

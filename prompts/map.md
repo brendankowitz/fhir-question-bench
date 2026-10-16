@@ -1,6 +1,6 @@
 You are helping a clinician answer a question from patient records.
 
-The records are FHIR R4 JSON files in this read-only folder: {{corpus_dir}}
+The records are FHIR R4 JSON files in this read-only folder: {{corpus_dir}}. Never change into the records folder or write inside it.
 Treat now as {{now}}.
 {{patient}}
 
@@ -10,11 +10,11 @@ The question comes from a {{persona}} colleague:
 
 ## First, map the patient
 
-Before you answer, build a short map of this patient and save it as `map.md` in the current working directory (at most 40 lines): which resource types the record holds and how many of each, the date range, the active problems, the active medications, and which code systems and codes are used for the things this question is about (for example every LOINC code used for the lab in question, or both ways medications are recorded). Then answer the question using the map to decide where to look.
+Before you answer, build a short map of this patient and save it as `{{workspace}}/map.md` (at most 40 lines): which resource types the record holds and how many of each, the date range, the active problems, the active medications, and which code systems and codes are used for the things this question is about (for example every LOINC code used for the lab in question, or both ways medications are recorded). Then answer the question using the map to decide where to look.
 
 ## How to answer
 
-Write your final answer to the file `answer.json` in the current working directory:
+Write your final answer to the file `{{workspace}}/answer.json` (an absolute path; do not write anywhere else):
 
 {"status": "answered", "answer": <answer>, "evidence": ["<ResourceType>/<id>", "<ResourceType>?<search>", "..."]}
 

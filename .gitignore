@@ -6,3 +6,5 @@ obj/
 .vs/
 corpora/*/data/
 __pycache__/
+# External suites: generated questions, gold and locks are never committed
+suites/*/generated/

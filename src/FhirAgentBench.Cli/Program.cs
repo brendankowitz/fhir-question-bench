@@ -6,6 +6,7 @@ root.Subcommands.Add(CorpusCommands.Create());
 root.Subcommands.Add(AdmitCommand.Create());
 root.Subcommands.Add(RunCommand.Create());
 root.Subcommands.Add(ReportCommand.Create());
+root.Subcommands.Add(ImportCommand.Create());
 
 try
 {

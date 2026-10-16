@@ -1,0 +1,13 @@
+# FHIR-AgentBench (CC-BY-4.0) questions over the MIMIC-IV Clinical Database Demo on FHIR 2.1.0.
+# `fab import fhir-agentbench` downloads the CSV at this commit, checks its sha256 and writes everything under `output`
+# (gitignored: it holds the gold). Command-line --split, --sample and --seed override the defaults below.
+source:
+  repository: glee4810/FHIR-AgentBench
+  commit: bbb42909a5a7eb907d1cd91f72a560729e7037ea
+  path: final_dataset/questions_answers_sql_fhir.csv
+  sha256: e2045692fef7f5f4f77496935160f5fc727e162d213e94feed61401948e512a0
+corpus: ../../corpora/mimic-iv-fhir-demo-2.1.0
+output: generated
+split: test
+sample: 80
+seed: 20261016

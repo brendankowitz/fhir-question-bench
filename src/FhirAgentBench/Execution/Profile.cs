@@ -2,6 +2,8 @@ namespace FhirAgentBench.Execution;
 
 public sealed record McpServer(string Command, IReadOnlyList<string> Args, IReadOnlyList<string> Tools);
 
+public sealed record WarmContext(string Command, IReadOnlyList<string> Args, int TimeoutSeconds, int MaxBytes);
+
 public sealed record Profile
 {
     public const string CopilotCli = "copilot-cli";
@@ -21,6 +23,8 @@ public sealed record Profile
     public IReadOnlyList<string> BuiltinTools { get; init; } = [];
 
     public IReadOnlyDictionary<string, McpServer> McpServers { get; init; } = new Dictionary<string, McpServer>();
+
+    public WarmContext? WarmContext { get; init; }
 
     public required string PromptTemplatePath { get; init; }
 

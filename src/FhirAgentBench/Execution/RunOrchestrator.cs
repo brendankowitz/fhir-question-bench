@@ -4,9 +4,13 @@ using FhirAgentBench.Questions;
 
 namespace FhirAgentBench.Execution;
 
-public sealed record AttemptRecord(string QuestionId, int Repeat, AttemptEnd End, double DurationSeconds, string? Detail, string AttemptDirectory);
+/// <summary>WarmBytes and WarmSeconds describe the patient map in the prompt; WarmSeconds is 0 when the map came from the per-patient cache.</summary>
+public sealed record AttemptRecord(
+    string QuestionId, int Repeat, AttemptEnd End, double DurationSeconds, string? Detail, string AttemptDirectory,
+    int? WarmBytes = null, double? WarmSeconds = null);
 
-public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corpus, string promptTemplate, string? workspaceRoot = null)
+public sealed class RunOrchestrator(
+    IAgentHarness harness, CorpusDefinition corpus, string promptTemplate, string? workspaceRoot = null, WarmContextRunner? warmContext = null)
 {
     private readonly string _workspaceRoot = workspaceRoot
         ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "fab", "ws");
@@ -36,10 +40,26 @@ public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corp
 
                 Directory.CreateDirectory(attemptDirectory);
                 var workspace = Directory.CreateDirectory(Path.Combine(_workspaceRoot, Guid.NewGuid().ToString("N"))).FullName;
-                var prompt = PromptRenderer.Render(promptTemplate, question, corpus, workspace);
-                await File.WriteAllTextAsync(Path.Combine(attemptDirectory, "prompt.md"), prompt, cancellationToken).ConfigureAwait(false);
+                PatientMap? map = null;
+                var warmSeconds = 0.0;
+                AttemptOutcome outcome;
+                try
+                {
+                    if (warmContext is not null && await warmContext.GetAsync(question, attemptDirectory, cancellationToken).ConfigureAwait(false) is var (warm, fromCache))
+                    {
+                        map = warm;
+                        warmSeconds = fromCache ? 0 : warm.Duration.TotalSeconds;
+                    }
 
-                var outcome = await RunInWorkspaceAsync(question, repeat, attemptDirectory, workspace, prompt, cancellationToken).ConfigureAwait(false);
+                    var prompt = PromptRenderer.Render(promptTemplate, question, corpus, workspace, map?.Text ?? "");
+                    await File.WriteAllTextAsync(Path.Combine(attemptDirectory, "prompt.md"), prompt, cancellationToken).ConfigureAwait(false);
+                    outcome = await RunInWorkspaceAsync(question, repeat, attemptDirectory, workspace, prompt, cancellationToken).ConfigureAwait(false);
+                }
+                catch (WarmContextException ex)
+                {
+                    DeleteWorkspace(workspace, attemptDirectory);
+                    outcome = new AttemptOutcome(AttemptEnd.Failed, TimeSpan.Zero, ex.Message);
+                }
 
                 var changes = guard.Changes();
                 if (changes.Count > 0)
@@ -49,7 +69,8 @@ public sealed class RunOrchestrator(IAgentHarness harness, CorpusDefinition corp
                         "Run 'fab corpus verify' and re-fetch the corpus before running again.");
                 }
 
-                var record = new AttemptRecord(question.Id, repeat, outcome.End, outcome.Duration.TotalSeconds, outcome.Detail, relativeDirectory);
+                var record = new AttemptRecord(question.Id, repeat, outcome.End, outcome.Duration.TotalSeconds, outcome.Detail, relativeDirectory,
+                    map?.Bytes, map is null ? null : warmSeconds);
                 records.Add(record);
                 await File.AppendAllTextAsync(log, JsonSerializer.Serialize(record, JsonOptions.Default) + "\n", cancellationToken)
                     .ConfigureAwait(false);

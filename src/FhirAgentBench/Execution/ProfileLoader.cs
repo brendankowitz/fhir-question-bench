@@ -6,6 +6,10 @@ public static class ProfileLoader
 {
     private const int MinimumCopilotAiCredits = 30;
 
+    private const int DefaultWarmTimeoutSeconds = 120;
+
+    private const int DefaultWarmMaxBytes = 8000;
+
     private static readonly string[] KnownHarnesses = [Profile.CopilotCli, Profile.Oracle, Profile.Abstain];
 
     public static Profile Load(string path)
@@ -42,6 +46,14 @@ public static class ProfileLoader
             throw new InvalidDataException($"'{path}': prompt template '{prompt}' does not exist.");
         }
 
+        var warmContext = LoadWarmContext(path, dto.WarmContext);
+        var usesPatientMap = File.ReadAllText(prompt).Contains(PromptRenderer.PatientMapPlaceholder, StringComparison.Ordinal);
+        if ((warmContext is not null) != usesPatientMap)
+        {
+            throw new InvalidDataException(
+                $"'{path}': warm_context and the {PromptRenderer.PatientMapPlaceholder} placeholder in '{prompt}' must be used together, otherwise the map is either computed and dropped or the prompt shows an empty map.");
+        }
+
         return new Profile
         {
             Id = dto.Id ?? throw new InvalidDataException($"'{path}': id is required."),
@@ -56,11 +68,33 @@ public static class ProfileLoader
                     s.Value?.Command ?? throw new InvalidDataException($"'{path}': mcp_servers.{s.Key}.command is required."),
                     s.Value.Args ?? [],
                     s.Value.Tools ?? [])),
+            WarmContext = warmContext,
             PromptTemplatePath = prompt,
             MaxAiCredits = dto.MaxAiCredits ?? MinimumCopilotAiCredits,
             TimeoutMinutes = dto.TimeoutMinutes ?? 20,
             SourcePath = Path.GetFullPath(path),
         };
+    }
+
+    private static WarmContext? LoadWarmContext(string path, WarmContextDto? dto)
+    {
+        if (dto is null)
+        {
+            return null;
+        }
+
+        var timeout = dto.TimeoutSeconds ?? DefaultWarmTimeoutSeconds;
+        var maxBytes = dto.MaxBytes ?? DefaultWarmMaxBytes;
+        if (timeout < 1 || maxBytes < 1)
+        {
+            throw new InvalidDataException($"'{path}': warm_context.timeout_seconds and warm_context.max_bytes must be at least 1.");
+        }
+
+        return new WarmContext(
+            dto.Command ?? throw new InvalidDataException($"'{path}': warm_context.command is required."),
+            dto.Args ?? [],
+            timeout,
+            maxBytes);
     }
 
     private static bool IsSafePathSegment(string id) =>
@@ -82,6 +116,8 @@ public static class ProfileLoader
 
         public Dictionary<string, McpServerDto?>? McpServers { get; set; }
 
+        public WarmContextDto? WarmContext { get; set; }
+
         public string? PromptTemplate { get; set; }
 
         public int? MaxAiCredits { get; set; }
@@ -96,5 +132,16 @@ public static class ProfileLoader
         public List<string>? Args { get; set; }
 
         public List<string>? Tools { get; set; }
+    }
+
+    private sealed class WarmContextDto
+    {
+        public string? Command { get; set; }
+
+        public List<string>? Args { get; set; }
+
+        public int? TimeoutSeconds { get; set; }
+
+        public int? MaxBytes { get; set; }
     }
 }

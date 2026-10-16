@@ -7,7 +7,9 @@ namespace FhirAgentBench.Execution;
 
 public static class PromptRenderer
 {
-    public static string Render(string template, Question question, CorpusDefinition corpus, string workspaceDirectory)
+    public const string PatientMapPlaceholder = "{{patient_map}}";
+
+    public static string Render(string template, Question question, CorpusDefinition corpus, string workspaceDirectory, string patientMap = "")
     {
         var patient = question.Patient is { } p
             ? $"The patient is {p.Name}, born {p.BirthDate}, MRN {p.Mrn}."
@@ -19,6 +21,7 @@ public static class PromptRenderer
             .Replace("{{patient}}", patient, StringComparison.Ordinal)
             .Replace("{{persona}}", question.Persona, StringComparison.Ordinal)
             .Replace("{{question}}", question.Text, StringComparison.Ordinal)
-            .Replace("{{answer_shape}}", AnswerSpecDescriber.Describe(question.Answer), StringComparison.Ordinal);
+            .Replace("{{answer_shape}}", AnswerSpecDescriber.Describe(question.Answer), StringComparison.Ordinal)
+            .Replace(PatientMapPlaceholder, patientMap, StringComparison.Ordinal);
     }
 }

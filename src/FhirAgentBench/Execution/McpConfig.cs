@@ -34,7 +34,7 @@ public static partial class McpConfig
             .SelectMany(text => EnvironmentReference().Matches(text).Select(m => m.Groups[1].Value))
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
-    private static string Expand(string value, string corpusDataDirectory, Profile profile) =>
+    internal static string Expand(string value, string corpusDataDirectory, Profile profile) =>
         EnvironmentReference().Replace(value.Replace("{corpus}", corpusDataDirectory, StringComparison.Ordinal), match =>
         {
             var name = match.Groups[1].Value;

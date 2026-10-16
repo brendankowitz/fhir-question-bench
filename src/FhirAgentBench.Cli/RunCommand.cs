@@ -83,7 +83,8 @@ internal static class RunCommand
                 .WriteAsync(runDirectory, cancellationToken);
 
             Console.WriteLine($"Run {runId}: {questions.Count} questions x {k} -> {runDirectory}");
-            var attempts = await new RunOrchestrator(harness, corpus, promptTemplate)
+            var warmContext = profile.WarmContext is null ? null : new WarmContextRunner(profile, corpus.DataDirectory, context);
+            var attempts = await new RunOrchestrator(harness, corpus, promptTemplate, warmContext: warmContext)
                 .RunAsync(questions, k, runDirectory, cancellationToken);
             var resolver = EvidenceResolverSetup.Create(resolverPath, corpus.DataDirectory, Path.Combine(runDirectory, "evidence"));
             var grades = await new RunGrader(gold, new EvidenceAnalyzer(resolver, context))

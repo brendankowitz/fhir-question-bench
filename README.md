@@ -71,6 +71,10 @@ Environment variables:
   `profiles/p2-shell-cli-on-fhir.yaml`.
 - `FAB_CLI_ON_FHIR_COMMIT`: optional `cli-on-fhir` commit recorded in `run.json` for reproducibility.
 
+## Warm patient map
+
+A profile may add a `warm_context` section (`command`, `args`, `timeout_seconds` default 120, `max_bytes` default 8000) to test a pre-computed patient overview. For each attempt of a patient-scoped question the harness runs the command once, with a minimal system-only environment and the usual timeout and kill-tree behaviour, and renders its stdout into the prompt's `{{patient_map}}` placeholder (empty for cohort questions). `command` and `args` accept `${ENV}`, and `args` also `{corpus}`, `{patient_id}` (the Patient resource id resolved from the question's MRN) and `{mrn}`. A failing, timed-out, empty or oversize map makes the attempt a `harness_error` with the reason in `attempts.jsonl`; it is never dropped silently. Maps are cached per patient within a run, and `attempts.jsonl` records `warm_bytes` and `warm_seconds` (0 for a cached map). A profile must use `warm_context` and `{{patient_map}}` together; see `profiles/p2-v5-warm.yaml` and `prompts/warm.md`.
+
 ## Query-form evidence
 
 An agent's `evidence` entries may be resource references (`Type/id`) or the FHIR searches that returned the

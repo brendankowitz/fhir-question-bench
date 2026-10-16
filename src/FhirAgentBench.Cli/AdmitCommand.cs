@@ -2,6 +2,7 @@ using System.CommandLine;
 using FhirAgentBench.Answers;
 using FhirAgentBench.Authoring;
 using FhirAgentBench.Corpus;
+using FhirAgentBench.Evidence;
 using FhirAgentBench.Oracles;
 using FhirAgentBench.Questions;
 
@@ -16,17 +17,44 @@ internal static class AdmitCommand
         var questionsDir = new Option<string>("--questions-dir") { Description = "Folder of question YAML files.", DefaultValueFactory = _ => "questions" };
         var updateLock = new Option<bool>("--update-lock") { Description = "Accept drifted gold and lock new questions in questions/gold.lock.json. Writes nothing unless every question is admitted." };
         var show = new Option<bool>("--show") { Description = "Print each computed gold answer (authoring only; never paste gold into a run)." };
+        var checkSearches = new Option<bool>("--check-searches") { Description = "Also resolve each question's evidence_searches with the evidence resolver and compare them to the oracle's evidence. A miss fails admit; gold and the lock are never changed." };
+        var evidenceResolver = EvidenceResolverSetup.CreateOption();
         var command = new Command("admit", "Recompute gold for a question set and check it against the answer spec and gold lock.")
         {
-            corpusDir, set, questionsDir, updateLock, show,
+            corpusDir, set, questionsDir, updateLock, show, checkSearches, evidenceResolver,
         };
-        command.SetAction(parse =>
+        command.SetAction(async (parse, cancellationToken) =>
         {
             var corpus = CorpusDefinition.Load(parse.GetValue(corpusDir)!);
             var questions = QuestionLoader.LoadSet(parse.GetValue(questionsDir)!, parse.GetValue(set)!);
             var lockPath = Path.Combine(parse.GetValue(questionsDir)!, GoldLock.FileName);
-            var admitter = new GoldAdmitter(OracleRegistry.CreateDefault(), new OracleContext(CorpusIndex.Load(corpus.DataDirectory), corpus.Now, corpus.MrnSystem));
-            return Execute(admitter, questions, lockPath, parse.GetValue(updateLock), parse.GetValue(show), Console.Out, Console.Error);
+            var context = new OracleContext(CorpusIndex.Load(corpus.DataDirectory), corpus.Now, corpus.MrnSystem);
+            var oracles = OracleRegistry.CreateDefault();
+            var admitter = new GoldAdmitter(oracles, context);
+            var exit = Execute(admitter, questions, lockPath, parse.GetValue(updateLock), parse.GetValue(show), Console.Out, Console.Error);
+            if (!parse.GetValue(checkSearches))
+            {
+                return exit;
+            }
+
+            var resolverPath = EvidenceResolverSetup.ConfiguredPath(parse.GetValue(evidenceResolver));
+            if (resolverPath is null)
+            {
+                Console.Error.WriteLine($"--check-searches needs a resolver: pass --evidence-resolver or set {EvidenceResolverSetup.PathVariable}.");
+                return 2;
+            }
+
+            var work = Directory.CreateTempSubdirectory("fab-check-searches-").FullName;
+            try
+            {
+                var resolver = EvidenceResolverSetup.Create(resolverPath, corpus.DataDirectory, work)!;
+                var searchExit = await CheckSearchesAsync(new SearchChecker(resolver, context), oracles, context, questions, Console.Out, cancellationToken);
+                return exit != 0 ? exit : searchExit;
+            }
+            finally
+            {
+                Directory.Delete(work, recursive: true);
+            }
         });
         return command;
     }
@@ -117,6 +145,33 @@ internal static class AdmitCommand
 
         return failed == 0 ? 0 : 1;
     }
+
+    internal static async Task<int> CheckSearchesAsync(
+        SearchChecker checker, OracleRegistry oracles, OracleContext context, IReadOnlyList<Question> questions, TextWriter output,
+        CancellationToken cancellationToken)
+    {
+        var failed = 0;
+        foreach (var question in questions.Where(q => q.EvidenceSearches.Count > 0))
+        {
+            var gold = oracles.Compute(context, question);
+            var result = (await checker.CheckAsync(question, gold, cancellationToken))!;
+            output.WriteLine($"{(result.Fails ? "FAIL" : "OK  ")} {question.Id}: {result.Label}{Detail(result)}");
+            failed += result.Fails ? 1 : 0;
+        }
+
+        return failed == 0 ? 0 : 1;
+    }
+
+    private static string Detail(SearchCheckResult result) => result switch
+    {
+        { Reason: { } reason } => $" ({reason})",
+        { Missing.Count: > 0 } => $" (missing {result.Missing.Count}: {Sample(result.Missing)}; extra {result.Extra.Count})",
+        { Extra.Count: > 0 } => $" (extra {result.Extra.Count}: {Sample(result.Extra)})",
+        _ => "",
+    };
+
+    private static string Sample(IReadOnlyList<string> keys) =>
+        string.Join(", ", keys.Take(5)) + (keys.Count > 5 ? ", ..." : "");
 
     private static string Short(string hash) => hash.Length <= 12 ? hash : hash[..12];
 }

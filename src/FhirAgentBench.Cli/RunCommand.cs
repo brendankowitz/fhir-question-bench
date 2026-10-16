@@ -3,6 +3,7 @@ using System.Text.Json;
 using FhirAgentBench.Answers;
 using FhirAgentBench.Authoring;
 using FhirAgentBench.Corpus;
+using FhirAgentBench.Evidence;
 using FhirAgentBench.Execution;
 using FhirAgentBench.Oracles;
 using FhirAgentBench.Questions;
@@ -24,10 +25,11 @@ internal static class RunCommand
             Description = "Where run folders are written (outside the repository by default, so agents cannot browse it).",
             DefaultValueFactory = _ => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "fab", "runs"),
         };
+        var evidenceResolver = EvidenceResolverSetup.CreateOption();
         var yes = new Option<bool>("--yes") { Description = "Confirm the paid run after reading the cost estimate." };
         var command = new Command("run", "Run a profile over a question set, then grade and summarise it. Exit codes: 0 success; 1 error; 2 usage or paid run not confirmed with --yes; 3 completed but some attempts were harness_error or turn_limit.")
         {
-            profilePath, corpusDir, set, questionsDir, repeats, runsDir, yes,
+            profilePath, corpusDir, set, questionsDir, repeats, runsDir, evidenceResolver, yes,
         };
         command.SetAction(async (parse, cancellationToken) =>
         {
@@ -38,6 +40,7 @@ internal static class RunCommand
                 return 2;
             }
 
+            var resolverPath = EvidenceResolverSetup.ConfiguredPath(parse.GetValue(evidenceResolver));
             var profile = ProfileLoader.Load(parse.GetValue(profilePath)!);
             var corpus = CorpusDefinition.Load(parse.GetValue(corpusDir)!);
             var questions = QuestionLoader.LoadSet(parse.GetValue(questionsDir)!, parse.GetValue(set)!);
@@ -74,13 +77,17 @@ internal static class RunCommand
                     k,
                     harnessVersion,
                     Environment.GetEnvironmentVariable("FAB_CLI_ON_FHIR_COMMIT"),
-                    DateTimeOffset.UtcNow)
+                    DateTimeOffset.UtcNow,
+                    resolverPath,
+                    resolverPath is null ? null : EvidenceResolverSetup.ConfiguredCommit())
                 .WriteAsync(runDirectory, cancellationToken);
 
             Console.WriteLine($"Run {runId}: {questions.Count} questions x {k} -> {runDirectory}");
             var attempts = await new RunOrchestrator(harness, corpus, promptTemplate)
                 .RunAsync(questions, k, runDirectory, cancellationToken);
-            var grades = new RunGrader(gold).Grade(questions, attempts, runDirectory);
+            var resolver = EvidenceResolverSetup.Create(resolverPath, corpus.DataDirectory, Path.Combine(runDirectory, "evidence"));
+            var grades = await new RunGrader(gold, new EvidenceAnalyzer(resolver, context))
+                .GradeAsync(questions, attempts, runDirectory, cancellationToken);
             await File.WriteAllLinesAsync(
                 Path.Combine(runDirectory, "grades.jsonl"),
                 grades.Select(g => JsonSerializer.Serialize(g, JsonOptions.Default)),

@@ -15,7 +15,9 @@ public sealed record RunSnapshot(
     int Repeats,
     string? HarnessVersion,
     string? CliOnFhirCommit,
-    DateTimeOffset StartedUtc)
+    DateTimeOffset StartedUtc,
+    string? EvidenceResolver = null,
+    string? EvidenceResolverCommit = null)
 {
     private const string FileName = "run.json";
 

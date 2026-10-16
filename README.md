@@ -35,9 +35,9 @@ are the gold answers, and an agent run must never be able to browse them.
 - `fab corpus fetch <corpus-dir>`: download the pinned source, check its sha256, extract it read-only.
 - `fab corpus verify <corpus-dir>`: check every data file against `data.manifest.json`.
 - `fab corpus stats|patients|codes <corpus-dir>`: authoring helpers for exploring the corpus.
-- `fab admit`: recompute gold for a question set and check it against the answer spec and gold lock.
+- `fab admit [--check-searches]`: recompute gold for a question set and check it against the answer spec and gold lock; optionally cross-check declared evidence searches.
 - `fab run`: run a profile over a question set, then grade and summarise it.
-- `fab report <run-dir> [<compare-run-dir>]`: summarise a run, or compare two runs pairwise (exact
+- `fab report <run-dir> [<compare-run-dir>] [--evidence-resolver <exe> --corpus <dir>]`: summarise a run, or compare two runs pairwise (exact
   McNemar). Runs can only be compared when their `run.json` records the same corpus manifest,
   question and gold-lock hashes (a run without a gold-lock hash is compared with a warning).
 
@@ -70,6 +70,29 @@ Environment variables:
 - `FAB_CLI_ON_FHIR`: path to the `cli-on-fhir` executable, used as the MCP server command in
   `profiles/p2-shell-cli-on-fhir.yaml`.
 - `FAB_CLI_ON_FHIR_COMMIT`: optional `cli-on-fhir` commit recorded in `run.json` for reproducibility.
+
+## Query-form evidence
+
+An agent's `evidence` entries may be resource references (`Type/id`) or the FHIR searches that returned the
+resources (`Type?params`, or `Patient/<id>/Type?params`). Evidence is a diagnostic and never changes a grade.
+
+- Each entry is classified as a reference, a search or invalid; invalid entries are kept and counted, never dropped.
+- Searches are resolved to resource keys by running a pinned `cli-on-fhir` (`search <corpus> <Type> "<query>"
+  [--compartment Patient/<id>] --elements id --max-bytes 51200`, paged by `offset`; a `_count` in the query limits the
+  result as it did for the agent). Gold oracles never use it. Without a resolver, or when a query fails, the entry is
+  recorded as unresolved with the reason; no keys are guessed.
+- The resolver is `--evidence-resolver <exe>` on `run` and `admit`, else `FAB_EVIDENCE_RESOLVER` (and
+  `FAB_EVIDENCE_RESOLVER_COMMIT`, recorded with the path in `run.json`). `report --evidence-resolver <exe> --corpus <dir>`
+  re-resolves a finished run without changing it. Its index cache is `<run-dir>/evidence/cache`, outside the corpus.
+- `grades.jsonl` records per attempt the counts by kind, the resolved key set, recall and precision against the oracle's
+  evidence keys, and how many cited searches were accepted ones. The report adds a short evidence section.
+- A question may declare `evidence_searches: ["Encounter?class=EMER&date=gt..."]`: searches the bench accepts as
+  evidence. They are written without a compartment; a patient-scoped question's compartment is applied automatically. An agent that
+  cites one verbatim (parameter order and compartment spelling aside) is marked as having cited an accepted search.
+- `fab admit --check-searches` (needs the resolver) resolves the union of each question's declared searches and compares it
+  with the oracle's evidence: `searches-match`, `searches-superset` (extras listed) or `searches-miss` (missing listed). A miss
+  or an unresolved search fails admit; gold and the lock are never touched. A cohort search usually cannot express
+  "most recent value", so it is expected to be a superset.
 
 ### Exit codes (`fab run`)
 

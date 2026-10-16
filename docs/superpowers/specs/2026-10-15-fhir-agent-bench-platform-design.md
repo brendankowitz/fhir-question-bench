@@ -166,6 +166,13 @@ Every attempt ends in exactly one status: `correct`, `wrong`, `abstained`,
 and not scored. Evidence is not graded; retrieval recall against the oracle's
 evidence ids is reported as a diagnostic.
 
+An evidence entry is a resource reference (`Type/id`) or the FHIR search that
+returned the resources (`Type?params`, or `Patient/<id>/Type?params`); invalid
+entries are kept and counted. Searches are resolved to resource keys by a
+pinned `cli-on-fhir` (path and commit recorded in `run.json`). When no resolver is configured or a
+query fails, the entry is unresolved, never guessed. Recall, precision, counts by kind and the
+use of accepted searches are descriptive only and never change a grade.
+
 **Grader CI:** each question ships 2–4 equivalent answers that must pass and
 2–4 near misses that must fail. Two baselines must score as expected: the
 oracle profile at 100%, and the always-abstain profile at about 5%.
@@ -185,6 +192,12 @@ file. It reads a `CorpusIndex` that the bench owns. The index:
 - the oracle throws;
 - the gold is empty for a question not marked `expect_empty`;
 - the gold hash differs from `gold.lock.json`, i.e. gold drift.
+
+Oracles never use `cli-on-fhir`: gold stays independent of the tool under test. A
+question may declare `evidence_searches`, searches the bench accepts as evidence;
+`admit --check-searches` resolves them with the pinned `cli-on-fhir` and compares the result with
+the oracle's evidence (`searches-match`, `-superset`, `-miss`), which cross-checks the oracle against the tool
+without changing gold or the lock.
 
 Gold is computed at grading time and never written into a run workspace.
 `gold.lock.json` stores hashes only. Every question needs a second derivation

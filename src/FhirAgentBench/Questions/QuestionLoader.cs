@@ -82,6 +82,7 @@ public static class QuestionLoader
                 Required(dto.Oracle?.Name, "oracle.name", path),
                 dto.Oracle?.Parameters is { } parameters ? new OracleParameters(parameters) : OracleParameters.Empty),
             ExpectEmpty = dto.ExpectEmpty,
+            EvidenceSearches = ValidSearches(dto.EvidenceSearches, path),
             VerificationStatus = dto.Verification?.Status ?? "unverified",
             SourcePath = Path.GetFullPath(path),
         };
@@ -130,6 +131,24 @@ public static class QuestionLoader
         Enum.GetValues<NameKind>().Cast<NameKind?>().FirstOrDefault(k => string.Equals(k.ToString(), kind, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidDataException($"'{path}': {name} is a name answer and its kind must be 'person' or 'text', not '{kind}'.");
 
+    private static List<string> ValidSearches(List<string>? searches, string path)
+    {
+        var valid = new List<string>();
+        foreach (var search in searches ?? [])
+        {
+            var entry = EvidenceEntry.Parse(search ?? "");
+            if (entry.Kind != EvidenceKind.Search || entry.Compartment is not null)
+            {
+                throw new InvalidDataException(
+                    $"'{path}': evidence_searches entry '{search}' must be a search like 'Encounter?class=EMER'; a patient question's compartment is applied automatically.");
+            }
+
+            valid.Add(entry.Text);
+        }
+
+        return valid;
+    }
+
     private static string ValidDate(string value, string name, string path)
     {
         try
@@ -169,6 +188,8 @@ public static class QuestionLoader
         public OracleDto? Oracle { get; set; }
 
         public bool ExpectEmpty { get; set; }
+
+        public List<string>? EvidenceSearches { get; set; }
 
         public VerificationDto? Verification { get; set; }
     }

@@ -39,9 +39,11 @@ public static class AnswerJson
             }
 
             JsonElement? value = hasAnswer && a.ValueKind != JsonValueKind.Null ? a.Clone() : null;
-            var evidence = root.TryGetProperty("evidence", out var e) && e.ValueKind == JsonValueKind.Array
-                ? e.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToList()
-                : [];
+            var evidence = !root.TryGetProperty("evidence", out var e) || e.ValueKind == JsonValueKind.Null
+                ? []
+                : e.ValueKind == JsonValueKind.Array
+                    ? e.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString()! : x.GetRawText()).ToList()
+                    : [e.GetRawText()];
             return new Answer(parsedStatus, value, evidence);
         }
     }

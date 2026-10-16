@@ -20,6 +20,8 @@ public enum GradeStatus
 
 public sealed record Answer(AnswerStatus Status, JsonElement? Value, IReadOnlyList<string> Evidence)
 {
+    public IReadOnlyList<EvidenceEntry> ClassifiedEvidence() => Evidence.Select(EvidenceEntry.Parse).ToList();
+
     public static Answer Insufficient() => new(AnswerStatus.InsufficientData, null, []);
 
     public static Answer Of(object? value, IEnumerable<string> evidence) =>

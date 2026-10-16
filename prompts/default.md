@@ -12,7 +12,7 @@ The question comes from a {{persona}} colleague:
 
 Write your final answer to the file `answer.json` in the current working directory:
 
-{"status": "answered", "answer": <answer>, "evidence": ["<ResourceType>/<id>", "..."]}
+{"status": "answered", "answer": <answer>, "evidence": ["<ResourceType>/<id>", "<ResourceType>?<search>", "..."]}
 
 `<answer>` must have this shape: {{answer_shape}}
 
@@ -20,4 +20,4 @@ If the records cannot answer the question, write:
 
 {"status": "insufficient_data", "answer": null, "evidence": []}
 
-List in "evidence" up to 10 of the resources your answer rests on (for a count or a cohort, a few representative ones are enough). Evidence is not graded, so do not page through results just to collect it. Do not modify the record files.
+In evidence, list up to 10 resources as `Type/id`, or the FHIR searches that returned them (`Type?params`, or `Patient/<id>/Type?params`). For a count or a cohort, one search is ideal. Evidence is not graded, so do not page through results just to collect it. Do not modify the record files.

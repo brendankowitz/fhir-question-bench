@@ -31,6 +31,9 @@ public sealed record Question
 
     public bool ExpectEmpty { get; init; }
 
+    /// <summary>Searches (<c>Type?params</c>) the bench accepts as evidence; a patient-scoped question's compartment is applied automatically.</summary>
+    public IReadOnlyList<string> EvidenceSearches { get; init; } = [];
+
     public string VerificationStatus { get; init; } = "unverified";
 
     public required string SourcePath { get; init; }

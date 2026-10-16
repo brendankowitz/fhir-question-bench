@@ -10,4 +10,5 @@ answer: { type: integer }
 oracle:
   name: encounter-query
   parameters: { class: ["EMER"], window_days: 730, return: "count" }
+evidence_searches: ["Encounter?class=EMER&date=gt2024-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

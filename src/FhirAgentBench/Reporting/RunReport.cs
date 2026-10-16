@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using FhirAgentBench.Answers;
+using FhirAgentBench.Evidence;
 using FhirAgentBench.Execution;
 
 namespace FhirAgentBench.Reporting;
@@ -11,7 +12,20 @@ public sealed record RunSummary(
     int Attempts,
     IReadOnlyDictionary<GradeStatus, int> ByStatus,
     double Accuracy,
-    IReadOnlyDictionary<int, double> AccuracyByTier);
+    IReadOnlyDictionary<int, double> AccuracyByTier,
+    EvidenceSummary? Evidence = null);
+
+/// <summary>Descriptive evidence statistics over the attempts that were analysed; never part of accuracy.</summary>
+public sealed record EvidenceSummary(
+    int Attempts,
+    double? MeanRecall,
+    int RecallAttempts,
+    double SearchShare,
+    int AcceptedSearchAttempts,
+    int References,
+    int Searches,
+    int Invalid,
+    int Unresolved);
 
 public sealed record PairedComparison(int Pairs, int BothCorrect, int OnlyA, int OnlyB, int BothWrong, double AccuracyDifference, double McNemarP);
 
@@ -26,7 +40,29 @@ public static class RunReport
             grades.Count,
             grades.GroupBy(g => g.Status).ToDictionary(g => g.Key, g => g.Count()),
             AccuracyOf(scored),
-            grades.GroupBy(g => g.Tier).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => TierAccuracy(g.ToList())));
+            grades.GroupBy(g => g.Tier).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => TierAccuracy(g.ToList())),
+            SummarizeEvidence(grades));
+    }
+
+    private static EvidenceSummary? SummarizeEvidence(IReadOnlyList<GradeRecord> grades)
+    {
+        var analysed = grades.Select(g => g.Evidence).OfType<EvidenceDiagnostics>().ToList();
+        if (analysed.Count == 0)
+        {
+            return null;
+        }
+
+        var recalls = analysed.Where(d => d.Recall is not null).Select(d => d.Recall!.Value).ToList();
+        return new EvidenceSummary(
+            analysed.Count,
+            recalls.Count == 0 ? null : recalls.Average(),
+            recalls.Count,
+            analysed.Count(d => d.Searches > 0) / (double)analysed.Count,
+            analysed.Count(d => d.AcceptedSearches > 0),
+            analysed.Sum(d => d.References),
+            analysed.Sum(d => d.Searches),
+            analysed.Sum(d => d.Invalid),
+            analysed.Sum(d => d.Unresolved));
     }
 
     public static PairedComparison Compare(IReadOnlyList<GradeRecord> a, IReadOnlyList<GradeRecord> b)
@@ -116,7 +152,24 @@ public static class RunReport
             text.AppendLine(CultureInfo.InvariantCulture, $"| T{tier} | {shown} |");
         }
 
+        if (summary.Evidence is { } evidence)
+        {
+            AppendEvidence(text, evidence);
+        }
+
         return text.ToString();
+    }
+
+    private static void AppendEvidence(StringBuilder text, EvidenceSummary evidence)
+    {
+        var recall = evidence.MeanRecall is { } mean
+            ? $"Mean recall {Percent(mean)} over {evidence.RecallAttempts} attempts with oracle evidence"
+            : "No attempt had oracle evidence to recall";
+        text.AppendLine();
+        text.AppendLine("Evidence (diagnostic; not graded)");
+        text.AppendLine();
+        text.AppendLine(CultureInfo.InvariantCulture,
+            $"{recall}. {Percent(evidence.SearchShare)} of {evidence.Attempts} attempts cited searches ({evidence.AcceptedSearchAttempts} cited an accepted search). Entries: {evidence.References} references, {evidence.Searches} searches, {evidence.Invalid} invalid; {evidence.Unresolved} searches unresolved.");
     }
 
     public static string ToMarkdown(RunSummary a, RunSummary b, PairedComparison comparison)

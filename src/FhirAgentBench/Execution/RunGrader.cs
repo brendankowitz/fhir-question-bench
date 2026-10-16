@@ -1,17 +1,18 @@
 using FhirAgentBench.Answers;
+using FhirAgentBench.Evidence;
 using FhirAgentBench.Questions;
 
 namespace FhirAgentBench.Execution;
 
-public sealed record GradeRecord(string QuestionId, int Tier, int Repeat, GradeStatus Status, double? EvidenceRecall);
+public sealed record GradeRecord(string QuestionId, int Tier, int Repeat, GradeStatus Status, EvidenceDiagnostics? Evidence = null);
 
 /// <summary>Grades attempts against gold that was computed and checked against the gold lock before the run started.</summary>
-public sealed class RunGrader(IReadOnlyDictionary<string, Answer> gold)
+public sealed class RunGrader(IReadOnlyDictionary<string, Answer> gold, EvidenceAnalyzer? evidence = null)
 {
     public const string CopyErrorFileName = "answer.copy-error.txt";
 
-    public IReadOnlyList<GradeRecord> Grade(
-        IReadOnlyList<Question> questions, IReadOnlyList<AttemptRecord> attempts, string runDirectory)
+    public async Task<IReadOnlyList<GradeRecord>> GradeAsync(
+        IReadOnlyList<Question> questions, IReadOnlyList<AttemptRecord> attempts, string runDirectory, CancellationToken cancellationToken = default)
     {
         var byId = questions.ToDictionary(q => q.Id, StringComparer.Ordinal);
         var grades = new List<GradeRecord>();
@@ -27,15 +28,16 @@ public sealed class RunGrader(IReadOnlyDictionary<string, Answer> gold)
                 throw new InvalidOperationException($"No gold answer was computed for question '{question.Id}'.");
             }
 
-            grades.Add(GradeOne(question, expected, attempt, Path.Combine(runDirectory, attempt.AttemptDirectory)));
+            grades.Add(await GradeOneAsync(question, expected, attempt, Path.Combine(runDirectory, attempt.AttemptDirectory), cancellationToken).ConfigureAwait(false));
         }
 
         return grades;
     }
 
-    private static GradeRecord GradeOne(Question question, Answer gold, AttemptRecord attempt, string attemptDirectory)
+    private async Task<GradeRecord> GradeOneAsync(
+        Question question, Answer gold, AttemptRecord attempt, string attemptDirectory, CancellationToken cancellationToken)
     {
-        GradeRecord Record(GradeStatus status, double? recall = null) => new(question.Id, question.Tier, attempt.Repeat, status, recall);
+        GradeRecord Record(GradeStatus status, EvidenceDiagnostics? diagnostics = null) => new(question.Id, question.Tier, attempt.Repeat, status, diagnostics);
 
         if (attempt.End != AttemptEnd.Completed)
         {
@@ -63,17 +65,16 @@ public sealed class RunGrader(IReadOnlyDictionary<string, Answer> gold)
 
         try
         {
-            return Record(Grader.Grade(question.Answer, gold, agent), EvidenceRecall(gold, agent));
+            var status = Grader.Grade(question.Answer, gold, agent);
+            var diagnostics = evidence is null
+                ? null
+                : await evidence.AnalyzeAsync(question, gold, agent, cancellationToken).ConfigureAwait(false);
+            return Record(status, diagnostics);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new InvalidOperationException(
                 $"Grading failed for question '{question.Id}' attempt r{attempt.Repeat}; the gold answer or answer spec is likely malformed: {ex.Message}", ex);
         }
     }
-
-    private static double? EvidenceRecall(Answer gold, Answer agent) =>
-        gold.Evidence.Count == 0
-            ? null
-            : gold.Evidence.Count(e => agent.Evidence.Contains(e, StringComparer.Ordinal)) / (double)gold.Evidence.Count;
 }

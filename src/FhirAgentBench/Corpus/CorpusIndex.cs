@@ -90,22 +90,24 @@ public sealed class CorpusIndex
         {
             var token = reference[(query + IdentifierQuery.Length)..];
             var bar = token.IndexOf('|');
-            if (bar < 0)
-            {
-                return null;
-            }
-
-            var identifierKey = $"{reference[..query]}|{token[..bar]}|{token[(bar + 1)..]}";
-            return _ambiguousIdentifiers.Contains(identifierKey)
-                ? throw new InvalidDataException($"Conditional reference '{reference}' matches more than one resource in the corpus.")
-                : _identifiers.GetValueOrDefault(identifierKey);
+            return bar < 0
+                ? null
+                : KeyByIdentifier(reference[..query], token[..bar], token[(bar + 1)..]);
         }
 
         return _byKey.ContainsKey(reference) ? reference : null;
     }
 
     public JsonElement? FindByIdentifier(string type, string system, string value) =>
-        _identifiers.TryGetValue($"{type}|{system}|{value}", out var key) ? _byKey[key] : null;
+        KeyByIdentifier(type, system, value) is { } key ? _byKey[key] : null;
+
+    private string? KeyByIdentifier(string type, string system, string value)
+    {
+        var identifierKey = $"{type}|{system}|{value}";
+        return _ambiguousIdentifiers.Contains(identifierKey)
+            ? throw new InvalidDataException($"Identifier '{system}|{value}' matches more than one {type} in the corpus.")
+            : _identifiers.GetValueOrDefault(identifierKey);
+    }
 
     private void AddFile(string path)
     {
@@ -186,15 +188,15 @@ public sealed class CorpusIndex
 
         if (resource.TryGetProperty("identifier", out var identifiers) && identifiers.ValueKind == JsonValueKind.Array)
         {
-            foreach (var identifier in identifiers.EnumerateArray())
+            var identifierKeys = identifiers.EnumerateArray()
+                .Where(identifier => identifier.TryGetProperty("system", out _) && identifier.TryGetProperty("value", out _))
+                .Select(identifier => $"{type}|{identifier.GetProperty("system").GetString()}|{identifier.GetProperty("value").GetString()}")
+                .Distinct(StringComparer.Ordinal);
+            foreach (var identifierKey in identifierKeys)
             {
-                if (identifier.TryGetProperty("system", out var system) && identifier.TryGetProperty("value", out var value))
+                if (!_identifiers.TryAdd(identifierKey, key))
                 {
-                    var identifierKey = $"{type}|{system.GetString()}|{value.GetString()}";
-                    if (!_identifiers.TryAdd(identifierKey, key) && _identifiers[identifierKey] != key)
-                    {
-                        _ambiguousIdentifiers.Add(identifierKey);
-                    }
+                    _ambiguousIdentifiers.Add(identifierKey);
                 }
             }
         }

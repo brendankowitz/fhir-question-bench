@@ -209,6 +209,12 @@ public sealed class GraderTests
     [InlineData("Hermelinda327 Hyatt152", "Hermelinda Hyatt153")]
     [InlineData("José Emilio366 Leyva523", "Leyva, Jose Emilio")]
     [InlineData("Josue598 D'Amore443", "Dr. Josue D’Amore")]
+    [InlineData("Ted955 Reilly981", "Ted Reilly, M.D.")]
+    [InlineData("Ted955 Reilly981", "Ted Reilly M.D.")]
+    [InlineData("Ted955 Reilly981", "Ted Reilly, Ph.D.")]
+    [InlineData("Ted955 Reilly981", "Dr. Ted Reilly (hospitalist)")]
+    [InlineData("Ted955 Reilly981", "Ted J. Reilly")]
+    [InlineData("Ted955 Reilly981", "Reilly, Ted J.")]
     public void PersonName_Equivalent_IsCorrect(string gold, string agent) =>
         Assert.Equal(GradeStatus.Correct, GradeName(PersonName, gold, agent));
 
@@ -217,6 +223,11 @@ public sealed class GraderTests
     [InlineData("Hermelinda327 Hyatt152", "Hyatt152 Hermelinda327")]
     [InlineData("Hermelinda327 Hyatt152", "Francine922 Hyatt152")]
     [InlineData("José Emilio366 Leyva523", "Jose Leyva")]
+    [InlineData("Ted955 Reilly981", "Ted Riley")]
+    [InlineData("Ted955 Reilly981", "Fred Reilly")]
+    [InlineData("Ted955 Reilly981", "Reilly")]
+    [InlineData("Ted955 Reilly981", "Ted J. Riley, M.D.")]
+    [InlineData("Ted955 Reilly981", "Fred J. Reilly")]
     public void PersonName_Different_IsWrong(string gold, string agent) =>
         Assert.Equal(GradeStatus.Wrong, GradeName(PersonName, gold, agent));
 

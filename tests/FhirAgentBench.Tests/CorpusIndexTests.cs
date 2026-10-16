@@ -7,7 +7,7 @@ public sealed class CorpusIndexTests
     [Fact]
     public void Load_IndexesBundleEntriesAndNdjsonLines()
     {
-        Assert.Equal(79, Fixture.Index.Count);
+        Assert.Equal(81, Fixture.Index.Count);
         Assert.Equal(5, Fixture.Index.OfType("Patient").Count);
     }
 

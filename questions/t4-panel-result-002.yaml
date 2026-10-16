@@ -5,7 +5,7 @@ tags: [REF, MULTI, TEMP]
 tool_groups: [patient-context, search]
 persona: hospitalist
 patient: { mrn: "5693c080-f485-91e7-54b9-ad9a8c12af62", name: "Maurice742 Auer97", birth_date: "1973-03-25" }
-question: What potassium was reported on the last metabolic panel drawn during his most recent ICU stay?
+question: What potassium was reported on the last metabolic panel drawn during his most recent ICU stay? Give it in mmol/L to two decimals.
 answer: { type: quantity, unit: "mmol/L", tolerance: 0.01 }
 oracle:
   name: reference-path

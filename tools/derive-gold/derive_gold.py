@@ -867,10 +867,19 @@ def reference_path(corpus, mrn, p):
     return answer
 
 
+def applies_to(target: dict, step: dict) -> bool:
+    """An untyped step with criteria skips targets whose type does not define them."""
+    filters = [k for k in step if k not in SELECTOR_KEYS]
+    kind = target["resourceType"]
+    return not filters if kind not in RULES else all(k in RULES[kind][2] for k in filters)
+
+
 def forward(corpus, refs, current, step) -> dict | None:
     for reference in references_at(current, step["ref"]):
         target = refs.resolve(current, reference.get("reference"))
         if target is None or ("type" in step and target["resourceType"] != step["type"]):
+            continue
+        if "type" not in step and not applies_to(target, step):
             continue
         if qualifies(corpus, target, step):
             return target
@@ -903,7 +912,8 @@ def _fold(text: str) -> str:
 
 
 def person_tokens(text: str) -> list[str]:
-    parts = [re.sub(r"[^\w\s'\-]", " ", part).split() for part in _fold(text).split(",")]
+    folded = re.sub(r"\s*\([^)]*\)\s*$", "", re.sub(r"(?<=[^\W\d_])\.(?=[^\W\d_])", "", _fold(text)))
+    parts = [re.sub(r"[^\w\s'\-]", " ", part).split() for part in folded.split(",")]
     while len(parts) >= 2 and all(t in SUFFIXES for t in parts[-1]):
         parts.pop()
     if len(parts) == 2:
@@ -913,8 +923,8 @@ def person_tokens(text: str) -> list[str]:
         tokens.pop(0)
     while tokens and tokens[-1] in SUFFIXES:
         tokens.pop()
-    tokens = [re.sub(r"\d+$", "", t) for t in tokens]
-    return [t for t in tokens if t]
+    tokens = [t for t in (re.sub(r"\d+$", "", t) for t in tokens) if t]
+    return [t for i, t in enumerate(tokens) if len(t) > 1 or i in (0, len(tokens) - 1)]
 
 
 def text_tokens(text: str) -> list[str]:

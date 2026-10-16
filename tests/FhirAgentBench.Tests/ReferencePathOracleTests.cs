@@ -220,6 +220,25 @@ public sealed class ReferencePathOracleTests : IDisposable
     }
 
     [Fact]
+    public void Forward_WithCriteriaButNoType_SkipsTargetsOfOtherTypes()
+    {
+        var untypedResult = Run("""{ start: { type: Encounter, class: ["IMP"], type_snomed: ["305351004"], pick: latest }, path: [{ rev: DiagnosticReport.encounter, loinc: ["24323-8"], pick: latest }, { ref: result, loinc: ["6298-4"] }], project: value }""");
+        var noTypeDefinesClass = Run("""{ start: { type: Encounter, class: ["EMER"], pick: latest }, path: [{ ref: participant.individual, class: ["EMER"] }], project: name }""");
+
+        Assert.Equal(4.1m, untypedResult.Value!.Value.GetProperty("value").GetDecimal());
+        Assert.Null(noTypeDefinesClass.Value);
+    }
+
+    [Fact]
+    public void Value_UnitFallsBackFromEmptyCodeAndIsNullWhenBothAreEmpty()
+    {
+        var fallsBack = Run("""{ start: { type: Observation, loinc: ["9998-9"], pick: latest }, project: value }""");
+
+        Assert.Equal("mmol/L", fallsBack.Value!.Value.GetProperty("unit").GetString());
+        Assert.Null(Run("""{ start: { type: Observation, loinc: ["9997-9"], pick: latest }, project: value }""").Value);
+    }
+
+    [Fact]
     public void Value_NotNumeric_IsNull() =>
         Assert.Null(Run("""{ start: { type: Observation, loinc: ["9999-9"], pick: latest }, project: value }""").Value);
 
@@ -283,6 +302,9 @@ public sealed class ReferencePathOracleTests : IDisposable
     [Fact]
     public void Ambiguous_ConditionalReference_IsReportedByTheCorpus()
     {
+        Assert.Throws<InvalidDataException>(() => Fixture.Index.FindByIdentifier("Practitioner", Npi, "2222"));
+        Assert.NotNull(Fixture.Index.FindByIdentifier("Practitioner", Npi, "1111"));
+
         var ex = Assert.Throws<InvalidDataException>(() => Fixture.Index.ResolveKey($"Practitioner?identifier={Npi}|2222"));
 
         Assert.Contains("more than one", ex.Message);

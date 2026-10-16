@@ -103,9 +103,13 @@ internal static class ReferenceRules
     public static bool Accepts(
         OracleContext context, JsonElement resource, IReadOnlyDictionary<string, IReadOnlySet<string>> criteria)
     {
-        var type = ResourceType(resource);
-        RequireHopTarget(type, criteria.Keys);
-        return !Rules.ContainsKey(type) || Qualify(context, resource, criteria, DateTimeOffset.MinValue) is not null;
+        if (!Rules.TryGetValue(ResourceType(resource), out var rule))
+        {
+            return criteria.Count == 0;
+        }
+
+        return criteria.Keys.All(rule.Criteria.ContainsKey)
+            && Qualify(context, resource, criteria, DateTimeOffset.MinValue) is not null;
     }
 
     private static string ResourceType(JsonElement resource) => resource.GetProperty("resourceType").GetString()!;

@@ -26,7 +26,8 @@ public static partial class NameMatcher
 
     private static List<string> PersonTokens(string text)
     {
-        var parts = Fold(text).Split(',').Select(part => Words(NotPersonCharacter().Replace(part, " "))).ToList();
+        var cleaned = TrailingParenthetical().Replace(DotBetweenLetters().Replace(Fold(text), ""), "");
+        var parts = cleaned.Split(',').Select(part => Words(NotPersonCharacter().Replace(part, " "))).ToList();
         while (parts.Count >= 2 && parts[^1].All(PersonSuffixes.Contains))
         {
             parts.RemoveAt(parts.Count - 1);
@@ -48,7 +49,8 @@ public static partial class NameMatcher
             tokens.RemoveAt(tokens.Count - 1);
         }
 
-        return tokens.Select(token => TrailingDigits().Replace(token, "")).Where(token => token.Length > 0).ToList();
+        var names = tokens.Select(token => TrailingDigits().Replace(token, "")).Where(token => token.Length > 0).ToList();
+        return names.Where((token, index) => token.Length > 1 || index == 0 || index == names.Count - 1).ToList();
     }
 
     private static List<string> TextTokens(string text)
@@ -84,6 +86,12 @@ public static partial class NameMatcher
 
     private static List<string> Words(string text) =>
         text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+    [GeneratedRegex(@"(?<=\p{L})\.(?=\p{L})")]
+    private static partial Regex DotBetweenLetters();
+
+    [GeneratedRegex(@"\s*\([^)]*\)\s*$")]
+    private static partial Regex TrailingParenthetical();
 
     [GeneratedRegex(@"[^\w\s'\-]")]
     private static partial Regex NotPersonCharacter();

@@ -6,8 +6,8 @@ tool_groups: [patient-context, search]
 persona: care-manager
 patient: { mrn: "bca1691f-8839-1d66-ed01-471134d55738", name: "Cole117 Corwin846", birth_date: "1944-10-11" }
 question: >-
-  I'm coordinating his memory care and need to contact whoever started his galantamine. At which facility was his
-  galantamine prescription written? Give the name of the organisation that provided the visit where it was ordered.
+  I'm coordinating his memory care and need to contact the organisation that prescribed his galantamine. Which
+  organisation provided the visit at which his most recent galantamine prescription was written? Give its name.
 answer: { type: name, kind: text }
 oracle:
   name: reference-path

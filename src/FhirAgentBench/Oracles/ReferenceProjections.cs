@@ -111,7 +111,8 @@ internal static class ReferenceProjections
             return null;
         }
 
-        var unit = FhirElements.String(quantity, "code") ?? FhirElements.String(quantity, "unit");
+        var unit = new[] { FhirElements.String(quantity, "code"), FhirElements.String(quantity, "unit") }
+            .FirstOrDefault(candidate => !string.IsNullOrEmpty(candidate));
         return unit is null ? null : new { value = value.GetDecimal(), unit };
     }
 

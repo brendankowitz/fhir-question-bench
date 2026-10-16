@@ -985,6 +985,56 @@
    }
   },
   {
+   "fullUrl": "urn:uuid:rd-obs-emptycode",
+   "resource": {
+    "resourceType": "Observation",
+    "id": "rd-obs-emptycode",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "9998-9"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-22T10:00:00Z",
+    "valueQuantity": {
+     "value": 7,
+     "code": "",
+     "unit": "mmol/L"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-obs-nounit",
+   "resource": {
+    "resourceType": "Observation",
+    "id": "rd-obs-nounit",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "9997-9"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-22T10:00:00Z",
+    "valueQuantity": {
+     "value": 1,
+     "code": "",
+     "unit": ""
+    }
+   }
+  },
+  {
    "fullUrl": "urn:uuid:rd-dr-1",
    "resource": {
     "resourceType": "DiagnosticReport",

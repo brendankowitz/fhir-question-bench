@@ -65,7 +65,14 @@ public static class CorpusFetcher
         }
     }
 
+    private const string GzipSuffix = ".gz";
+
     private static string RawName(ZipArchiveEntry entry) => entry.FullName[(entry.FullName.LastIndexOf('/') + 1)..];
+
+    private static bool IsGzipped(ZipArchiveEntry entry) => RawName(entry).EndsWith(".ndjson" + GzipSuffix, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Gzipped NDJSON is stored decompressed, so the manifest, the index and agents all see plain files.</summary>
+    private static string StoredName(ZipArchiveEntry entry) => IsGzipped(entry) ? RawName(entry)[..^GzipSuffix.Length] : RawName(entry);
 
     private static List<(ZipArchiveEntry Entry, string Target)> PlanExtraction(ZipArchive archive, string dataDirectory)
     {
@@ -81,12 +88,13 @@ public static class CorpusFetcher
         }
 
         var candidates = archive.Entries.Where(e =>
-            (RawName(e).EndsWith(".json", StringComparison.OrdinalIgnoreCase) || RawName(e).EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase))
+            (RawName(e).EndsWith(".json", StringComparison.OrdinalIgnoreCase) || RawName(e).EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase)
+                || IsGzipped(e))
             && !e.FullName.StartsWith("__MACOSX/", StringComparison.Ordinal)
             && !RawName(e).StartsWith("._", StringComparison.Ordinal));
         foreach (var entry in candidates)
         {
-            var name = RawName(entry);
+            var name = StoredName(entry);
             if (name.Contains(':') || Path.GetFileName(name) != name)
             {
                 throw new InvalidDataException($"Corpus zip entry '{entry.FullName}' has an unsafe file name.");
@@ -128,7 +136,17 @@ public static class CorpusFetcher
         Directory.CreateDirectory(dataDirectory);
         foreach (var (entry, target) in planned)
         {
-            entry.ExtractToFile(target, overwrite: true);
+            if (IsGzipped(entry))
+            {
+                using var compressed = new GZipStream(entry.Open(), CompressionMode.Decompress);
+                using var output = File.Create(target);
+                compressed.CopyTo(output);
+            }
+            else
+            {
+                entry.ExtractToFile(target, overwrite: true);
+            }
+
             File.SetAttributes(target, FileAttributes.ReadOnly);
         }
     }

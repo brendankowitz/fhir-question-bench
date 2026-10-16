@@ -330,6 +330,35 @@ public sealed class CorpusFilesTests : IDisposable
         Assert.Empty(CorpusManifest.Load(corpus.ManifestPath).Verify(corpus.DataDirectory));
     }
 
+    [Fact]
+    public async Task Fetch_StoresGzippedNdjsonDecompressed_AndTheIndexLoadsIt()
+    {
+        using var gzipped = new MemoryStream();
+        using (var gzip = new GZipStream(gzipped, CompressionLevel.Optimal, leaveOpen: true))
+        using (var writer = new StreamWriter(gzip))
+        {
+            writer.Write("{\"resourceType\":\"Patient\",\"id\":\"p1\"}\n{\"resourceType\":\"Patient\",\"id\":\"p2\"}\n");
+        }
+
+        using var zipStream = new MemoryStream();
+        using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using var entry = archive.CreateEntry("demo/fhir/MimicPatient.ndjson.gz").Open();
+            entry.Write(gzipped.ToArray());
+        }
+
+        var zipBytes = zipStream.ToArray();
+        var corpus = new CorpusDefinition("t", DateTimeOffset.UnixEpoch, "s", "https://example.org/c.zip",
+            Convert.ToHexStringLower(SHA256.HashData(zipBytes)), _root);
+        using var http = new HttpClient(new StaticHandler(zipBytes));
+
+        await CorpusFetcher.FetchAsync(corpus, http);
+
+        Assert.Equal(["MimicPatient.ndjson"], Directory.EnumerateFiles(corpus.DataDirectory).Select(Path.GetFileName));
+        Assert.Equal("MimicPatient.ndjson", Assert.Single(CorpusManifest.Load(corpus.ManifestPath).Files).Path);
+        Assert.Equal(2, CorpusIndex.Load(corpus.DataDirectory).OfType("Patient").Count);
+    }
+
     private static byte[] BuildZip(params (string Name, string Content)[] entries)
     {
         using var stream = new MemoryStream();

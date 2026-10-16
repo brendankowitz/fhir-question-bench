@@ -1,0 +1,154 @@
+{
+  "files": [
+    {
+      "path": "MimicCondition.ndjson",
+      "size": 2983806,
+      "sha256": "a3ae750fdd47d966ce725884e213ae7fb38e800986acef0f7cd4068cae8c8581"
+    },
+    {
+      "path": "MimicConditionED.ndjson",
+      "size": 357810,
+      "sha256": "cf42667f2795506cab5c2d9257b804a2058810b9459574fb7476b6d02bdaebc9"
+    },
+    {
+      "path": "MimicEncounter.ndjson",
+      "size": 538712,
+      "sha256": "badb9151daed98e215710b60bf33846f08377b35068090b8a5046f0523307354"
+    },
+    {
+      "path": "MimicEncounterED.ndjson",
+      "size": 272946,
+      "sha256": "9b928c0b7ee70cad21fb9ebd848d2a3216ea681880ea34905d2f22d5cb365657"
+    },
+    {
+      "path": "MimicEncounterICU.ndjson",
+      "size": 131864,
+      "sha256": "917b0b5d265745479276d70ebf72189e6644592f55ceb614da5e15f88575df28"
+    },
+    {
+      "path": "MimicLocation.ndjson",
+      "size": 13986,
+      "sha256": "117649193cc08914b7ef6e3753c9e93d4449c4394bbc835e958e73bdb92e7262"
+    },
+    {
+      "path": "MimicMedication.ndjson",
+      "size": 964537,
+      "sha256": "9882a974bd2f8a7777b6bd1814a44d8a20bf9f07d7b98fa0e0d0eaf764ef7451"
+    },
+    {
+      "path": "MimicMedicationAdministration.ndjson",
+      "size": 32660354,
+      "sha256": "8b18180312fa77cde7509e31f560a400d13d6f383b25891d57f2282e2c777394"
+    },
+    {
+      "path": "MimicMedicationAdministrationICU.ndjson",
+      "size": 22778222,
+      "sha256": "7e04bb927095ca303117dae0ae0b2465b804e451aa25d031c35f6ea4a1f76508"
+    },
+    {
+      "path": "MimicMedicationDispense.ndjson",
+      "size": 14484659,
+      "sha256": "c0f5c49a847e3bc08b05872b43640bb90c61e764afe588488420876c23c28560"
+    },
+    {
+      "path": "MimicMedicationDispenseED.ndjson",
+      "size": 625856,
+      "sha256": "267ab3e1e8c127d9de26ee87e749ad6ba5d257004387200f2b5091e8e9971779"
+    },
+    {
+      "path": "MimicMedicationMix.ndjson",
+      "size": 219514,
+      "sha256": "b32e5223743e4a108bbaad23c22a85b92ab867c916df51baf826728dee304fce"
+    },
+    {
+      "path": "MimicMedicationRequest.ndjson",
+      "size": 18186953,
+      "sha256": "d352b4862ae57fbe17c9bb8c512cdfb278500d1b0e4d2bcc925836a557ff9e9a"
+    },
+    {
+      "path": "MimicMedicationStatementED.ndjson",
+      "size": 1977173,
+      "sha256": "be87aba6287fcef4223c49edc87095b61f5ed5ecd801eb3fbbd523fa329dcb77"
+    },
+    {
+      "path": "MimicObservationChartevents.ndjson",
+      "size": 546713685,
+      "sha256": "4e46c98be5971df47d1e2b23a60fed390140b9391734e15d515cdf2e7a9b46c6"
+    },
+    {
+      "path": "MimicObservationDatetimeevents.ndjson",
+      "size": 12156080,
+      "sha256": "dd7ae90793f8e58cfec474bc3992e4f3ce1a97714ced2a7715709a666f8a71ff"
+    },
+    {
+      "path": "MimicObservationED.ndjson",
+      "size": 2207712,
+      "sha256": "a78cf891583ffa748a4cbe49ba30607bfa1ae655951a5a57aff409af82aa1e11"
+    },
+    {
+      "path": "MimicObservationLabevents.ndjson",
+      "size": 146413073,
+      "sha256": "2fa330aa2837fbab81482c1300811b8c103ce66b27f4ea65df7144a1f263a615"
+    },
+    {
+      "path": "MimicObservationMicroOrg.ndjson",
+      "size": 327996,
+      "sha256": "f923ac3a4528bd8d3b31d6dad95233be9835241164194e480b2a7d44c5918294"
+    },
+    {
+      "path": "MimicObservationMicroSusc.ndjson",
+      "size": 1202596,
+      "sha256": "385ffa65bfcc8e0ba77e5c9b3861e169188d4394409d13bfb2f9f328464f712b"
+    },
+    {
+      "path": "MimicObservationMicroTest.ndjson",
+      "size": 1601915,
+      "sha256": "2cb3f59c5abdca090306b3de409d3672c1e5d0347d29716cca250385ae2c5e36"
+    },
+    {
+      "path": "MimicObservationOutputevents.ndjson",
+      "size": 7867705,
+      "sha256": "cc91c7bcefc69e58df3469491705929f905e6ad82199fbcab4e49fd989d0ff4a"
+    },
+    {
+      "path": "MimicObservationVitalSignsED.ndjson",
+      "size": 5864245,
+      "sha256": "388f8656b16d8ac4b4edde95ca08bf39ee88c3786745f442c647abc57e422f79"
+    },
+    {
+      "path": "MimicOrganization.ndjson",
+      "size": 470,
+      "sha256": "75d48f6271806c8e155c39b481fa91e89b758ceee92b4b509d111386e4d72290"
+    },
+    {
+      "path": "MimicPatient.ndjson",
+      "size": 128697,
+      "sha256": "9129e40b20849821f677ce664dfe0a981b1da588c8e3b0555b45c334f2d5a458"
+    },
+    {
+      "path": "MimicProcedure.ndjson",
+      "size": 422637,
+      "sha256": "778d976bb1609deb1937a5ce4fcf5bfee4d72418911d49c2801fca54424da15b"
+    },
+    {
+      "path": "MimicProcedureED.ndjson",
+      "size": 681294,
+      "sha256": "b9cc68d6c512029867b7504ad692fd64b54b1013169daab0e299f0a446949023"
+    },
+    {
+      "path": "MimicProcedureICU.ndjson",
+      "size": 1096393,
+      "sha256": "dd0bd291f1e0b02d52042321325c3a6f40ba05f74aac37c47b9c04774d2e633d"
+    },
+    {
+      "path": "MimicSpecimen.ndjson",
+      "size": 746692,
+      "sha256": "a724d3bf00c6d789ee6c34424ff0b73c27dd163176178350c9256663baf6f609"
+    },
+    {
+      "path": "MimicSpecimenLab.ndjson",
+      "size": 5883209,
+      "sha256": "f64a151e1afe4129b36b067da0ee552b2a502629834bda1ca6ea90c31cc4479f"
+    }
+  ]
+}

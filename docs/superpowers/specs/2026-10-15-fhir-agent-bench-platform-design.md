@@ -151,6 +151,7 @@ section of the prompt, never in the clinical wording.
 | date | `"YYYY-MM-DD"` | exact at declared precision |
 | code | `{system, code}` | tuple equality, display ignored |
 | identifier | `{system, value}` | tuple equality (MRN, NPI) |
+| name | non-empty string, declared `kind: person` or `kind: text` | equal after normalisation: case, accents, titles, name order and suffixes for a person; `&` and legal forms for an organisation or place. No abbreviation expansion. Rules in `docs/questions/oracle-semantics.md` |
 | set | array of strings or of `{system, code}` | strict set equality; precision and recall logged |
 | boolean | true/false | exact |
 | composite | object of named fields, each with its own spec | all fields correct; per-field logged |
@@ -171,7 +172,7 @@ oracle profile at 100%, and the always-abstain profile at about 5%.
 
 ## 7. Oracles
 
-The v1-100 set uses 17 oracles (6 from phase 0, 4 of them extended, plus 11 new).
+The v1 set uses 18 oracles (6 from phase 0, 4 of them extended, plus 12 new).
 
 An oracle is a C# class keyed by name with typed parameters from the question
 file. It reads a `CorpusIndex` that the bench owns. The index:

@@ -4,7 +4,7 @@ This document specifies how each gold oracle in `src/FhirAgentBench/Oracles/` in
 
 ## Oracle specification
 
-Six existing oracles (four of them extended) plus eleven new ones. All parameters come from the question's `oracle.parameters` map. Code values are always quoted strings; numbers are plain.
+Six existing oracles (four of them extended) plus twelve new ones. All parameters come from the question's `oracle.parameters` map. Code values are always quoted strings; numbers are plain.
 
 ### 2.0 Shared definitions (apply to every oracle)
 
@@ -92,10 +92,54 @@ Six existing oracles (four of them extended) plus eleven new ones. All parameter
 - Used by: t2-last-procedure-001/002/003, t3-procedure-count-001.
 
 **encounter-query**
-- Parameters: `class` list of v3-ActCode codes (optional); `type_snomed` list (optional); `window_days` optional; `return` in count | latest_date | latest_practitioner.
+- Parameters: `class` list of v3-ActCode codes (optional); `type_snomed` list (optional); `window_days` optional; `return` in count | latest_date.
 - Matching set: `Encounter.status` not cancelled / entered-in-error; instant = `period.start` in window; `class.code` listed (if given); any `type` coding SNOMED-listed (if given).
-- latest_practitioner: on the latest matching encounter, the first `participant` whose `individual.reference` targets a Practitioner. For a conditional reference `Practitioner?identifier=<system>|<value>` the answer is `{system, value}` taken from it; for a literal reference, resolve the Practitioner and take its identifier with system `http://hl7.org/fhir/sid/us-npi`. (The corpus only has the conditional form.)
-- Answer: integer, date, identifier. Used by: t2-last-visit-type-001/002, t3-encounter-count-001/002, t4-encounter-clinician-001/002.
+- Answer: integer, date. Used by: t2-last-visit-type-001/002, t3-encounter-count-001/002.
+- A clinician, facility or other far resource of an encounter is reached with `reference-path`, not here.
+
+**reference-path** — select one resource of the patient, walk reference hops, project one value.
+- Parameters:
+  - `start`: `{type, <criterion>: <code-or-list>, ..., window_days?, pick}`.
+  - `path`: a list of steps, possibly empty or absent.
+  - `project`: one projection, or a map of field name to projection.
+- **Start selector.** The candidates are the patient's resources of `type` (those in the patient's bundle). A candidate qualifies when it passes the type's validity rule, has an instant that is `<= now` and inside `window_days` when given (2.0), and, for **each** criterion given, carries any listed code (list rule, 2.0). `pick` is `latest` or `earliest` by instant, with the 2.0 tie-break on the smaller `id` in both directions.
+
+| Type | Validity | Instant | Criteria and the codes compared |
+|---|---|---|---|
+| MedicationRequest | countable order (2.0) | `authoredOn` | `rxnorm`: RxNorm codes of `medicationCodeableConcept`, else of the Medication resolved through `medicationReference` |
+| Encounter | status not cancelled / entered-in-error | `period.start` | `class`: `class.code`; `type_snomed`: SNOMED codings of any `type` |
+| DiagnosticReport | status final / amended / corrected | `effectiveDateTime`, else `effectivePeriod.start`, else `issued` | `loinc`: LOINC codings of `code` |
+| Observation | status final / amended / corrected | as the valid observation reading (2.0) | `loinc`: LOINC codings of `code` (components are not searched) |
+| Condition | considered condition (2.0) | onset | `snomed`: SNOMED codings of `code` |
+| Procedure | status completed | `performedDateTime`, else `performedPeriod.start` | `snomed`: SNOMED codings of `code` |
+| Immunization | status completed | `occurrenceDateTime` | `cvx`: CVX codings of `vaccineCode` |
+
+  Practitioner, PractitionerRole, Organization, Location, Medication and Patient have no validity rule or instant. They are valid hop targets only, and a hop to them may not carry criteria. An unknown type, a start type without an instant, or a criterion not listed for its type is a configuration error: the oracle throws and `admit` fails.
+- **Path steps**, applied in order to the current resource:
+  - Forward, `{ref: <element path>, type?: <Type>, <criterion>?: <codes>}`. The element path is dot-separated plain element names (`requester`, `participant.individual`, `result`). Walk it, flattening arrays in document order, and collect the Reference objects (objects with a `reference` string). Try them in that order. Skip a reference that is unresolved, whose target has a different `resourceType` than `type` (when given), or whose target fails its type's validity rule, instant `<= now` or the step's criteria. The first target not skipped becomes current. If none is left the answer is null.
+  - Reverse, `{rev: <Type>.<element path>, pick: latest | earliest, <criterion>?: <codes>}`. The candidates are the patient's resources of `Type` with a Reference at the element path that resolves to the current resource itself. They qualify exactly as start candidates (validity, instant `<= now`, criteria, no window) and `pick` chooses among them with the 2.0 tie-break. No qualifying candidate gives null.
+- **Reference resolution** for a reference string `r` found in a resource `R`:
+  1. `#id` is the resource in `R.contained` with that id; none means unresolved.
+  2. `r` equal to a Bundle entry `fullUrl` anywhere in the corpus is that entry's resource.
+  3. `Type?identifier=system|value` is the resource of `Type`, anywhere in the corpus, with an `identifier` whose `system` and `value` both match exactly. None means unresolved. **More than one match is a corpus error: the oracle throws.**
+  4. `Type/id` is the resource of that type and id; none means unresolved.
+  5. Anything else (absolute URLs, other search parameters, a Reference with only `identifier` or `display`) is unresolved.
+  The `display` of a reference is never used.
+- **Projections** on the final resource:
+
+| Projection | Result |
+|---|---|
+| `name` | Practitioner / Patient: the first `name` with `use = official`, else the first `name`; its `given` entries then `family`, joined by single spaces. `prefix` and `suffix` are omitted, and `text` is used only when there is neither given nor family. Organization / Location: the `name` string. |
+| `value` | `valueQuantity` as `{value, unit}`, unit = `code`, else `unit`. Null when the value is not numeric or there is no unit. |
+| `date` | the type's instant as a date answer (2.0). |
+| `address.<field>` | the field of the first `address` entry (or of the single address object of a Location), for example `address.city`. |
+| `identifier:<system>` | the first identifier with that system as `{system, value}`. |
+| `code:<system>` | the first coding of `code` (or `vaccineCode`) in that system as `{system, code}`. |
+
+  A map projection gives a composite. If any field projects to null the whole answer is null, because composites have no partial gold.
+- **Missing data.** There is no fallback to an older start resource. Once the start is picked, a failed hop or a null projection gives null, and `admit` rejects a null gold on a question not marked `expect_empty`. That catches a broken path at authoring time instead of silently answering about a different visit. (`medication-reason` keeps its own walk-back semantics; it is a different oracle.)
+- **Evidence.** The start resource and every resource reached by a hop, in path order.
+- Answer: any type the projection produces; `name` for a person or organisation. Used by: t4-med-prescriber-001, t4-class-prescriber-001, t4-prescription-facility-001, t4-panel-result-001/002, t4-admission-facility-001, t4-admission-med-prescriber-001, t4-encounter-clinician-001.
 
 **allergy-check**
 - Parameters: `substances` list of `"system|code"` strings (optional; absent = all); `category` (optional: food | medication | environment | biologic); `return` in any | codes.
@@ -116,6 +160,28 @@ Six existing oracles (four of them extended) plus eleven new ones. All parameter
 **cohort-count** — generic AND-of-criteria count over living patients.
 - Parameters (all optional, all must hold): `age_min` / `age_max` (inclusive, age at now); `conditions_any` list (≥ 1 active condition listed); `medications_active_any` list (≥ 1 active order listed); `immunization_any` `{cvx: list, window_days?: int}` (≥ 1 matching completed immunization, per immunization-history); `lab` `{loinc, window_days, comparator, threshold, unit, missing?}`: the latest valid reading in the window satisfies the comparison; a patient with no reading is excluded unless `missing: count`.
 - Answer: integer. Used by: t6-icd-cohort-001/002, t6-class-cohort-001, t6-vaccine-cohort-001/002, t6-lab-cohort-001.
+
+## Answer type: name
+
+JSON shape: a non-empty string. The answer spec declares `kind: person` (a Practitioner or Patient) or `kind: text` (an organisation, location or town). Prompt wording: a person is `"<given name(s)> <family name>"` (a JSON string; titles such as Dr. are optional), text is `"<name as recorded>"` (a JSON string). The gold is the oracle's `name` projection. Both gold and agent strings are normalised, then compared token by token.
+
+Common step: Unicode NFKD, drop combining marks, lower-case, and map U+2019 to `'`.
+
+`kind: person`:
+1. Split on commas into parts. Tokenise each part by replacing every character other than a letter, digit, underscore, whitespace, `'` or `-` with a space, then splitting on whitespace.
+2. While there are at least two parts and the last part is only suffix tokens, drop it. Suffixes: md, do, phd, np, pa, rn, dds, dmd, jr, sr, ii, iii, iv.
+3. Exactly two parts are read as `Family, Given` and reordered to given then family. One part keeps its order. Three or more are concatenated in order.
+4. Drop leading title tokens (dr, doctor, mr, mrs, ms, miss, mx, prof, professor), then trailing suffix tokens.
+5. Strip trailing digits from each token and drop tokens left empty. Synthea appends digits to every name; they are ignored.
+6. Match iff the token lists are equal. Every given name and the family name must be present, in order. A reversed order without a comma fails.
+
+`kind: text`:
+1. Replace `&` and `+` with ` and `, and delete `'` and `"`.
+2. Replace any other non-word character with a space and split on whitespace.
+3. Drop one leading `the`, then drop trailing legal-form tokens (inc, incorporated, llc, llp, ltd, corp, corporation, co, pc, pllc, lp).
+4. Match iff the token lists are equal. Digits are kept. There is no abbreviation expansion: `Rehab` does not match `Rehabilitation`.
+
+Accepted consequence: because digits are ignored, a person's name passes with different Synthea digits. That is safe only while no two corpus Practitioners collide once digits are stripped; re-check this when the corpus is regenerated. Organisation names repeat in the corpus, so a question must not have a duplicated name as its answer.
 
 ## Crosswalk appendix
 
@@ -151,7 +217,7 @@ Every list below is used verbatim as an oracle parameter. General rules:
 | "colonoscopy" | 73761001 | Only colonoscopy concept in corpus | t2-last-procedure-001 |
 | "an echo of any kind" | 40701008 Echocardiography; 433236007 Transthoracic echocardiography; 105376000 Transesophageal echocardiography | Echocardiography and its descendants | t2-last-procedure-002 |
 | "dialysis session" | 265764009 Renal dialysis; 302497006 Hemodialysis †; 71192002 Peritoneal dialysis † | Renal dialysis and its subtypes | t2-last-procedure-003, t3-procedure-count-001 |
-| "ED visit" / "inpatient admission" | Encounter.class EMER / IMP (v3-ActCode) | FHIR encounter class | t2-last-visit-type-001/002, t3-encounter-count-001, t4-encounter-clinician-001/002 |
+| "ED visit" / "inpatient admission" | Encounter.class EMER / IMP (v3-ActCode) | FHIR encounter class | t2-last-visit-type-001/002, t3-encounter-count-001, t4-encounter-clinician-001, t4-admission-facility-001, t4-admission-med-prescriber-001 |
 | "urgent care visit" | Encounter.type 702927004 Urgent care clinic | Synthea files urgent care as class AMB with this type, so a class-based (EMER) search is wrong | t3-encounter-count-002 |
 | KDIGO G category → SNOMED | G1 431855005; G2 431856006; G3a 700378005; G3b 700379002; G4 431857002; G5 433146000 | SNOMED CT "Chronic kidney disease stage N" concepts; 3A/3B have their own concepts below 433144002 (stage 3) | t5-kdigo-stage-001 |
 

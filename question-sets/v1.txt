@@ -1,4 +1,4 @@
-# v1-100: the 10 phase0 questions plus 90 more, by tier
+# v1: the 10 phase0 questions plus 96 more, by tier
 # Tier 1
 t1-last-a1c-001
 t1-last-a1c-002
@@ -65,7 +65,6 @@ t4-current-class-003
 t4-med-indication-001
 t4-med-indication-002
 t4-encounter-clinician-001
-t4-encounter-clinician-002
 t4-icd-crosswalk-001
 t4-icd-crosswalk-002
 t4-icd-crosswalk-003
@@ -76,6 +75,13 @@ t4-vaccine-brand-002
 t4-lay-lab-001
 t4-drug-class-allergy-001
 t4-problem-count-001
+t4-med-prescriber-001
+t4-class-prescriber-001
+t4-prescription-facility-001
+t4-panel-result-001
+t4-panel-result-002
+t4-admission-facility-001
+t4-admission-med-prescriber-001
 # Tier 5
 t5-bmi-calc-001
 t5-bmi-calc-002

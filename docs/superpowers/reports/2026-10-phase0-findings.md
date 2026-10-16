@@ -9,7 +9,7 @@
 | Harness | Copilot CLI 1.0.98, `claude-sonnet-5.5`, credit cap 30 per attempt |
 | P1 | shell only (`view`, `rg`, `glob`, `powershell`, `apply_patch`) |
 | P2 | P1 + `cli-on-fhir` MCP, ignixa-fhir PR #504 at `0462637d`, built from source (Release). 16 tools: folder, search, read, patient-context and terminology; `terminology_load_package` off |
-| Baselines | B0 oracle 100%, B1 abstain 20% on phase0 (6% on v1-100) |
+| Baselines | B0 oracle 100%, B1 abstain 20% on phase0 (6% on v1) |
 
 ## Results
 
@@ -18,7 +18,7 @@
 | P1 shell | 10/10 | 45.3 | 22 s |
 | P2 shell + cli-on-fhir | 10/10 | 62.5 | 25 s |
 
-Paired results: both profiles were correct on all 10 questions, so there were no discordant pairs and McNemar p = 1.0. **The phase0 set does not discriminate between the profiles.** Sonnet 5.5 with a shell answers every question by grepping the patient's Bundle and parsing it in PowerShell. This is expected for 10 mostly T1–T3 questions on a corpus where one file holds one patient. The v1-100 set and the Phase 1 corpus exist to fix this.
+Paired results: both profiles were correct on all 10 questions, so there were no discordant pairs and McNemar p = 1.0. **The phase0 set does not discriminate between the profiles.** Sonnet 5.5 with a shell answers every question by grepping the patient's Bundle and parsing it in PowerShell. This is expected for 10 mostly T1–T3 questions on a corpus where one file holds one patient. The v1 set and the Phase 1 corpus exist to fix this.
 
 Per question, P2 cost more on 9 of 10 questions (by 0.3 to 4.6 credits each). It cost less only on the T6 cohort question (5.1 against 5.5 credits, and 20 s against 56 s). That cohort question is the only one where the tools clearly helped.
 
@@ -45,6 +45,6 @@ Per question, P2 cost more on 9 of 10 questions (by 0.3 to 4.6 credits each). It
 
 ## Next
 
-1. Run P1 and P2 on `question-sets/v1-100.txt`. The estimate at the observed mean cost is about 450 credits for P1 and 630 for P2. The cap allows up to 6,000.
+1. Run P1 and P2 on `question-sets/v1.txt`. The estimate at the observed mean cost is about 450 credits for P1 and 630 for P2. The cap allows up to 6,000.
 2. Pass the `patient_list` finding to PR #504.
 3. Add a P2 variant with `--tx-server` terminology so the MAP questions can use `terminology_translate`.

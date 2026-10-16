@@ -1,0 +1,16 @@
+id: t4-med-prescriber-001
+tier: 4
+template: med-prescriber
+tags: [REF, MULTI, MAP]
+tool_groups: [patient-context, search]
+persona: pharmacist
+patient: { mrn: "00bcbfc6-c7b9-bd0e-3d95-071f9fba6321", name: "Jesica465 Cormier289", birth_date: "1981-01-20" }
+question: She is due for her next Depo-Provera injection. Which clinician wrote her most recent Depo-Provera order? Give the prescriber's name.
+answer: { type: name, kind: person }
+oracle:
+  name: reference-path
+  parameters:
+    start: { type: MedicationRequest, rxnorm: ["1000126"], pick: latest }
+    path: [{ ref: requester, type: Practitioner }]
+    project: name
+verification: { status: unverified }

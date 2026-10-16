@@ -1,0 +1,22 @@
+id: t4-admission-facility-001
+tier: 4
+template: admission-facility
+tags: [REF, MULTI, TEMP]
+tool_groups: [patient-context, search]
+persona: care-manager
+patient: { mrn: "82623afe-e51c-e02e-1dd7-15a4394d0e92", name: "Jordan900 Abbott774", birth_date: "1999-11-07" }
+question: >-
+  I'm requesting her discharge summary. Which hospital provided her most recent inpatient admission, and in which
+  town is it? Give the organisation's name and town.
+answer:
+  type: composite
+  fields:
+    facility: { type: name, kind: text }
+    town: { type: name, kind: text }
+oracle:
+  name: reference-path
+  parameters:
+    start: { type: Encounter, class: ["IMP"], pick: latest }
+    path: [{ ref: serviceProvider, type: Organization }]
+    project: { facility: name, town: "address.city" }
+verification: { status: unverified }

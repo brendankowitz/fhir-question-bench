@@ -1,0 +1,16 @@
+id: t4-panel-result-002
+tier: 4
+template: panel-member-result
+tags: [REF, MULTI, TEMP]
+tool_groups: [patient-context, search]
+persona: hospitalist
+patient: { mrn: "5693c080-f485-91e7-54b9-ad9a8c12af62", name: "Maurice742 Auer97", birth_date: "1973-03-25" }
+question: What potassium was reported on the last metabolic panel drawn during his most recent ICU stay?
+answer: { type: quantity, unit: "mmol/L", tolerance: 0.01 }
+oracle:
+  name: reference-path
+  parameters:
+    start: { type: Encounter, class: ["IMP"], type_snomed: ["305351004", "397821002"], pick: latest }
+    path: [{ rev: DiagnosticReport.encounter, loinc: ["24323-8", "51990-0", "24321-2"], pick: latest }, { ref: result, type: Observation, loinc: ["6298-4", "2823-3"] }]
+    project: value
+verification: { status: unverified }

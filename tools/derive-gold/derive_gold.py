@@ -15,6 +15,7 @@ import math
 import os
 import re
 import sys
+import unicodedata
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
@@ -27,7 +28,6 @@ LOINC = "http://loinc.org"
 SNOMED = "http://snomed.info/sct"
 RXNORM = "http://www.nlm.nih.gov/research/umls/rxnorm"
 CVX = "http://hl7.org/fhir/sid/cvx"
-NPI = "http://hl7.org/fhir/sid/us-npi"
 
 VALID_OBS_STATUS = {"final", "amended", "corrected"}
 EXCLUDED_MED_STATUS = {"entered-in-error", "cancelled", "draft"}
@@ -478,24 +478,11 @@ def encounters(corpus, mrn, p) -> list[dict]:
     return found
 
 
-def practitioner_identifier(enc: dict) -> dict | None:
-    """First participant whose individual is a Practitioner. The corpus only uses conditional
-    references of the form Practitioner?identifier=<system>|<value>, so the NPI is read from it."""
-    for participant in enc.get("participant", []):
-        reference = (participant.get("individual") or {}).get("reference", "")
-        match = re.match(r"Practitioner\?identifier=(.+)\|(.+)$", reference)
-        if match:
-            return {"system": match.group(1), "value": match.group(2)}
-    return None
-
-
 def encounter_query(corpus, mrn, p):
     found = encounters(corpus, mrn, p)
     shape = p["return"]
     if shape in ("count", "latest_date"):
         return event_answer(found, shape)
-    if shape == "latest_practitioner":
-        return practitioner_identifier(newest_first(found)[0]["resource"]) if found else None
     raise ValueError(shape)
 
 
@@ -671,6 +658,282 @@ def cohort_count(corpus, _mrn, p):
     return len(members)
 
 
+# ---------------------------------------------------------------- reference paths
+
+class References:
+    """Resolves the four reference forms of the oracle spec against the whole corpus."""
+
+    def __init__(self, corpus: Corpus):
+        self.corpus = corpus
+        self.by_type_id: dict[tuple[str, str], dict] = {}
+        self.by_identifier: dict[tuple[str, str, str], list[dict]] = {}
+        for resource in corpus.full_urls.values():
+            kind = resource["resourceType"]
+            self.by_type_id[(kind, resource.get("id", ""))] = resource
+            identifiers = resource.get("identifier")
+            for identifier in identifiers if isinstance(identifiers, list) else []:
+                if "system" in identifier and "value" in identifier:
+                    key = (kind, identifier["system"], identifier["value"])
+                    self.by_identifier.setdefault(key, []).append(resource)
+
+    def resolve(self, container: dict, reference: str | None) -> dict | None:
+        if not reference:
+            return None
+        if reference.startswith("#"):
+            return next((c for c in container.get("contained", []) if c.get("id") == reference[1:]), None)
+        if reference in self.corpus.full_urls:
+            return self.corpus.full_urls[reference]
+        conditional = re.fullmatch(r"([A-Za-z]+)\?identifier=([^|]+)\|(.+)", reference)
+        if conditional:
+            matches = self.by_identifier.get(conditional.groups(), [])
+            if len(matches) > 1:
+                raise ValueError(f"conditional reference {reference} matches {len(matches)} resources")
+            return matches[0] if matches else None
+        literal = re.fullmatch(r"([A-Za-z]+)/([A-Za-z0-9\-.]{1,64})", reference)
+        if literal:
+            return self.by_type_id.get(literal.groups())
+        return None
+
+
+def references_at(resource: dict, element_path: str) -> list[dict]:
+    """Reference objects at a dot path of plain element names, arrays flattened in document order."""
+    nodes = [resource]
+    for name in element_path.split("."):
+        next_nodes = []
+        for node in nodes:
+            value = node.get(name) if isinstance(node, dict) else None
+            next_nodes.extend(value if isinstance(value, list) else [value] if value is not None else [])
+        nodes = next_nodes
+    return [node for node in nodes if isinstance(node, dict) and "reference" in node]
+
+
+# ---------------------------------------------------------------- per-type selection rules
+
+def _encounter_instant(r):
+    return when((r.get("period") or {}).get("start"))
+
+
+def _report_instant(r):
+    return when(r.get("effectiveDateTime") or (r.get("effectivePeriod") or {}).get("start") or r.get("issued"))
+
+
+def _procedure_instant(r):
+    return when(r.get("performedDateTime") or (r.get("performedPeriod") or {}).get("start"))
+
+
+RULES = {
+    # type: (valid(resource), instant(resource), {criterion: codes(corpus, resource)})
+    "MedicationRequest": (
+        lambda r: r.get("status") not in EXCLUDED_MED_STATUS,
+        lambda r: when(r.get("authoredOn")),
+        {"rxnorm": lambda c, r: med_codes(c, r)},
+    ),
+    "Encounter": (
+        lambda r: r.get("status") not in ("cancelled", "entered-in-error"),
+        _encounter_instant,
+        {"class": lambda c, r: [(r.get("class") or {}).get("code")],
+         "type_snomed": lambda c, r: [code for t in r.get("type", []) for code in codes_of(t, SNOMED)]},
+    ),
+    "DiagnosticReport": (
+        lambda r: r.get("status") in VALID_OBS_STATUS,
+        _report_instant,
+        {"loinc": lambda c, r: codes_of(r.get("code"), LOINC)},
+    ),
+    "Observation": (
+        lambda r: r.get("status") in VALID_OBS_STATUS,
+        observation_instant,
+        {"loinc": lambda c, r: codes_of(r.get("code"), LOINC)},
+    ),
+    "Condition": (
+        condition_ok,
+        condition_onset,
+        {"snomed": lambda c, r: codes_of(r.get("code"), SNOMED)},
+    ),
+    "Procedure": (
+        lambda r: r.get("status") == "completed",
+        _procedure_instant,
+        {"snomed": lambda c, r: codes_of(r.get("code"), SNOMED)},
+    ),
+    "Immunization": (
+        lambda r: r.get("status") == "completed",
+        lambda r: when(r.get("occurrenceDateTime")),
+        {"cvx": lambda c, r: codes_of(r.get("vaccineCode"), CVX)},
+    ),
+}
+SELECTOR_KEYS = {"type", "pick", "window_days", "ref", "rev"}
+
+
+def qualifies(corpus, resource: dict, criteria: dict, start=None) -> dict | None:
+    """Apply the type's validity rule, instant <= now (and window), and every code criterion.
+    Returns {id, when, resource} or None. Types without rules (Practitioner, Organization, ...) always qualify,
+    and then may not carry code criteria."""
+    kind = resource["resourceType"]
+    filters = {k: v for k, v in criteria.items() if k not in SELECTOR_KEYS}
+    if kind not in RULES:
+        if filters:
+            raise ValueError(f"code criteria {sorted(filters)} are not defined for {kind}")
+        return {"id": resource.get("id", ""), "when": None, "resource": resource}
+    valid, instant, criteria_codes = RULES[kind]
+    moment = instant(resource)
+    if not valid(resource) or moment is None or not in_window(moment, start):
+        return None
+    for name, wanted in filters.items():
+        if name not in criteria_codes:
+            raise ValueError(f"criterion {name} is not defined for {kind}")
+        if not set(criteria_codes[name](corpus, resource)) & set(as_list(wanted)):
+            return None
+    return {"id": resource.get("id", ""), "when": moment, "resource": resource}
+
+
+def pick(items: list[dict], which: str) -> dict | None:
+    if not items:
+        return None
+    if which == "latest":
+        return newest_first(items)[0]
+    if which == "earliest":
+        return oldest_first(items)[0]
+    raise ValueError(f"pick must be latest or earliest, not {which}")
+
+
+# ---------------------------------------------------------------- projections
+
+def human_name(resource: dict) -> str | None:
+    names = resource.get("name")
+    if isinstance(names, str):
+        return names
+    if not names:
+        return None
+    chosen = next((n for n in names if n.get("use") == "official"), names[0])
+    parts = list(chosen.get("given", [])) + ([chosen["family"]] if chosen.get("family") else [])
+    return " ".join(parts) if parts else chosen.get("text")
+
+
+def project(resource: dict, projection):
+    if isinstance(projection, dict):
+        return {field: project(resource, inner) for field, inner in projection.items()}
+    if projection == "name":
+        return human_name(resource)
+    if projection == "value":
+        quantity = resource.get("valueQuantity") or {}
+        if not isinstance(quantity.get("value"), (int, float)):
+            return None
+        unit = quantity.get("code") or quantity.get("unit")
+        return {"value": quantity["value"], "unit": unit} if unit else None
+    if projection == "date":
+        kind = resource["resourceType"]
+        moment = RULES[kind][1](resource) if kind in RULES else None
+        return day(moment) if moment else None
+    if projection.startswith("address."):
+        address = resource.get("address")
+        address = address[0] if isinstance(address, list) and address else address
+        return (address or {}).get(projection.split(".", 1)[1])
+    if projection.startswith("identifier:"):
+        system = projection.split(":", 1)[1]
+        found = next((i for i in resource.get("identifier", []) if i.get("system") == system), None)
+        return {"system": system, "value": found["value"]} if found else None
+    if projection.startswith("code:"):
+        system = projection.split(":", 1)[1]
+        codes = codes_of(resource.get("code") or resource.get("vaccineCode"), system)
+        return {"system": system, "code": codes[0]} if codes else None
+    raise ValueError(f"unknown projection {projection}")
+
+
+# ---------------------------------------------------------------- the oracle
+
+_REFERENCES: dict[int, References] = {}
+
+
+def reference_path(corpus, mrn, p):
+    refs = _REFERENCES.setdefault(id(corpus), References(corpus))
+    selector = p["start"]
+    window = window_start(selector)
+    candidates = [hit for r in corpus.of(mrn, selector["type"]) if (hit := qualifies(corpus, r, selector, window))]
+    current = pick(candidates, selector["pick"])
+    if current is None:
+        return None
+    current = current["resource"]
+    for step in p.get("path", []):
+        if "ref" in step:
+            current = forward(corpus, refs, current, step)
+        elif "rev" in step:
+            current = reverse(corpus, refs, mrn, current, step)
+        else:
+            raise ValueError(f"path step needs ref or rev: {step}")
+        if current is None:
+            return None
+    answer = project(current, p["project"])
+    if isinstance(answer, dict) and isinstance(p["project"], dict) and any(v is None for v in answer.values()):
+        return None
+    return answer
+
+
+def forward(corpus, refs, current, step) -> dict | None:
+    for reference in references_at(current, step["ref"]):
+        target = refs.resolve(current, reference.get("reference"))
+        if target is None or ("type" in step and target["resourceType"] != step["type"]):
+            continue
+        if qualifies(corpus, target, step):
+            return target
+    return None
+
+
+def reverse(corpus, refs, mrn, current, step) -> dict | None:
+    kind, element = step["rev"].split(".", 1)
+    found = []
+    for candidate in corpus.of(mrn, kind):
+        if not any(refs.resolve(candidate, r.get("reference")) is current for r in references_at(candidate, element)):
+            continue
+        if hit := qualifies(corpus, candidate, step):
+            found.append(hit)
+    chosen = pick(found, step["pick"])
+    return chosen["resource"] if chosen else None
+
+
+# ---------------------------------------------------------------- name answers (grader reference)
+
+TITLES = {"dr", "doctor", "mr", "mrs", "ms", "miss", "mx", "prof", "professor"}
+SUFFIXES = {"md", "do", "phd", "np", "pa", "rn", "dds", "dmd", "jr", "sr", "ii", "iii", "iv"}
+LEGAL_FORMS = {"inc", "incorporated", "llc", "llp", "ltd", "corp", "corporation", "co", "pc", "pllc", "lp"}
+
+
+def _fold(text: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", text)
+    stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return stripped.casefold().replace("’", "'")
+
+
+def person_tokens(text: str) -> list[str]:
+    parts = [re.sub(r"[^\w\s'\-]", " ", part).split() for part in _fold(text).split(",")]
+    while len(parts) >= 2 and all(t in SUFFIXES for t in parts[-1]):
+        parts.pop()
+    if len(parts) == 2:
+        parts = [parts[1], parts[0]]
+    tokens = [t for part in parts for t in part]
+    while tokens and tokens[0] in TITLES:
+        tokens.pop(0)
+    while tokens and tokens[-1] in SUFFIXES:
+        tokens.pop()
+    tokens = [re.sub(r"\d+$", "", t) for t in tokens]
+    return [t for t in tokens if t]
+
+
+def text_tokens(text: str) -> list[str]:
+    folded = _fold(text).replace("&", " and ").replace("+", " and ")
+    folded = re.sub(r"['\"]", "", folded)
+    tokens = re.sub(r"[^\w\s]", " ", folded).split()
+    if tokens and tokens[0] == "the":
+        tokens.pop(0)
+    while tokens and tokens[-1] in LEGAL_FORMS:
+        tokens.pop()
+    return tokens
+
+
+def names_match(kind: str, gold: str, agent: str) -> bool:
+    tokens = person_tokens if kind == "person" else text_tokens
+    expected = tokens(gold)
+    return bool(expected) and tokens(agent) == expected
+
+
 def unanswerable(_corpus, _mrn, _p):
     return INSUFFICIENT
 
@@ -690,6 +953,7 @@ ORACLES = {
     "immunization-history": immunization_history,
     "procedure-history": procedure_history,
     "encounter-query": encounter_query,
+    "reference-path": reference_path,
     "allergy-check": allergy_check,
     "clinical-calculation": clinical_calculation,
     "cohort-count": cohort_count,
@@ -837,6 +1101,8 @@ def comparable(value):
 def same(left, right, spec: dict) -> bool:
     left, right = comparable(left), comparable(right)
     kind = spec.get("type")
+    if kind == "name" and isinstance(left, str) and isinstance(right, str):
+        return names_match(spec["kind"], left, right)
     if isinstance(left, bool) or isinstance(right, bool):
         return left is right
     if isinstance(left, (int, float)) and isinstance(right, (int, float)):
@@ -876,7 +1142,7 @@ def compare(python_golds: dict, questions: dict, csharp_path: str) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Independent Python derivation of gold answers.")
-    parser.add_argument("question_set", nargs="?", default="question-sets/v1-100.txt", help="question-set file, relative to the repo root")
+    parser.add_argument("question_set", nargs="?", default="question-sets/v1.txt", help="question-set file, relative to the repo root")
     parser.add_argument("--corpus", default="corpora/synthea-sample-v1/data", help="folder of corpus bundles, relative to the repo root")
     parser.add_argument("--questions-dir", default="questions", help="folder of question YAML files, relative to the repo root")
     parser.add_argument("--out", help="write golds as JSON to this path (omit to print to stdout); never inside the repo")

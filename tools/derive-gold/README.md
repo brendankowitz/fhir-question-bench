@@ -4,7 +4,7 @@ An independent Python re-derivation of the gold answers, written in a different 
 (`src/FhirAgentBench/Oracles/`). It satisfies design spec §7's "second derivation": two implementations,
 written separately from the oracle semantics in `docs/questions/oracle-semantics.md`, must agree.
 
-It reads the questions listed in a question-set file (default `question-sets/v1-100.txt`), loads the pinned
+It reads the questions listed in a question-set file (default `question-sets/v1.txt`), loads the pinned
 corpus, and evaluates each question's oracle. Questions whose oracle it does not implement are skipped and
 counted. It needs only the Python standard library.
 
@@ -16,9 +16,11 @@ python -I tools/derive-gold/derive_gold.py
 python -I tools/derive-gold/derive_gold.py --out "$TMPDIR/gold-python.json"
 
 # compare against the C# golds
-dotnet run --project src/FhirAgentBench.Cli -- admit --corpus corpora/synthea-sample-v1 --set question-sets/v1-100.txt --show > "$TMPDIR/csharp.txt"
+dotnet run --project src/FhirAgentBench.Cli -- admit --corpus corpora/synthea-sample-v1 --set question-sets/v1.txt --show > "$TMPDIR/csharp.txt"
 python -I tools/derive-gold/derive_gold.py --compare "$TMPDIR/csharp.txt"
 ```
+
+It also covers `reference-path` and compares `name` answers with the same normalisation as the C# grader.
 
 `--compare` ignores set order, allows numeric differences within each question's declared tolerance (or 1e-6),
 and treats `{system, code}` objects and bare code strings as equal. It prints a match/mismatch summary and

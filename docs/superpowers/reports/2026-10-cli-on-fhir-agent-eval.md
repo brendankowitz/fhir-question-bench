@@ -21,7 +21,30 @@ Profiles:
 - **P3**: the MCP server only, with no shell; builtins `create` and `apply_patch` for the answer file.
 - **…-warm**: the bench pre-computes the compact patient map (`cli-on-fhir context <corpus> <id> --compact`) and places it in the prompt. This is the PatientIQ "warm chart" path.
 
-## Results
+## Final results (cli-on-fhir V12, ignixa-fhir#507 head `3affbc14`)
+
+These use profile `p3-lean-warm`: MCP only, 7 tools, with the patient map in the prompt. Question sets:
+- **Held out:** sample C, 58 questions never used for tuning.
+- **Cohorts:** `cohorts-all.txt`, 14 questions. Eight come from v1 and six were written later as a held-out check of the cohort tool.
+
+| Set | Model | Profile | Runs | Correct | Credits per question | Tokens per question | Time per question |
+|---|---|---|---|---|---|---|---|
+| Held out (58) | Sonnet 5.5 | Shell only | 2 | 96.6% | 4.94 | 70K | 19.2 s |
+| Held out (58) | Sonnet 5.5 | **MCP + map, V12** | 2 | **100%** | **3.49 (−29%)** | **48K (−31%)** | **11.5 s (−40%)** |
+| Held out (58) | Haiku 5.5 | Shell only | 1 | 75.9% | 0.55 | 117K | 35.8 s |
+| Held out (58) | Haiku 5.5 | **MCP + map, V11** | 1 | **100%** | **0.31** | **67K (−43%)** | **19.7 s** |
+| Held out (58) | GPT-6 Luna | Shell only | 1 | 91.4% | 0.26 | 57K | 28.0 s |
+| Held out (58) | GPT-6 Luna | **MCP + map, V11** | 1 | **100%** | **0.16** | **36K (−37%)** | **21.8 s** |
+| Cohorts (14) | Sonnet 5.5 | Shell only | 3 | 97.6% | 4.43 | 56K | 60.3 s |
+| Cohorts (14) | Sonnet 5.5 | **MCP + map, V12** | 3 | **100%** | **4.15 (−6%)** | 61K (+9%) | **15.7 s (−74%)** |
+
+- **Held out, every model:** the tool is more accurate (100% against 76–97%), cheaper and faster.
+- **Held out, Sonnet by tier:** fewer tokens in every tier except cohorts. There it used 55K against 52K, at lower credits (4.1 against 4.5) and 14 s against 52 s.
+- **Cohorts:** accuracy is equal or better, credits are lower and time is down about 4×. Tokens are close: the tool used fewer on 8 of 14 questions.
+  - The two questions that cost the tool about 2× tokens cross drug-class boundaries on purpose: "any opioid **including buprenorphine/naloxone**" (ATC N07BC, not N02A), and "ACE inhibitor, ARB **or sacubitril/valsartan**" (C09DX).
+  - The agent sees the class count, notices the missing member and corrects it. That extra work is clinical reasoning, not waste.
+
+## Earlier results (V7/V8)
 
 Pooled over all 106 questions. P1 was run twice on each sample, giving 212 attempts. P3-warm on V7 was run twice on A and B and once on C, giving 154 attempts.
 
@@ -86,6 +109,11 @@ Every change below came from a transcript of a run that went wrong. All were mea
 | V5 | Fast patient lookup (no index loads); persisted compartments; **compact patient map**; per-version cache; tx-server text search | Lookup went from 6.8–32 s to 0.35 s; map is 11 KB → 5.5 KB |
 | V6 | Map trimmed to about 4 KB | Fewer tokens on every request in warm runs |
 | V7 | `perPatient=latest` for cohorts; MCP responses capped at 16 KB (Copilot spills above about 14–20 KB); `next` suggests a whole-answer `fhirpath` first | The LDL cohort takes 1 call instead of 15; 0 spills |
+| V8 | Instruction: verify a code with terminology before answering with it | KDIGO G3a miss fixed; held-out 98.3% |
+| V9 | `patientSearch()` FHIRPath function; `expand … scope=folder`; compact `folder_code_systems` (20 KB → 2 KB) | One-call cohorts were possible, but the agent used them in only 9 of 24 attempts |
+| V10 | `patient_cohort`: declarative eCQM-style criteria (conditions, age, sex, living, medications including RxClass classes, immunizations, latest-lab-in-window with missing rule) | Count logic solved; the remaining misses were ICD-10 code selection |
+| V11 | `folder_code_systems text=…`: the folder's own codes matching words, with patient counts | E11 and I25 cohorts correct; held out 100% for all three models |
+| V12 | Instruction: `patient_cohort` counts are final, and drug classes go straight in; lean 7-tool profile | Cohorts 100%, fewer credits than the shell, 74% faster |
 
 Two things outside the tool mattered as much as the tool itself:
 1. **Index cache thrash.** Two tool builds shared one cache directory, so almost every attempt rebuilt its indexes. That made `patient_list` average 18 s. Giving each build its own cache directory, and pre-warming it, removed the time penalty entirely.
@@ -93,7 +121,15 @@ Two things outside the tool mattered as much as the tool itself:
 
 ## The metacognitive approach
 
-Asking the shell agent to write a patient map first did not improve accuracy: 95.8% against 95.8%, on A and B. It cost 33% more credits and 37% more time, because the agent spends turns and output tokens building the map.
+Same 48 questions (samples A and B), Sonnet 5.5:
+
+| Profile | Correct | Credits per question | Tokens per question | Output tokens per question | Time per question |
+|---|---|---|---|---|---|
+| Shell only | 94.8% | 4.41 | 63.5K | 1.4K | 21.8 s |
+| Shell + "map the patient first" | 95.8% | 6.27 (+42%) | 67.2K (+6%) | 2.6K (+84%) | 28.0 s (+28%) |
+| MCP only + pre-computed map (V7) | **99.0%** | **3.90 (−12%)** | **54.3K (−15%)** | 1.0K | **12.4 s (−43%)** |
+
+Asking the agent to map the patient first bought about one extra correct answer in 48, at 42% more credits. The agent reads the record and writes the map, then still searches the files much as before.
 
 The same idea pays off when the map is **pre-computed and handed over**. That is P3-warm: the map arrives in the prompt for free, and the agent goes straight to one or two targeted calls. Requests per question fall from about 5.9 to 3.8. In short, the metacognitive insight is right, but the map should be derived, not generated by the model on every question. This matches the PatientIQ design's warm root digest.
 
@@ -107,14 +143,19 @@ Partly. The fit is good where the tool is meant to help, and weaker in three pla
 
 **Weaker fit**
 1. **The data layout favours the shell.** Synthea writes one Bundle file per patient, named after the patient, so `grep name` plus PowerShell is a strong baseline. In the PatientIQ setting the agent has no files at all; it reaches a FHIR store through tools. The P3 (tools-only) result is therefore the realistic one. An NDJSON-by-type copy of the corpus, with the same answers, would remove the file-per-patient shortcut and should be the next corpus variant.
-2. **Cohort questions are a different route.** PatientIQ marks population questions "Out of scope (SQL-on-FHIR views)". The bench has 8 of them, and they are the only tier where the tool still loses on tokens. They belong on a SQL-on-FHIR or analytics route, such as the `duckdb-analytics` candidate in the cli-on-fhir design docs. They should be reported separately, not averaged into the patient-context score.
+2. **Cohort questions are a different route.** PatientIQ marks population questions "Out of scope (SQL-on-FHIR views)".
+   - Patient-context search lost here, up to V9.
+   - The fix was a separate, declarative cohort tool (`patient_cohort`, V10) plus folder code discovery by words (V11), not more search features.
+   - Report cohorts separately from the patient-context score. Their cost profile differs, and two of them test drug-class edge cases on purpose.
+   - Note that `patient_cohort` mirrors the bench's own cohort oracle. The six cohort questions written afterwards, with new shapes, are the check that it generalises: correct 18/18 with the tool against 17/18 with the shell.
 3. **No narrative content.** The bench has no questions over notes, though Synthea ships DocumentReference notes. The PatientIQ "Narrative" route is untested.
 
 Other caveats:
 - Synthea data quirks (A1c values below 4%, creatinine LOINCs that disagree with each other) limit which questions are clinically sound.
 - Cohorts are small: about 100 living patients.
-- Samples A and B were used for tuning. Only C (58 questions) is held out, and it was run once (K=1) on the tool side.
+- Samples A and B were used for tuning. C (58 questions) is held out, run twice per profile for Sonnet.
 - Most tuning used Sonnet 5.5. Haiku 5.5 and GPT-6 Luna were each run once, on the held-out sample only.
+- Two cohort shapes cannot be expressed by the bench oracle yet: a true gender filter, and two conditions combined with AND. The new cohort set uses stand-ins for these.
 
 ## Recommendation
 
@@ -128,9 +169,11 @@ Build the agent surface the way PatientIQ describes, and the way the V7 results 
    - `perPatient` for "latest per patient";
    - responses under the client's spill threshold (16 KB for Copilot), with `next` calls that answer the question rather than page through rows.
 4. **Make terminology first-class**: RxClass drug classes, SNOMED hierarchy through a tx server, and code verification. The remaining held-out errors are terminology judgements (ICD-10 → SNOMED, choosing the G3a code). Adding a "verify a code before you answer with it" line to the instructions is cheap.
-5. **Route cohorts elsewhere**: a SQL-on-FHIR view or analytics tool. Do not stretch patient-context search to cover them.
+5. **Give cohorts their own declarative tool** (`patient_cohort`) and folder code discovery by words. Do not stretch patient-context search to cover them. An LLM fills in a criteria form reliably, but it rarely composes a cohort out of FHIRPath sub-queries (V9 shows this).
 
-With 1–3 in place (cli-on-fhir V7 plus the warm map, MCP only), the agent used 18% fewer tokens, was 38% faster and answered slightly more questions correctly over all 106 questions. With the step 4 instruction line added (V8, the head of ignixa-fhir#507), the held-out 58 questions came out at:
+With all five in place (V12, MCP only, lean 7-tool menu, warm map), the result is 100% on the 58 held-out questions with Sonnet, Haiku and Luna. Against the shell, the tool used 31–43% fewer tokens and was 40–45% faster. On cohorts it was as accurate as the shell or better, cheaper, and 4× faster.
+
+Earlier milestones: with 1–3 in place (cli-on-fhir V7 plus the warm map, MCP only), the agent used 18% fewer tokens, was 38% faster and answered slightly more questions correctly over all 106 questions. With the step 4 instruction line added (V8, the head of ignixa-fhir#507), the held-out 58 questions came out at:
 - 98.3% correct, against 96.6% for the shell;
 - 22% fewer tokens;
 - 36% less time;
@@ -138,8 +181,8 @@ With 1–3 in place (cli-on-fhir V7 plus the warm map, MCP only), the agent used
 
 ## Next steps
 
-1. Add a cohort route (SQL-on-FHIR views or DuckDB over SQL-on-FHIR output), so T6 also beats the shell.
-2. Build an NDJSON-by-type corpus variant (same answers, no file-per-patient shortcut).
-3. Report T6 separately from the patient-context score.
-4. Run K=3 on the held-out sample, and freeze a dev split for further tool tuning.
+1. Build an NDJSON-by-type corpus variant (same answers, no file-per-patient shortcut).
+2. Report T6 (cohorts) separately in `fab report`.
+3. Extend the bench oracle with `gender` and `conditions_all`, then write the two real cohort shapes.
+4. Run K=3 for Haiku and Luna on the held-out sample, freeze a dev split for further tool tuning, and add a second corpus seed as a true holdout.
 5. Add a few narrative (DocumentReference note) questions.

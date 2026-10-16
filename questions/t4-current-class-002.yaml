@@ -1,0 +1,14 @@
+id: t4-current-class-002
+tier: 4
+template: current-class-members
+tags: [TERM, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: cardiology
+patient: { mrn: "f6745f8a-8107-443e-8946-3e6329d20408", name: "Shaun461 Cormier289", birth_date: "1953-05-12" }
+question: Which antiplatelet agents does he have active orders for? Give the RxNorm codes.
+answer: { type: set }
+oracle:
+  name: active-medications
+  parameters: { rxnorm: ["309362", "749196", "243670", "212033", "2563431", "855812"], return: "codes" }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|309362,http://www.nlm.nih.gov/research/umls/rxnorm|749196,http://www.nlm.nih.gov/research/umls/rxnorm|243670,http://www.nlm.nih.gov/research/umls/rxnorm|212033,http://www.nlm.nih.gov/research/umls/rxnorm|2563431,http://www.nlm.nih.gov/research/umls/rxnorm|855812&status=active", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|309362,http://www.nlm.nih.gov/research/umls/rxnorm|749196,http://www.nlm.nih.gov/research/umls/rxnorm|243670,http://www.nlm.nih.gov/research/umls/rxnorm|212033,http://www.nlm.nih.gov/research/umls/rxnorm|2563431,http://www.nlm.nih.gov/research/umls/rxnorm|855812&status=active"]
+verification: { status: unverified }

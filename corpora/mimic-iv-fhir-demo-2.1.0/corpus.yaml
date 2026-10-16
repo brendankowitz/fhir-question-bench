@@ -1,0 +1,8 @@
+id: mimic-iv-fhir-demo-2.1.0
+# After the latest record (2202-08-26), so questions without a stated time see no "future" data; questions that state
+# a time ("Assume the current time is ...", latest 2201-12-31) carry their own now.
+now: "2202-12-31T23:59:00-05:00"
+mrn_system: http://mimic.mit.edu/fhir/mimic/identifier/patient
+source:
+  url: https://physionet.org/content/mimic-iv-fhir-demo/get-zip/2.1.0/
+  sha256: 372997394c1f94fe7a8a1d7a064b5dc75e3e5db6d29a6283515d6f330f206542

@@ -1,0 +1,14 @@
+id: t5-bmi-calc-002
+tier: 5
+template: bmi-from-vitals
+tags: [CALC]
+tool_groups: [patient-context, search]
+persona: endocrinology
+patient: { mrn: "d537941e-1fb7-9868-939a-a26252da8be1", name: "Hui924 Stoltenberg489", birth_date: "1990-07-22" }
+question: Work out her BMI from the most recent weight and height (kg/m²).
+answer: { type: decimal, tolerance: 0.2 }
+oracle:
+  name: clinical-calculation
+  parameters: { formula: "bmi" }
+evidence_searches: ["Observation?code=http://loinc.org|29463-7&_sort=-date&_count=1", "Observation?code=http://loinc.org|8302-2&_sort=-date&_count=1"]
+verification: { status: unverified }

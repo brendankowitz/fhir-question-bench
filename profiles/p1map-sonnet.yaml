@@ -1,0 +1,8 @@
+id: p1map-sonnet
+harness: copilot-cli
+executable: copilot.exe
+model: claude-sonnet-5.5
+builtin_tools: [view, rg, glob, powershell, read_powershell, stop_powershell, apply_patch]
+prompt_template: ../prompts/map.md
+max_ai_credits: 30
+timeout_minutes: 20

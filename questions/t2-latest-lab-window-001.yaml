@@ -1,0 +1,19 @@
+id: t2-latest-lab-window-001
+tier: 2
+template: latest-lab-in-window
+tags: [TEMP, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: hospitalist
+patient: { mrn: "bca1691f-8839-1d66-ed01-471134d55738", name: "Cole117 Corwin846", birth_date: "1944-10-11" }
+question: What's his most recent potassium from the last 30 days, and when? Say none if there isn't one.
+answer:
+  type: composite
+  fields:
+    value: { type: quantity, unit: "mmol/L", tolerance: 0.01 }
+    date: { type: date }
+  nullable: true
+oracle:
+  name: latest-observation
+  parameters: { loinc: ["6298-4", "2823-3"], window_days: 30 }
+evidence_searches: ["Observation?code=http://loinc.org|6298-4,http://loinc.org|2823-3&date=gt2026-07-18T00:00:00Z&date=le2026-08-17T00:00:00Z&_sort=-date&_count=1"]
+verification: { status: unverified }

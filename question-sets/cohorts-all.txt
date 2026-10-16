@@ -1,0 +1,15 @@
+# All cohort questions: original 8 + 6 held-out shapes
+t6-prediabetes-a1c-over-6-001
+t6-ldl-not-at-goal-001
+t6-icd-cohort-001
+t6-icd-cohort-002
+t6-class-cohort-001
+t6-vaccine-cohort-001
+t6-vaccine-cohort-002
+t6-lab-cohort-001
+t6-sex-specific-cohort-001
+t6-class-lab-cohort-001
+t6-vaccine-window-cohort-001
+t6-comorbidity-cohort-001
+t6-lab-below-cohort-001
+t6-class-age-cohort-001

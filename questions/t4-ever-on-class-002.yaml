@@ -1,0 +1,20 @@
+id: t4-ever-on-class-002
+tier: 4
+template: ever-on-class
+tags: [TERM, TEMP, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: hospitalist
+patient: { mrn: "3732fde5-efc6-d57a-517b-0500f2177181", name: "Danny396 Jacobs452", birth_date: "1960-03-25" }
+question: >-
+  Has he ever been on an anticoagulant (a blood thinner such as warfarin or heparin, not an antiplatelet)? If
+  so, when was the first one ordered?
+answer:
+  type: composite
+  fields:
+    ever: { type: boolean }
+    first: { type: date, nullable: true }
+oracle:
+  name: ever-on-medication
+  parameters: { rxnorm: ["855332", "1659263", "1361048", "1361226", "854235", "854252"] }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|855332,http://www.nlm.nih.gov/research/umls/rxnorm|1659263,http://www.nlm.nih.gov/research/umls/rxnorm|1361048,http://www.nlm.nih.gov/research/umls/rxnorm|1361226,http://www.nlm.nih.gov/research/umls/rxnorm|854235,http://www.nlm.nih.gov/research/umls/rxnorm|854252", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|855332,http://www.nlm.nih.gov/research/umls/rxnorm|1659263,http://www.nlm.nih.gov/research/umls/rxnorm|1361048,http://www.nlm.nih.gov/research/umls/rxnorm|1361226,http://www.nlm.nih.gov/research/umls/rxnorm|854235,http://www.nlm.nih.gov/research/umls/rxnorm|854252"]
+verification: { status: unverified }

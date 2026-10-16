@@ -1,0 +1,17 @@
+id: p2-v5-warm
+harness: copilot-cli
+executable: copilot.exe
+model: claude-sonnet-5.5
+builtin_tools: [view, rg, glob, powershell, read_powershell, stop_powershell, apply_patch]
+mcp_servers:
+  fhir:
+    command: "${FAB_CLI_ON_FHIR}"
+    args: [mcp, "{corpus}", --cache-dir, "${FAB_CLI_ON_FHIR_CACHE}", --tx-server, "https://tx.fhir.org/r4", --rxclass-server, "https://rxnav.nlm.nih.gov/REST"]
+    tools: [folder_inspect, folder_code_systems, search_fhir_resources, read_resources,
+            patient_list, patient_context, terminology, help]
+warm_context:
+  command: "${FAB_CLI_ON_FHIR}"
+  args: [context, "{corpus}", "{patient_id}", --compact, --cache-dir, "${FAB_CLI_ON_FHIR_CACHE}"]
+prompt_template: ../prompts/warm.md
+max_ai_credits: 30
+timeout_minutes: 20

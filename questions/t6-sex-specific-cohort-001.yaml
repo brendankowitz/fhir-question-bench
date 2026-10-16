@@ -1,0 +1,15 @@
+id: t6-sex-specific-cohort-001
+tier: 6
+template: sex-specific-cohort
+tags: [AGG, TERM]
+tool_groups: [sql-view, search, terminology]
+persona: primary-care
+question: >-
+  How many living women aged 18 to 44 have a past history of miscarriage on their active problem list? Count
+  only active (not resolved or inactive) entries.
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { age_min: 18, age_max: 44, conditions_any: ["161744009"] }
+evidence_searches: ["Patient?deceased=false&gender=female&birthdate=gt1981-08-17&birthdate=le2008-08-17&_has:Condition:patient:code=http://snomed.info/sct|161744009"]
+verification: { status: unverified }

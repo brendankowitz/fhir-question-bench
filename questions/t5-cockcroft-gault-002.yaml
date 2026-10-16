@@ -1,0 +1,16 @@
+id: t5-cockcroft-gault-002
+tier: 5
+template: cockcroft-gault
+tags: [CALC]
+tool_groups: [patient-context, search]
+persona: pharmacist
+patient: { mrn: "2e9a9dab-f5b6-8960-d3ce-7834bb5e7344", name: "Mario764 VonRueden376", birth_date: "1990-01-14" }
+question: >-
+  Before I dose her antibiotic, estimate her creatinine clearance with Cockcroft-Gault: latest creatinine,
+  latest actual body weight, age today.
+answer: { type: decimal, tolerance: 1.0 }
+oracle:
+  name: clinical-calculation
+  parameters: { formula: "cockcroft-gault" }
+evidence_searches: ["Observation?code=http://loinc.org|38483-4,http://loinc.org|2160-0&_sort=-date&_count=1", "Observation?code=http://loinc.org|29463-7&_sort=-date&_count=1"]
+verification: { status: unverified }

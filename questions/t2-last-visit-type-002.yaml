@@ -1,0 +1,14 @@
+id: t2-last-visit-type-002
+tier: 2
+template: last-visit-of-type
+tags: [TEMP]
+tool_groups: [patient-context, search]
+persona: hospitalist
+patient: { mrn: "029c95e2-d252-d8d3-3626-7f347182d6d7", name: "Clemencia569 Gaylord332", birth_date: "1972-11-01" }
+question: When was she last admitted as an inpatient?
+answer: { type: date }
+oracle:
+  name: encounter-query
+  parameters: { class: ["IMP"], return: "latest_date" }
+evidence_searches: ["Encounter?class=IMP&_sort=-date&_count=1"]
+verification: { status: unverified }

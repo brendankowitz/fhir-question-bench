@@ -1,0 +1,11 @@
+id: p1-warm
+harness: copilot-cli
+executable: copilot.exe
+model: claude-sonnet-5.5
+builtin_tools: [view, rg, glob, powershell, read_powershell, stop_powershell, apply_patch]
+warm_context:
+  command: "${FAB_CLI_ON_FHIR}"
+  args: [context, "{corpus}", "{patient_id}", --compact, --cache-dir, "${FAB_CLI_ON_FHIR_CACHE}"]
+prompt_template: ../prompts/warm.md
+max_ai_credits: 30
+timeout_minutes: 20

@@ -1,0 +1,16 @@
+id: t3-observation-change-002
+tier: 3
+template: observation-change
+tags: [AGG, TEMP]
+tool_groups: [patient-context, search]
+persona: cardiology
+patient: { mrn: "3935e8a9-9b9f-fd00-fe22-bcb810d0330b", name: "Basilia559 Hagenes547", birth_date: "1968-09-24" }
+question: >-
+  How much has her LDL changed over the last five years, from the first result in that period to the latest, in
+  mg/dL? Negative means it went down.
+answer: { type: decimal, tolerance: 0.5 }
+oracle:
+  name: observation-window-stats
+  parameters: { loinc: ["18262-6", "13457-7", "2089-1"], window_days: 1826, statistic: "change", unit: "mg/dL" }
+evidence_searches: ["Observation?code=http://loinc.org|18262-6,http://loinc.org|13457-7,http://loinc.org|2089-1&date=gt2021-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
+verification: { status: unverified }

@@ -1,0 +1,15 @@
+id: t6-icd-cohort-002
+tier: 6
+template: icd-cohort
+tags: [AGG, MAP, TERM]
+tool_groups: [sql-view, search, terminology]
+persona: researcher
+question: >-
+  How many living patients have an active problem that maps to ICD-10-CM I25 (chronic ischemic heart disease,
+  including old MI)?
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { conditions_any: ["414545008", "399211009"] }
+evidence_searches: ["Patient?deceased=false&_has:Condition:patient:code=http://snomed.info/sct|414545008,http://snomed.info/sct|399211009"]
+verification: { status: unverified }

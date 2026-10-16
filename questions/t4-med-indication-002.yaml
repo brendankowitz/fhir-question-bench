@@ -1,0 +1,14 @@
+id: t4-med-indication-002
+tier: 4
+template: med-indication
+tags: [REF, MULTI]
+tool_groups: [patient-context, search, fhirpath]
+persona: pharmacist
+patient: { mrn: "65cbad6a-eb9d-420e-9bab-b4f9c6aab7db", name: "Grisel924 Balistreri607", birth_date: "1948-06-15" }
+question: What condition is her alendronate prescribed for? Give the coded diagnosis it references.
+answer: { type: code }
+oracle:
+  name: medication-reason
+  parameters: { rxnorm: ["904419"] }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|904419&_sort=-authoredon&_count=1", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|904419&_sort=-authoredon&_count=1", "Condition?_id=65cbad6a-eb9d-420e-7217-f5ab32ff0f60"]
+verification: { status: unverified }

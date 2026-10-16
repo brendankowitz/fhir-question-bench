@@ -1,0 +1,16 @@
+id: t6-class-age-cohort-001
+tier: 6
+template: class-age-cohort
+tags: [AGG, TERM]
+tool_groups: [sql-view, search, terminology]
+persona: pharmacist
+question: >-
+  How many living patients aged 18 to 64 have an active order for any opioid? Include opioid analgesics in any
+  form (tablets, patches, injections, combination products such as acetaminophen with oxycodone) and
+  buprenorphine/naloxone.
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { age_min: 18, age_max: 64, medications_active_any: ["245134", "1735006", "856987", "857005", "1860491", "1049221", "1049625", "1860154", "861467", "835603", "1723208", "1729584", "993770", "1728805", "351266"] }
+evidence_searches: ["Patient?deceased=false&birthdate=gt1961-08-17&birthdate=le2008-08-17&_has:MedicationRequest:patient:status=active"]
+verification: { status: unverified }

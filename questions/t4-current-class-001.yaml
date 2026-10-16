@@ -1,0 +1,14 @@
+id: t4-current-class-001
+tier: 4
+template: current-class-members
+tags: [TERM, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: primary-care
+patient: { mrn: "82623afe-e51c-e02e-1dd7-15a4394d0e92", name: "Jordan900 Abbott774", birth_date: "1999-11-07" }
+question: Which of her active medication orders are blood pressure medicines? Give the RxNorm codes.
+answer: { type: set }
+oracle:
+  name: active-medications
+  parameters: { rxnorm: ["314076", "314077", "979492", "1656356", "866412", "200033", "866511", "866924", "866436", "866514", "308136", "897685", "310798", "313988", "1719286"], return: "codes" }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|314076,http://www.nlm.nih.gov/research/umls/rxnorm|314077,http://www.nlm.nih.gov/research/umls/rxnorm|979492,http://www.nlm.nih.gov/research/umls/rxnorm|1656356,http://www.nlm.nih.gov/research/umls/rxnorm|866412,http://www.nlm.nih.gov/research/umls/rxnorm|200033,http://www.nlm.nih.gov/research/umls/rxnorm|866511,http://www.nlm.nih.gov/research/umls/rxnorm|866924,http://www.nlm.nih.gov/research/umls/rxnorm|866436,http://www.nlm.nih.gov/research/umls/rxnorm|866514,http://www.nlm.nih.gov/research/umls/rxnorm|308136,http://www.nlm.nih.gov/research/umls/rxnorm|897685,http://www.nlm.nih.gov/research/umls/rxnorm|310798,http://www.nlm.nih.gov/research/umls/rxnorm|313988,http://www.nlm.nih.gov/research/umls/rxnorm|1719286&status=active", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|314076,http://www.nlm.nih.gov/research/umls/rxnorm|314077,http://www.nlm.nih.gov/research/umls/rxnorm|979492,http://www.nlm.nih.gov/research/umls/rxnorm|1656356,http://www.nlm.nih.gov/research/umls/rxnorm|866412,http://www.nlm.nih.gov/research/umls/rxnorm|200033,http://www.nlm.nih.gov/research/umls/rxnorm|866511,http://www.nlm.nih.gov/research/umls/rxnorm|866924,http://www.nlm.nih.gov/research/umls/rxnorm|866436,http://www.nlm.nih.gov/research/umls/rxnorm|866514,http://www.nlm.nih.gov/research/umls/rxnorm|308136,http://www.nlm.nih.gov/research/umls/rxnorm|897685,http://www.nlm.nih.gov/research/umls/rxnorm|310798,http://www.nlm.nih.gov/research/umls/rxnorm|313988,http://www.nlm.nih.gov/research/umls/rxnorm|1719286&status=active"]
+verification: { status: unverified }

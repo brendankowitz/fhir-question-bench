@@ -1,0 +1,14 @@
+id: t4-vaccine-brand-001
+tier: 4
+template: vaccine-brand
+tags: [MAP, TEMP]
+tool_groups: [patient-context, search, terminology]
+persona: primary-care
+patient: { mrn: "1d63466e-0cfd-eb12-77aa-d153393355e5", name: "Rick943 Kulas532", birth_date: "1954-10-05" }
+question: When did he get Pneumovax 23?
+answer: { type: date }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["33"], return: "latest_date" }
+evidence_searches: ["Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|33&_sort=-date&_count=1"]
+verification: { status: unverified }

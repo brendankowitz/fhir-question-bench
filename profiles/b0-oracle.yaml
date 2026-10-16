@@ -1,0 +1,3 @@
+id: b0-oracle
+harness: oracle
+prompt_template: ../prompts/default.md

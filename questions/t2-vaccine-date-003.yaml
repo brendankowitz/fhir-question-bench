@@ -1,0 +1,14 @@
+id: t2-vaccine-date-003
+tier: 2
+template: vaccine-date
+tags: [TEMP, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: nursing
+patient: { mrn: "7132442e-b0b9-a886-e28d-f83700e5a3bd", name: "Carman694 Bergnaum523", birth_date: "1988-12-25" }
+question: When did she get her first COVID shot?
+answer: { type: date }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["207", "208", "212", "210", "211", "213", "217", "218", "219", "221", "228", "229", "230", "300", "301", "302", "309", "310", "311", "312", "313"], return: "first_date" }
+evidence_searches: ["Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|207,http://hl7.org/fhir/sid/cvx|208,http://hl7.org/fhir/sid/cvx|212,http://hl7.org/fhir/sid/cvx|210,http://hl7.org/fhir/sid/cvx|211,http://hl7.org/fhir/sid/cvx|213,http://hl7.org/fhir/sid/cvx|217,http://hl7.org/fhir/sid/cvx|218,http://hl7.org/fhir/sid/cvx|219,http://hl7.org/fhir/sid/cvx|221,http://hl7.org/fhir/sid/cvx|228,http://hl7.org/fhir/sid/cvx|229,http://hl7.org/fhir/sid/cvx|230,http://hl7.org/fhir/sid/cvx|300,http://hl7.org/fhir/sid/cvx|301,http://hl7.org/fhir/sid/cvx|302,http://hl7.org/fhir/sid/cvx|309,http://hl7.org/fhir/sid/cvx|310,http://hl7.org/fhir/sid/cvx|311,http://hl7.org/fhir/sid/cvx|312,http://hl7.org/fhir/sid/cvx|313&_sort=date&_count=1"]
+verification: { status: unverified }

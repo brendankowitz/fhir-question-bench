@@ -1,0 +1,14 @@
+id: t4-current-class-003
+tier: 4
+template: current-class-members
+tags: [TERM, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: pharmacist
+patient: { mrn: "8ece28c6-f931-b0e0-5c0e-72b8d8d3c86a", name: "Aurelio227 Eichmann909", birth_date: "1942-04-04" }
+question: Which statins does he have active orders for? Give the RxNorm codes.
+answer: { type: set }
+oracle:
+  name: active-medications
+  parameters: { rxnorm: ["312961", "314231", "904475", "859751", "617310", "617311", "859747"], return: "codes" }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|314231,http://www.nlm.nih.gov/research/umls/rxnorm|312961,http://www.nlm.nih.gov/research/umls/rxnorm|617310,http://www.nlm.nih.gov/research/umls/rxnorm|617311,http://www.nlm.nih.gov/research/umls/rxnorm|859747,http://www.nlm.nih.gov/research/umls/rxnorm|859751,http://www.nlm.nih.gov/research/umls/rxnorm|904475&status=active", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|314231,http://www.nlm.nih.gov/research/umls/rxnorm|312961,http://www.nlm.nih.gov/research/umls/rxnorm|617310,http://www.nlm.nih.gov/research/umls/rxnorm|617311,http://www.nlm.nih.gov/research/umls/rxnorm|859747,http://www.nlm.nih.gov/research/umls/rxnorm|859751,http://www.nlm.nih.gov/research/umls/rxnorm|904475&status=active"]
+verification: { status: unverified }

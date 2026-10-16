@@ -1,0 +1,8 @@
+id: p1map-mai
+harness: copilot-cli
+executable: copilot.exe
+model: mai-code-1.1-flash
+builtin_tools: [view, rg, glob, powershell, read_powershell, stop_powershell, apply_patch]
+prompt_template: ../prompts/map.md
+max_ai_credits: 30
+timeout_minutes: 20

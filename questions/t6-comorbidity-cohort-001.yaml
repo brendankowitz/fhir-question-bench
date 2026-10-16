@@ -1,0 +1,16 @@
+id: t6-comorbidity-cohort-001
+tier: 6
+template: comorbidity-cohort
+tags: [AGG, TEMP, MAP]
+tool_groups: [sql-view, search, terminology]
+persona: primary-care
+question: >-
+  How many living adults (18 or older) with active essential hypertension also have obesity by measurement: a
+  most recent BMI in the past 12 months of 30 kg/m2 or higher? Judge obesity from the BMI reading, not from the
+  problem list, and leave out patients with no BMI in that period.
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { age_min: 18, conditions_any: ["59621000", "38341003"], lab: { loinc: "39156-5", window_days: 365, comparator: "ge", threshold: 30, unit: "kg/m2" } }
+evidence_searches: ["Patient?deceased=false&birthdate=le2008-08-17&_has:Condition:patient:code=http://snomed.info/sct|59621000,http://snomed.info/sct|38341003", "Observation?code=http://loinc.org|39156-5&date=gt2025-08-17&_sort=-date"]
+verification: { status: unverified }

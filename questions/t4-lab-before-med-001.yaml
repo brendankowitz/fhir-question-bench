@@ -1,0 +1,20 @@
+id: t4-lab-before-med-001
+tier: 4
+template: lab-before-med-start
+tags: [MULTI, TEMP]
+tool_groups: [patient-context, search]
+persona: endocrinology
+patient: { mrn: "355a4d50-2628-aa65-c336-deacf4d606fb", name: "Emmanuel930 Considine820", birth_date: "1956-10-18" }
+question: >-
+  What was his A1c just before his first insulin order of any kind, including insulin ordered during a hospital
+  admission? Give the value and date of the last A1c result on or before that first insulin order.
+answer:
+  type: composite
+  fields:
+    value: { type: quantity, unit: "%", tolerance: 0.05 }
+    date: { type: date }
+oracle:
+  name: observation-before-medication
+  parameters: { loinc: "4548-4", rxnorm: ["106892", "311034"] }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|106892,http://www.nlm.nih.gov/research/umls/rxnorm|311034&_sort=authoredon&_count=1", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|106892,http://www.nlm.nih.gov/research/umls/rxnorm|311034&_sort=authoredon&_count=1", "Observation?code=http://loinc.org|4548-4&date=le2016-12-25T08:54:57Z&_sort=-date&_count=1"]
+verification: { status: unverified }

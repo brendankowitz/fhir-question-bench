@@ -1,0 +1,14 @@
+id: t6-lab-cohort-001
+tier: 6
+template: lab-threshold-cohort
+tags: [AGG, TEMP]
+tool_groups: [sql-view, search]
+persona: researcher
+question: >-
+  How many living adults (18 or older) had a most recent LDL in the past three years of 130 mg/dL or higher?
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { age_min: 18, lab: { loinc: ["18262-6", "13457-7", "2089-1"], window_days: 1095, comparator: "ge", threshold: 130, unit: "mg/dL" } }
+evidence_searches: ["Patient?deceased=false&birthdate=le2008-08-17&_has:Observation:patient:code-value-quantity=http://loinc.org|18262-6$ge130,http://loinc.org|13457-7$ge130,http://loinc.org|2089-1$ge130"]
+verification: { status: unverified }

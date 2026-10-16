@@ -1,0 +1,14 @@
+id: t4-vaccine-brand-002
+tier: 4
+template: vaccine-brand
+tags: [MAP, AGG]
+tool_groups: [patient-context, search, terminology]
+persona: nursing
+patient: { mrn: "a5816bea-ad10-431f-1281-47baa2cf249b", name: "Tonisha838 Grady603", birth_date: "2009-03-08" }
+question: How many Gardasil doses has she had?
+answer: { type: integer }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["62", "165"], return: "count" }
+evidence_searches: ["Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|62,http://hl7.org/fhir/sid/cvx|165"]
+verification: { status: unverified }

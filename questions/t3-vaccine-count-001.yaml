@@ -1,0 +1,14 @@
+id: t3-vaccine-count-001
+tier: 3
+template: vaccine-count
+tags: [AGG, TEMP]
+tool_groups: [patient-context, search, terminology]
+persona: nursing
+patient: { mrn: "029c95e2-d252-d8d3-3626-7f347182d6d7", name: "Clemencia569 Gaylord332", birth_date: "1972-11-01" }
+question: How many flu shots has she had in the last five years?
+answer: { type: integer }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["140", "141", "150", "158", "88", "135", "153", "155", "166", "168", "171", "185", "186", "197", "205"], window_days: 1826, return: "count" }
+evidence_searches: ["Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|140,http://hl7.org/fhir/sid/cvx|141,http://hl7.org/fhir/sid/cvx|150,http://hl7.org/fhir/sid/cvx|158,http://hl7.org/fhir/sid/cvx|88,http://hl7.org/fhir/sid/cvx|135,http://hl7.org/fhir/sid/cvx|153,http://hl7.org/fhir/sid/cvx|155,http://hl7.org/fhir/sid/cvx|166,http://hl7.org/fhir/sid/cvx|168,http://hl7.org/fhir/sid/cvx|171,http://hl7.org/fhir/sid/cvx|185,http://hl7.org/fhir/sid/cvx|186,http://hl7.org/fhir/sid/cvx|197,http://hl7.org/fhir/sid/cvx|205&date=gt2021-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
+verification: { status: unverified }

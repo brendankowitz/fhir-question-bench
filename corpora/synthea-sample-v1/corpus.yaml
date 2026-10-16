@@ -1,0 +1,6 @@
+id: synthea-sample-v1
+now: "2026-08-17T00:00:00Z"
+mrn_system: http://hospital.smarthealthit.org
+source:
+  url: https://raw.githubusercontent.com/synthetichealth/synthea-sample-data/9959d9178ea28f4ec10f17ee238b6fabe6eb0de5/downloads/latest/synthea_sample_data_fhir_latest.zip
+  sha256: 56cb9e49f7ba6ad4e61c40aa80999f8c10a710823fed1becdf2502053777a521

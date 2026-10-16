@@ -1,0 +1,14 @@
+id: t2-med-order-date-001
+tier: 2
+template: med-order-date
+tags: [TEMP, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: pharmacist
+patient: { mrn: "7af6b271-f16d-21e1-882a-7bff71005a7b", name: "Benedict104 Gibson10", birth_date: "1960-11-08" }
+question: When was his Glucophage last prescribed?
+answer: { type: date }
+oracle:
+  name: ever-on-medication
+  parameters: { rxnorm: ["860975"], return: "latest_date" }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|860975", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|860975"]
+verification: { status: unverified }

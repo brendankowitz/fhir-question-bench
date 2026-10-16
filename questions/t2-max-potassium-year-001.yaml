@@ -1,0 +1,14 @@
+id: t2-max-potassium-year-001
+tier: 2
+template: window-max-lab
+tags: [TEMP]
+tool_groups: [patient-context, search]
+persona: hospitalist
+patient: { mrn: "a45aa142-d1e9-d944-f2c7-05015c90762d", name: "Zachariah133 Morar593", birth_date: "1963-09-25" }
+question: What was his highest potassium over the past year, in mmol/L? If he had none, say so.
+answer: { type: decimal, tolerance: 0.05, nullable: true }
+oracle:
+  name: observation-window-stats
+  parameters: { loinc: 6298-4, window_days: 365, statistic: max, unit: mmol/L }
+evidence_searches: ["Observation?code=http://loinc.org|6298-4&date=gt2025-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
+verification: { status: unverified }

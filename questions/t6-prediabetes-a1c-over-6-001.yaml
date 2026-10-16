@@ -1,0 +1,15 @@
+id: t6-prediabetes-a1c-over-6-001
+tier: 6
+template: cohort-poor-control
+tags: [AGG, ABS]
+tool_groups: [sql-view, search, terminology]
+persona: researcher
+question: >-
+  How many living patients aged 18 to 75 with prediabetes had a most recent A1c in the past year above 6.0%?
+  Count patients with no A1c in that year as above 6.0.
+answer: { type: integer }
+oracle:
+  name: cohort-lab-above-or-missing
+  parameters: { snomed: ["714628002"], loinc: 4548-4, threshold: 6.0, window_days: 365, age_min: 18, age_max: 75, unit: "%" }
+evidence_searches: ["Patient?deceased=false&birthdate=gt1950-08-17&birthdate=le2008-08-17&_has:Condition:patient:code=http://snomed.info/sct|714628002"]
+verification: { status: unverified }

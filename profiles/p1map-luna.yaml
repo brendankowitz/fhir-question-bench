@@ -1,0 +1,8 @@
+id: p1map-luna
+harness: copilot-cli
+executable: copilot.exe
+model: gpt-6-luna
+builtin_tools: [view, rg, glob, powershell, read_powershell, stop_powershell, apply_patch]
+prompt_template: ../prompts/map.md
+max_ai_credits: 30
+timeout_minutes: 20

@@ -1,0 +1,18 @@
+id: t1-latest-lab-003
+tier: 1
+template: latest-lab
+tags: [REF]
+tool_groups: [patient-context, search]
+persona: cardiology
+patient: { mrn: "1d63466e-0cfd-eb12-77aa-d153393355e5", name: "Rick943 Kulas532", birth_date: "1954-10-05" }
+question: What was his most recent LDL, and when was it drawn?
+answer:
+  type: composite
+  fields:
+    value: { type: quantity, unit: "mg/dL", tolerance: 0.5 }
+    date: { type: date }
+oracle:
+  name: latest-observation
+  parameters: { loinc: ["18262-6", "13457-7", "2089-1"] }
+evidence_searches: ["Observation?code=http://loinc.org|18262-6,http://loinc.org|13457-7,http://loinc.org|2089-1&_sort=-date&_count=1"]
+verification: { status: unverified }

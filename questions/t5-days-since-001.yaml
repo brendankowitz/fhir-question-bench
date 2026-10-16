@@ -1,0 +1,14 @@
+id: t5-days-since-001
+tier: 5
+template: days-since
+tags: [CALC, MAP]
+tool_groups: [patient-context, search, terminology]
+persona: nursing
+patient: { mrn: "87f7ad7b-85f9-d26d-5a41-9933f4039331", name: "Susan422 Barrows492", birth_date: "1969-04-25" }
+question: How many days has it been since her last tetanus-containing vaccine?
+answer: { type: integer }
+oracle:
+  name: immunization-history
+  parameters: { cvx: ["113", "115", "09", "138", "139", "196", "20", "01", "22", "50", "102", "106", "107", "110", "120", "146", "28", "35", "112", "142", "130", "132", "170"], return: "days_since_latest" }
+evidence_searches: ["Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|113,http://hl7.org/fhir/sid/cvx|115,http://hl7.org/fhir/sid/cvx|09,http://hl7.org/fhir/sid/cvx|138,http://hl7.org/fhir/sid/cvx|139,http://hl7.org/fhir/sid/cvx|196,http://hl7.org/fhir/sid/cvx|20,http://hl7.org/fhir/sid/cvx|01,http://hl7.org/fhir/sid/cvx|22,http://hl7.org/fhir/sid/cvx|50,http://hl7.org/fhir/sid/cvx|102,http://hl7.org/fhir/sid/cvx|106,http://hl7.org/fhir/sid/cvx|107,http://hl7.org/fhir/sid/cvx|110,http://hl7.org/fhir/sid/cvx|120,http://hl7.org/fhir/sid/cvx|146,http://hl7.org/fhir/sid/cvx|28,http://hl7.org/fhir/sid/cvx|35,http://hl7.org/fhir/sid/cvx|112,http://hl7.org/fhir/sid/cvx|142,http://hl7.org/fhir/sid/cvx|130,http://hl7.org/fhir/sid/cvx|132,http://hl7.org/fhir/sid/cvx|170&_sort=-date&_count=1"]
+verification: { status: unverified }

@@ -1,0 +1,9 @@
+# All cohort (T6) questions, for repeat runs of the cohort route.
+t6-prediabetes-a1c-over-6-001
+t6-ldl-not-at-goal-001
+t6-icd-cohort-001
+t6-icd-cohort-002
+t6-class-cohort-001
+t6-vaccine-cohort-001
+t6-vaccine-cohort-002
+t6-lab-cohort-001

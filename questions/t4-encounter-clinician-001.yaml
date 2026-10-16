@@ -1,0 +1,16 @@
+id: t4-encounter-clinician-001
+tier: 4
+template: encounter-clinician
+tags: [REF, MULTI]
+tool_groups: [patient-context, search]
+persona: ed
+patient: { mrn: "96de62ae-1b00-58d8-77f9-cd25414e16be", name: "Thuy136 VonRueden376", birth_date: "1998-07-22" }
+question: Who was the treating clinician at her most recent ED visit? Give their name.
+answer: { type: name, kind: person }
+oracle:
+  name: reference-path
+  parameters:
+    start: { type: Encounter, class: ["EMER"], pick: latest }
+    path: [{ ref: participant.individual, type: Practitioner }]
+    project: name
+verification: { status: unverified }

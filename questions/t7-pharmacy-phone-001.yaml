@@ -1,0 +1,11 @@
+id: t7-pharmacy-phone-001
+tier: 7
+template: out-of-record
+tags: [ABS]
+tool_groups: [patient-context]
+persona: pharmacist
+patient: { mrn: "00bcbfc6-c7b9-bd0e-3d95-071f9fba6321", name: "Jesica465 Cormier289", birth_date: "1981-01-20" }
+question: What's the phone number of her preferred pharmacy?
+answer: { type: identifier }
+oracle: { name: unanswerable }
+verification: { status: unverified }

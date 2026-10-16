@@ -1,0 +1,11 @@
+id: t7-goal-target-001
+tier: 7
+template: missing-goal
+tags: [ABS]
+tool_groups: [patient-context, search]
+persona: endocrinology
+patient: { mrn: "57efda89-b582-bb08-8a2d-e06b2c184bfc", name: "Pat3 Rutherford999", birth_date: "1975-10-22" }
+question: What A1c target has his care team set for him?
+answer: { type: decimal, tolerance: 0.1 }
+oracle: { name: unanswerable }
+verification: { status: unverified }

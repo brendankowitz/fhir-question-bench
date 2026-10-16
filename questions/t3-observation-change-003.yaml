@@ -1,0 +1,16 @@
+id: t3-observation-change-003
+tier: 3
+template: observation-change
+tags: [AGG, TEMP]
+tool_groups: [patient-context, search]
+persona: endocrinology
+patient: { mrn: "adec1419-cf81-6640-abe6-cac7c0c1b9d4", name: "Nathaniel596 Kuhic920", birth_date: "1964-02-22" }
+question: >-
+  By what percentage has his BMI changed over the past five years, first reading in that window to latest?
+  Negative means it fell.
+answer: { type: decimal, tolerance: 0.5 }
+oracle:
+  name: observation-window-stats
+  parameters: { loinc: "39156-5", window_days: 1826, statistic: "percent_change", unit: "kg/m2" }
+evidence_searches: ["Observation?code=http://loinc.org|39156-5&date=gt2021-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
+verification: { status: unverified }

@@ -1,0 +1,14 @@
+id: t1-smoking-status-001
+tier: 1
+template: smoking-status
+tags: []
+tool_groups: [patient-context, search]
+persona: primary-care
+patient: { mrn: "a5816bea-ad10-431f-1281-47baa2cf249b", name: "Tonisha838 Grady603", birth_date: "2009-03-08" }
+question: What is her current smoking status? Give the coded value from her most recent tobacco screen.
+answer: { type: code }
+oracle:
+  name: latest-observation
+  parameters: { loinc: "72166-2", return: "code" }
+evidence_searches: ["Observation?code=http://loinc.org|72166-2&_sort=-date&_count=1"]
+verification: { status: unverified }

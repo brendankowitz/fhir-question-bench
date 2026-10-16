@@ -1,0 +1,7 @@
+# Held-out cohort (T6) questions with shapes absent from cohorts.txt, to check that a cohort tool generalises.
+t6-sex-specific-cohort-001
+t6-class-lab-cohort-001
+t6-vaccine-window-cohort-001
+t6-comorbidity-cohort-001
+t6-lab-below-cohort-001
+t6-class-age-cohort-001

@@ -1,0 +1,14 @@
+id: t3-unit-convert-002
+tier: 3
+template: latest-in-other-unit
+tags: [UNIT]
+tool_groups: [patient-context, search]
+persona: ed
+patient: { mrn: "31f368d9-3fdc-a15f-ccdc-fafa74a860e9", name: "Manuel446 Frami345", birth_date: "1981-01-08" }
+question: What was his last recorded temperature in Fahrenheit?
+answer: { type: quantity, unit: "[degF]", tolerance: 0.2 }
+oracle:
+  name: latest-observation
+  parameters: { loinc: "8310-5", unit: "[degF]", return: "value" }
+evidence_searches: ["Observation?code=http://loinc.org|8310-5&_sort=-date&_count=1"]
+verification: { status: unverified }

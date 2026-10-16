@@ -1,0 +1,14 @@
+id: t2-window-max-lab-003
+tier: 2
+template: window-max-lab
+tags: [TEMP]
+tool_groups: [patient-context, search]
+persona: nephrology
+patient: { mrn: "5693c080-f485-91e7-54b9-ad9a8c12af62", name: "Maurice742 Auer97", birth_date: "1973-03-25" }
+question: What was his lowest eGFR in the last two years?
+answer: { type: decimal, tolerance: 0.1 }
+oracle:
+  name: observation-window-stats
+  parameters: { loinc: "33914-3", window_days: 730, statistic: "min", unit: "mL/min/{1.73_m2}" }
+evidence_searches: ["Observation?code=http://loinc.org|33914-3&date=gt2024-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
+verification: { status: unverified }

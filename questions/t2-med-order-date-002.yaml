@@ -1,0 +1,14 @@
+id: t2-med-order-date-002
+tier: 2
+template: med-order-date
+tags: [TEMP, MAP, TERM]
+tool_groups: [patient-context, search, terminology]
+persona: primary-care
+patient: { mrn: "3732fde5-efc6-d57a-517b-0500f2177181", name: "Danny396 Jacobs452", birth_date: "1960-03-25" }
+question: When was he first put on a water pill?
+answer: { type: date }
+oracle:
+  name: ever-on-medication
+  parameters: { rxnorm: ["310798", "313988", "1719286"], return: "first_date" }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|310798,http://www.nlm.nih.gov/research/umls/rxnorm|313988,http://www.nlm.nih.gov/research/umls/rxnorm|1719286", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|310798,http://www.nlm.nih.gov/research/umls/rxnorm|313988,http://www.nlm.nih.gov/research/umls/rxnorm|1719286"]
+verification: { status: unverified }

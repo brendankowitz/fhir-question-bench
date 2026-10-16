@@ -1,0 +1,14 @@
+id: t3-med-order-count-001
+tier: 3
+template: class-order-count
+tags: [AGG, TERM, TEMP]
+tool_groups: [patient-context, search, terminology]
+persona: pharmacist
+patient: { mrn: "f6359fe4-4340-2820-8b76-593a45f5186c", name: "Angelique249 Gerhold939", birth_date: "2006-10-30" }
+question: How many opioid prescriptions has she had in the last three years?
+answer: { type: integer }
+oracle:
+  name: ever-on-medication
+  parameters: { rxnorm: ["245134", "856987", "1049221", "861467", "1049625", "835603", "1723208", "857005", "1729584", "1860491", "993770", "1735006", "1728805", "1860154", "351266"], window_days: 1095, return: "order_count" }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|245134,http://www.nlm.nih.gov/research/umls/rxnorm|856987,http://www.nlm.nih.gov/research/umls/rxnorm|1049221,http://www.nlm.nih.gov/research/umls/rxnorm|861467,http://www.nlm.nih.gov/research/umls/rxnorm|1049625,http://www.nlm.nih.gov/research/umls/rxnorm|835603,http://www.nlm.nih.gov/research/umls/rxnorm|1723208,http://www.nlm.nih.gov/research/umls/rxnorm|857005,http://www.nlm.nih.gov/research/umls/rxnorm|1729584,http://www.nlm.nih.gov/research/umls/rxnorm|1860491,http://www.nlm.nih.gov/research/umls/rxnorm|993770,http://www.nlm.nih.gov/research/umls/rxnorm|1735006,http://www.nlm.nih.gov/research/umls/rxnorm|1728805,http://www.nlm.nih.gov/research/umls/rxnorm|1860154,http://www.nlm.nih.gov/research/umls/rxnorm|351266&authoredon=gt2023-08-18T00:00:00Z&authoredon=le2026-08-17T00:00:00Z", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|245134,http://www.nlm.nih.gov/research/umls/rxnorm|856987,http://www.nlm.nih.gov/research/umls/rxnorm|1049221,http://www.nlm.nih.gov/research/umls/rxnorm|861467,http://www.nlm.nih.gov/research/umls/rxnorm|1049625,http://www.nlm.nih.gov/research/umls/rxnorm|835603,http://www.nlm.nih.gov/research/umls/rxnorm|1723208,http://www.nlm.nih.gov/research/umls/rxnorm|857005,http://www.nlm.nih.gov/research/umls/rxnorm|1729584,http://www.nlm.nih.gov/research/umls/rxnorm|1860491,http://www.nlm.nih.gov/research/umls/rxnorm|993770,http://www.nlm.nih.gov/research/umls/rxnorm|1735006,http://www.nlm.nih.gov/research/umls/rxnorm|1728805,http://www.nlm.nih.gov/research/umls/rxnorm|1860154,http://www.nlm.nih.gov/research/umls/rxnorm|351266&authoredon=gt2023-08-18T00:00:00Z&authoredon=le2026-08-17T00:00:00Z"]
+verification: { status: unverified }

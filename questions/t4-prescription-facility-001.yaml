@@ -1,0 +1,18 @@
+id: t4-prescription-facility-001
+tier: 4
+template: prescription-facility
+tags: [REF, MULTI]
+tool_groups: [patient-context, search]
+persona: care-manager
+patient: { mrn: "bca1691f-8839-1d66-ed01-471134d55738", name: "Cole117 Corwin846", birth_date: "1944-10-11" }
+question: >-
+  I'm coordinating his memory care and need to contact the organisation that prescribed his galantamine. Which
+  organisation provided the visit at which his most recent galantamine prescription was written? Give its name.
+answer: { type: name, kind: text }
+oracle:
+  name: reference-path
+  parameters:
+    start: { type: MedicationRequest, rxnorm: ["310436"], pick: latest }
+    path: [{ ref: encounter, type: Encounter }, { ref: serviceProvider, type: Organization }]
+    project: name
+verification: { status: unverified }

@@ -1,0 +1,26 @@
+# Second tool-evaluation sample (24 of v1, disjoint from tool-eval.txt, seeded stratified random by tier).
+# Used to check that cli-on-fhir tuning on tool-eval.txt generalises.
+t1-first-diagnosis-001
+t1-latest-bp-002
+t1-vaccine-date-002
+t2-last-procedure-002
+t2-med-order-date-002
+t2-vaccine-date-003
+t2-window-max-lab-002
+t3-observation-change-001
+t3-observation-change-003
+t3-vaccine-count-002
+t3-window-mean-lab-003
+t4-current-class-003
+t4-ever-on-class-003
+t4-ever-statin-001
+t4-icd-crosswalk-001
+t4-icd-crosswalk-002
+t5-age-at-diagnosis-002
+t5-bmi-calc-001
+t5-days-since-001
+t5-ldl-gap-001
+t6-vaccine-cohort-001
+t6-vaccine-cohort-002
+t7-family-history-001
+t7-pack-years-001

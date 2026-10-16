@@ -1,0 +1,14 @@
+id: t5-bmi-calc-001
+tier: 5
+template: bmi-from-vitals
+tags: [CALC]
+tool_groups: [patient-context, search]
+persona: primary-care
+patient: { mrn: "b50c66af-4d1c-7987-03d7-e5b65fdf880f", name: "Grady603 Davis923", birth_date: "1981-07-29" }
+question: Calculate his BMI from his latest weight and latest height (kg/m², one decimal).
+answer: { type: decimal, tolerance: 0.2 }
+oracle:
+  name: clinical-calculation
+  parameters: { formula: "bmi" }
+evidence_searches: ["Observation?code=http://loinc.org|29463-7&_sort=-date&_count=1", "Observation?code=http://loinc.org|8302-2&_sort=-date&_count=1"]
+verification: { status: unverified }

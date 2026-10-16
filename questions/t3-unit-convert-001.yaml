@@ -1,0 +1,14 @@
+id: t3-unit-convert-001
+tier: 3
+template: latest-in-other-unit
+tags: [UNIT]
+tool_groups: [patient-context, search]
+persona: nursing
+patient: { mrn: "d21f2794-014b-c66b-3688-888382ab7434", name: "Theressa101 Carroll471", birth_date: "1979-12-23" }
+question: What's her latest weight in pounds?
+answer: { type: quantity, unit: "[lb_av]", tolerance: 0.5 }
+oracle:
+  name: latest-observation
+  parameters: { loinc: "29463-7", unit: "[lb_av]", return: "value" }
+evidence_searches: ["Observation?code=http://loinc.org|29463-7&_sort=-date&_count=1"]
+verification: { status: unverified }

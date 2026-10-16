@@ -11,6 +11,13 @@ public enum AnswerType
     Set,
     Boolean,
     Composite,
+    Name,
+}
+
+public enum NameKind
+{
+    Person,
+    Text,
 }
 
 public sealed record AnswerSpec
@@ -22,6 +29,8 @@ public sealed record AnswerSpec
     public decimal Tolerance { get; init; }
 
     public bool Nullable { get; init; }
+
+    public NameKind? NameKind { get; init; }
 
     public IReadOnlyDictionary<string, AnswerSpec> Fields { get; init; } = new Dictionary<string, AnswerSpec>();
 }

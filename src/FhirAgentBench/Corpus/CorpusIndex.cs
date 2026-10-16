@@ -10,6 +10,7 @@ public sealed class CorpusIndex
     private readonly Dictionary<string, JsonElement> _byKey = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _fullUrls = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _identifiers = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _ambiguousIdentifiers = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<JsonElement>> _byType = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<JsonElement>> _byPatientAndType = new(StringComparer.Ordinal);
 
@@ -89,9 +90,15 @@ public sealed class CorpusIndex
         {
             var token = reference[(query + IdentifierQuery.Length)..];
             var bar = token.IndexOf('|');
-            return bar >= 0 && _identifiers.TryGetValue($"{reference[..query]}|{token[..bar]}|{token[(bar + 1)..]}", out var byIdentifier)
-                ? byIdentifier
-                : null;
+            if (bar < 0)
+            {
+                return null;
+            }
+
+            var identifierKey = $"{reference[..query]}|{token[..bar]}|{token[(bar + 1)..]}";
+            return _ambiguousIdentifiers.Contains(identifierKey)
+                ? throw new InvalidDataException($"Conditional reference '{reference}' matches more than one resource in the corpus.")
+                : _identifiers.GetValueOrDefault(identifierKey);
         }
 
         return _byKey.ContainsKey(reference) ? reference : null;
@@ -183,7 +190,11 @@ public sealed class CorpusIndex
             {
                 if (identifier.TryGetProperty("system", out var system) && identifier.TryGetProperty("value", out var value))
                 {
-                    _identifiers.TryAdd($"{type}|{system.GetString()}|{value.GetString()}", key);
+                    var identifierKey = $"{type}|{system.GetString()}|{value.GetString()}";
+                    if (!_identifiers.TryAdd(identifierKey, key) && _identifiers[identifierKey] != key)
+                    {
+                        _ambiguousIdentifiers.Add(identifierKey);
+                    }
                 }
             }
         }

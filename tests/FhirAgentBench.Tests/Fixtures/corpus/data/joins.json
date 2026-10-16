@@ -1,0 +1,1407 @@
+{
+ "resourceType": "Bundle",
+ "type": "batch",
+ "entry": [
+  {
+   "fullUrl": "urn:uuid:p-reed",
+   "resource": {
+    "resourceType": "Patient",
+    "id": "reed",
+    "identifier": [
+     {
+      "system": "http://hospital.smarthealthit.org",
+      "value": "MRN-REED"
+     }
+    ],
+    "name": [
+     {
+      "given": [
+       "Reed"
+      ],
+      "family": "Test"
+     }
+    ],
+    "gender": "female",
+    "birthDate": "1970-01-01"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:pr-official",
+   "resource": {
+    "resourceType": "Practitioner",
+    "id": "pr-official",
+    "identifier": [
+     {
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "1000"
+     }
+    ],
+    "name": [
+     {
+      "use": "usual",
+      "given": [
+       "Usual"
+      ],
+      "family": "Alias"
+     },
+     {
+      "use": "official",
+      "prefix": [
+       "Dr."
+      ],
+      "given": [
+       "Quinn",
+       "Ted955"
+      ],
+      "family": "Reilly981",
+      "suffix": [
+       "MD"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:pr-first",
+   "resource": {
+    "resourceType": "Practitioner",
+    "id": "pr-first",
+    "identifier": [
+     {
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "1111"
+     }
+    ],
+    "name": [
+     {
+      "given": [
+       "Ana"
+      ],
+      "family": "Lopez"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:pr-text",
+   "resource": {
+    "resourceType": "Practitioner",
+    "id": "pr-text",
+    "name": [
+     {
+      "text": "Text Only"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:pr-noname",
+   "resource": {
+    "resourceType": "Practitioner",
+    "id": "pr-noname"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:pr-dup-1",
+   "resource": {
+    "resourceType": "Practitioner",
+    "id": "pr-dup-1",
+    "identifier": [
+     {
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "2222"
+     }
+    ],
+    "name": [
+     {
+      "given": [
+       "Dup1"
+      ],
+      "family": "Twin"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:pr-dup-2",
+   "resource": {
+    "resourceType": "Practitioner",
+    "id": "pr-dup-2",
+    "identifier": [
+     {
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "2222"
+     }
+    ],
+    "name": [
+     {
+      "given": [
+       "Dup2"
+      ],
+      "family": "Twin"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:org-main",
+   "resource": {
+    "resourceType": "Organization",
+    "id": "org-main",
+    "name": "EMERSON HOSPITAL",
+    "address": [
+     {
+      "line": [
+       "1 Main St"
+      ],
+      "city": "WESTFORD",
+      "state": "MA"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:org-bare",
+   "resource": {
+    "resourceType": "Organization",
+    "id": "org-bare",
+    "name": "No Address Clinic"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:loc-ward",
+   "resource": {
+    "resourceType": "Location",
+    "id": "loc-ward",
+    "name": "Ward 5",
+    "address": {
+     "city": "Acton"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-amb",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-amb",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "AMB"
+    },
+    "period": {
+     "start": "2025-01-10T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/pr-first"
+      }
+     }
+    ],
+    "serviceProvider": {
+     "reference": "Organization/org-bare"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-emer-1",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-emer-1",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "EMER"
+    },
+    "period": {
+     "start": "2025-06-01T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/pr-official"
+      }
+     }
+    ],
+    "serviceProvider": {
+     "reference": "Organization/org-main"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-emer-2",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-emer-2",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "EMER"
+    },
+    "period": {
+     "start": "2025-09-01T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/ghost"
+      }
+     },
+     {
+      "individual": {
+       "display": "Display Only"
+      }
+     },
+     {
+      "individual": {
+       "reference": "http://example.org/fhir/Practitioner/pr-official"
+      }
+     },
+     {
+      "individual": {
+       "reference": "Organization/org-main"
+      }
+     },
+     {
+      "individual": {
+       "reference": "Practitioner?identifier=http://hl7.org/fhir/sid/us-npi|1111"
+      }
+     }
+    ],
+    "serviceProvider": {
+     "reference": "Organization/org-main"
+    },
+    "location": [
+     {
+      "location": {
+       "reference": "Location/loc-ward"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-emer-cancelled",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-emer-cancelled",
+    "status": "cancelled",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "EMER"
+    },
+    "period": {
+     "start": "2025-12-01T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/pr-text"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-emer-future",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-emer-future",
+    "status": "planned",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "EMER"
+    },
+    "period": {
+     "start": "2026-03-01T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/pr-text"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-dup",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-dup",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "DUP"
+    },
+    "period": {
+     "start": "2025-02-01T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner?identifier=http://hl7.org/fhir/sid/us-npi|2222"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-unres",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-unres",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "UNRES"
+    },
+    "period": {
+     "start": "2025-02-02T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner?identifier=http://hl7.org/fhir/sid/us-npi|0000"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-search",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-search",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "SEARCH"
+    },
+    "period": {
+     "start": "2025-02-03T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner?name=Lopez"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-abs",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-abs",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "ABS"
+    },
+    "period": {
+     "start": "2025-02-04T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "http://example.org/fhir/Practitioner/pr-first"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-disp",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-disp",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "DISP"
+    },
+    "period": {
+     "start": "2025-02-05T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "display": "Ana Lopez"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-nopart",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-nopart",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "NOPART"
+    },
+    "period": {
+     "start": "2025-02-06T09:00:00Z"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-noprov",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-noprov",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "NOPROV"
+    },
+    "period": {
+     "start": "2025-02-07T09:00:00Z"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-wrongtype",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-wrongtype",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "WRONGTYPE"
+    },
+    "period": {
+     "start": "2025-02-08T09:00:00Z"
+    },
+    "serviceProvider": {
+     "reference": "Practitioner/pr-first"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-text",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-text",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "TXT"
+    },
+    "period": {
+     "start": "2025-02-09T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/pr-text"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-noname",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-noname",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "NONAME"
+    },
+    "period": {
+     "start": "2025-02-10T09:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/pr-noname"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-tie-b",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-tie-b",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "TIE"
+    },
+    "period": {
+     "start": "2025-03-01T10:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/pr-official"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-tie-a",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-tie-a",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "TIE"
+    },
+    "period": {
+     "start": "2025-03-01T10:00:00Z"
+    },
+    "participant": [
+     {
+      "individual": {
+       "reference": "Practitioner/pr-first"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-icu",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-icu",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "IMP"
+    },
+    "period": {
+     "start": "2025-10-01T08:00:00Z"
+    },
+    "type": [
+     {
+      "coding": [
+       {
+        "system": "http://snomed.info/sct",
+        "code": "305351004"
+       }
+      ]
+     }
+    ],
+    "serviceProvider": {
+     "reference": "Organization/org-main"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-enc-ward",
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "rd-enc-ward",
+    "status": "finished",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "class": {
+     "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+     "code": "IMP"
+    },
+    "period": {
+     "start": "2025-10-20T08:00:00Z"
+    },
+    "type": [
+     {
+      "coding": [
+       {
+        "system": "http://snomed.info/sct",
+        "code": "11429006"
+       }
+      ]
+     }
+    ],
+    "serviceProvider": {
+     "reference": "Organization/org-main"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-med-depo",
+   "resource": {
+    "resourceType": "Medication",
+    "id": "rd-med-depo",
+    "code": {
+     "coding": [
+      {
+       "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+       "code": "1000126"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-mr-a",
+   "resource": {
+    "resourceType": "MedicationRequest",
+    "id": "rd-mr-a",
+    "status": "completed",
+    "intent": "order",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "authoredOn": "2025-10-01T09:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-icu"
+    },
+    "requester": {
+     "reference": "Practitioner/pr-first"
+    },
+    "medicationCodeableConcept": {
+     "coding": [
+      {
+       "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+       "code": "1000126"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-mr-b",
+   "resource": {
+    "resourceType": "MedicationRequest",
+    "id": "rd-mr-b",
+    "status": "completed",
+    "intent": "order",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "authoredOn": "2025-10-01T10:00:00Z",
+    "encounter": {
+     "reference": "urn:uuid:rd-enc-icu"
+    },
+    "requester": {
+     "reference": "Practitioner/pr-official"
+    },
+    "medicationReference": {
+     "reference": "#m1"
+    },
+    "contained": [
+     {
+      "resourceType": "Medication",
+      "id": "m1",
+      "code": {
+       "coding": [
+        {
+         "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+         "code": "900001"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-mr-cancelled",
+   "resource": {
+    "resourceType": "MedicationRequest",
+    "id": "rd-mr-cancelled",
+    "status": "cancelled",
+    "intent": "order",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "authoredOn": "2025-10-01T07:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-icu"
+    },
+    "requester": {
+     "reference": "Practitioner/pr-text"
+    },
+    "medicationCodeableConcept": {
+     "coding": [
+      {
+       "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+       "code": "1000126"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-mr-d",
+   "resource": {
+    "resourceType": "MedicationRequest",
+    "id": "rd-mr-d",
+    "status": "completed",
+    "intent": "order",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "authoredOn": "2025-10-21T09:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-ward"
+    },
+    "requester": {
+     "reference": "Practitioner/pr-text"
+    },
+    "medicationReference": {
+     "reference": "urn:uuid:rd-med-depo"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-mr-future",
+   "resource": {
+    "resourceType": "MedicationRequest",
+    "id": "rd-mr-future",
+    "status": "completed",
+    "intent": "order",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "authoredOn": "2026-03-01T09:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-ward"
+    },
+    "requester": {
+     "reference": "Practitioner/pr-noname"
+    },
+    "medicationCodeableConcept": {
+     "coding": [
+      {
+       "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+       "code": "1000126"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-obs-na-1",
+   "resource": {
+    "resourceType": "Observation",
+    "id": "rd-obs-na-1",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "2951-2"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-02T10:00:00Z",
+    "valueQuantity": {
+     "value": 140,
+     "unit": "mmol/L",
+     "system": "http://unitsofmeasure.org"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-obs-na-2",
+   "resource": {
+    "resourceType": "Observation",
+    "id": "rd-obs-na-2",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "2951-2"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-03T10:00:00Z",
+    "valueQuantity": {
+     "value": 141,
+     "unit": "mmol/L",
+     "system": "http://unitsofmeasure.org"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-obs-k-2",
+   "resource": {
+    "resourceType": "Observation",
+    "id": "rd-obs-k-2",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "6298-4"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-03T10:00:00Z",
+    "valueQuantity": {
+     "value": 4.1,
+     "unit": "mmol/L",
+     "system": "http://unitsofmeasure.org"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-obs-k-prelim",
+   "resource": {
+    "resourceType": "Observation",
+    "id": "rd-obs-k-prelim",
+    "status": "preliminary",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "6298-4"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-21T10:00:00Z",
+    "valueQuantity": {
+     "value": 6.6,
+     "unit": "mmol/L",
+     "system": "http://unitsofmeasure.org"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-obs-k-ward",
+   "resource": {
+    "resourceType": "Observation",
+    "id": "rd-obs-k-ward",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "6298-4"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-21T10:00:00Z",
+    "valueQuantity": {
+     "value": 3.9,
+     "unit": "mmol/L",
+     "system": "http://unitsofmeasure.org"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-obs-text",
+   "resource": {
+    "resourceType": "Observation",
+    "id": "rd-obs-text",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "9999-9"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-22T10:00:00Z",
+    "valueString": "hemolyzed"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-dr-1",
+   "resource": {
+    "resourceType": "DiagnosticReport",
+    "id": "rd-dr-1",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "24323-8"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-02T10:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-icu"
+    },
+    "result": [
+     {
+      "reference": "Observation/rd-obs-na-1"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-dr-2",
+   "resource": {
+    "resourceType": "DiagnosticReport",
+    "id": "rd-dr-2",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "24323-8"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-03T10:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-icu"
+    },
+    "result": [
+     {
+      "reference": "Observation/rd-obs-na-2"
+     },
+     {
+      "reference": "Observation/rd-obs-k-2"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-dr-prelim",
+   "resource": {
+    "resourceType": "DiagnosticReport",
+    "id": "rd-dr-prelim",
+    "status": "preliminary",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "24323-8"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-04T10:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-icu"
+    },
+    "result": [
+     {
+      "reference": "Observation/rd-obs-k-ward"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-dr-cbc",
+   "resource": {
+    "resourceType": "DiagnosticReport",
+    "id": "rd-dr-cbc",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "58410-2"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-05T10:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-icu"
+    },
+    "result": [
+     {
+      "reference": "Observation/rd-obs-k-ward"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-dr-ward",
+   "resource": {
+    "resourceType": "DiagnosticReport",
+    "id": "rd-dr-ward",
+    "status": "final",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://loinc.org",
+       "code": "24323-8"
+      }
+     ]
+    },
+    "effectiveDateTime": "2025-10-21T10:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-ward"
+    },
+    "result": [
+     {
+      "reference": "Observation/rd-obs-k-prelim"
+     },
+     {
+      "reference": "Observation/rd-obs-k-ward"
+     }
+    ]
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-cond-refuted",
+   "resource": {
+    "resourceType": "Condition",
+    "id": "rd-cond-refuted",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://snomed.info/sct",
+       "code": "111"
+      }
+     ]
+    },
+    "verificationStatus": {
+     "coding": [
+      {
+       "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+       "code": "refuted"
+      }
+     ]
+    },
+    "onsetDateTime": "2024-01-01T00:00:00Z"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-cond-ok",
+   "resource": {
+    "resourceType": "Condition",
+    "id": "rd-cond-ok",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://snomed.info/sct",
+       "code": "222"
+      }
+     ]
+    },
+    "verificationStatus": {
+     "coding": [
+      {
+       "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+       "code": "confirmed"
+      }
+     ]
+    },
+    "onsetDateTime": "2024-02-01T00:00:00Z"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-cond-future",
+   "resource": {
+    "resourceType": "Condition",
+    "id": "rd-cond-future",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://snomed.info/sct",
+       "code": "333"
+      }
+     ]
+    },
+    "verificationStatus": {
+     "coding": [
+      {
+       "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+       "code": "confirmed"
+      }
+     ]
+    },
+    "onsetDateTime": "2026-05-01T00:00:00Z"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-cond-noonset",
+   "resource": {
+    "resourceType": "Condition",
+    "id": "rd-cond-noonset",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://snomed.info/sct",
+       "code": "444"
+      }
+     ]
+    },
+    "verificationStatus": {
+     "coding": [
+      {
+       "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+       "code": "confirmed"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-proc-1",
+   "resource": {
+    "resourceType": "Procedure",
+    "id": "rd-proc-1",
+    "status": "completed",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://snomed.info/sct",
+       "code": "80146002"
+      }
+     ]
+    },
+    "encounter": {
+     "reference": "Encounter/rd-enc-emer-2"
+    },
+    "reasonReference": [
+     {
+      "reference": "Condition/rd-cond-refuted"
+     },
+     {
+      "reference": "Condition/rd-cond-ok"
+     }
+    ],
+    "performedPeriod": {
+     "start": "2025-08-01T09:00:00Z"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-proc-future",
+   "resource": {
+    "resourceType": "Procedure",
+    "id": "rd-proc-future",
+    "status": "completed",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://snomed.info/sct",
+       "code": "80146002"
+      }
+     ]
+    },
+    "encounter": {
+     "reference": "Encounter/rd-enc-emer-2"
+    },
+    "reasonReference": [
+     {
+      "reference": "Condition/rd-cond-ok"
+     }
+    ],
+    "performedDateTime": "2026-03-01T09:00:00Z"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-proc-active",
+   "resource": {
+    "resourceType": "Procedure",
+    "id": "rd-proc-active",
+    "status": "in-progress",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://snomed.info/sct",
+       "code": "80146002"
+      }
+     ]
+    },
+    "encounter": {
+     "reference": "Encounter/rd-enc-emer-2"
+    },
+    "reasonReference": [
+     {
+      "reference": "Condition/rd-cond-ok"
+     }
+    ],
+    "performedDateTime": "2025-12-01T09:00:00Z"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-proc-2",
+   "resource": {
+    "resourceType": "Procedure",
+    "id": "rd-proc-2",
+    "status": "completed",
+    "subject": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "http://snomed.info/sct",
+       "code": "99999"
+      }
+     ]
+    },
+    "encounter": {
+     "reference": "Encounter/rd-enc-emer-2"
+    },
+    "reasonReference": [
+     {
+      "reference": "Condition/rd-cond-future"
+     },
+     {
+      "reference": "Condition/rd-cond-noonset"
+     }
+    ],
+    "performedDateTime": "2025-08-02T09:00:00Z"
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-imm-1",
+   "resource": {
+    "resourceType": "Immunization",
+    "id": "rd-imm-1",
+    "status": "completed",
+    "patient": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "vaccineCode": {
+     "coding": [
+      {
+       "system": "http://hl7.org/fhir/sid/cvx",
+       "code": "140"
+      }
+     ]
+    },
+    "occurrenceDateTime": "2025-03-01T09:00:00Z",
+    "encounter": {
+     "reference": "Encounter/rd-enc-amb"
+    },
+    "location": {
+     "reference": "Location/loc-ward"
+    }
+   }
+  },
+  {
+   "fullUrl": "urn:uuid:rd-imm-2",
+   "resource": {
+    "resourceType": "Immunization",
+    "id": "rd-imm-2",
+    "status": "not-done",
+    "patient": {
+     "reference": "urn:uuid:p-reed"
+    },
+    "vaccineCode": {
+     "coding": [
+      {
+       "system": "http://hl7.org/fhir/sid/cvx",
+       "code": "140"
+      }
+     ]
+    },
+    "occurrenceDateTime": "2025-04-01T09:00:00Z"
+   }
+  }
+ ]
+}

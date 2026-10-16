@@ -194,4 +194,74 @@ public sealed class GraderTests
 
         Assert.Equal("""{"value": {"value": <number>, "unit": "%"}, "date": "YYYY-MM-DD"}""", description);
     }
+
+    private static readonly AnswerSpec PersonName = new() { Type = AnswerType.Name, NameKind = NameKind.Person };
+
+    private static readonly AnswerSpec TextName = new() { Type = AnswerType.Name, NameKind = NameKind.Text };
+
+    private static GradeStatus GradeName(AnswerSpec spec, string gold, string agent) =>
+        Grader.Grade(spec, Answer.Of(gold, []), Agent(System.Text.Json.JsonSerializer.Serialize(new { status = "answered", answer = agent })));
+
+    [Theory]
+    [InlineData("Hermelinda327 Hyatt152", "Dr. Hermelinda327 Hyatt152")]
+    [InlineData("Hermelinda327 Hyatt152", "hyatt, hermelinda")]
+    [InlineData("Hermelinda327 Hyatt152", "HERMELINDA HYATT152, MD")]
+    [InlineData("Hermelinda327 Hyatt152", "Hermelinda Hyatt153")]
+    [InlineData("José Emilio366 Leyva523", "Leyva, Jose Emilio")]
+    [InlineData("Josue598 D'Amore443", "Dr. Josue D’Amore")]
+    public void PersonName_Equivalent_IsCorrect(string gold, string agent) =>
+        Assert.Equal(GradeStatus.Correct, GradeName(PersonName, gold, agent));
+
+    [Theory]
+    [InlineData("Hermelinda327 Hyatt152", "Dr. Hyatt152")]
+    [InlineData("Hermelinda327 Hyatt152", "Hyatt152 Hermelinda327")]
+    [InlineData("Hermelinda327 Hyatt152", "Francine922 Hyatt152")]
+    [InlineData("José Emilio366 Leyva523", "Jose Leyva")]
+    public void PersonName_Different_IsWrong(string gold, string agent) =>
+        Assert.Equal(GradeStatus.Wrong, GradeName(PersonName, gold, agent));
+
+    [Theory]
+    [InlineData("CAMBRIDGE REHABILITATION & NURSING CENTER", "Cambridge Rehabilitation and Nursing Center")]
+    [InlineData("CAMBRIDGE REHABILITATION & NURSING CENTER", "cambridge rehabilitation & nursing center, inc.")]
+    [InlineData("CAMBRIDGE REHABILITATION & NURSING CENTER", "The Cambridge Rehabilitation & Nursing Center")]
+    [InlineData("MASS GENERAL BRIGHAM URGENT CARE LLC", "Mass General Brigham Urgent Care")]
+    public void TextName_Equivalent_IsCorrect(string gold, string agent) =>
+        Assert.Equal(GradeStatus.Correct, GradeName(TextName, gold, agent));
+
+    [Theory]
+    [InlineData("CAMBRIDGE REHABILITATION & NURSING CENTER", "Cambridge Rehab & Nursing Center")]
+    [InlineData("CAMBRIDGE REHABILITATION & NURSING CENTER", "Cambridge Rehabilitation & Nursing")]
+    [InlineData("CAMBRIDGE REHABILITATION & NURSING CENTER", "MASS GENERAL BRIGHAM URGENT CARE LLC")]
+    public void TextName_Different_IsWrong(string gold, string agent) =>
+        Assert.Equal(GradeStatus.Wrong, GradeName(TextName, gold, agent));
+
+    [Theory]
+    [InlineData("""{"status":"answered","answer":""}""")]
+    [InlineData("""{"status":"answered","answer":"   "}""")]
+    [InlineData("""{"status":"answered","answer":{"name":"x"}}""")]
+    [InlineData("""{"status":"answered","answer":12}""")]
+    public void Name_NotANonEmptyString_IsFormatInvalid(string json) =>
+        Assert.Equal(GradeStatus.FormatInvalid, Grader.Grade(PersonName, Answer.Of("Ada Lovelace", []), Agent(json)));
+
+    [Fact]
+    public void Describe_NameShowsKind()
+    {
+        Assert.Equal("\"<given name(s)> <family name>\" (a JSON string; titles such as Dr. are optional)", AnswerSpecDescriber.Describe(PersonName));
+        Assert.Equal("\"<name as recorded>\" (a JSON string)", AnswerSpecDescriber.Describe(TextName));
+        Assert.EndsWith(" (or null if there is no such result)", AnswerSpecDescriber.Describe(TextName with { Nullable = true }));
+    }
+
+    [Fact]
+    public void Composite_CanContainNameFields()
+    {
+        var spec = new AnswerSpec
+        {
+            Type = AnswerType.Composite,
+            Fields = new Dictionary<string, AnswerSpec> { ["facility"] = TextName, ["town"] = TextName },
+        };
+        var gold = Answer.Of(new { facility = "EMERSON HOSPITAL", town = "WESTFORD" }, []);
+
+        Assert.Equal(GradeStatus.Correct, Grader.Grade(spec, gold, Agent("""{"status":"answered","answer":{"facility":"Emerson Hospital","town":"Westford"}}""")));
+        Assert.Equal(GradeStatus.Wrong, Grader.Grade(spec, gold, Agent("""{"status":"answered","answer":{"facility":"Emerson Hospital","town":"Acton"}}""")));
+    }
 }

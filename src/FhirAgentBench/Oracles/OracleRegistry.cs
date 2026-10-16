@@ -27,6 +27,7 @@ public sealed class OracleRegistry
         new ImmunizationHistoryOracle(),
         new ProcedureHistoryOracle(),
         new EncounterQueryOracle(),
+        new ReferencePathOracle(),
         new AllergyCheckOracle(),
         new ClinicalCalculationOracle(),
         new CohortCountOracle(),

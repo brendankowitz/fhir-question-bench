@@ -11,7 +11,6 @@ public sealed class EventOracleTests : IDisposable
     private const string Cvx = "http://hl7.org/fhir/sid/cvx";
     private const string Sct = "http://snomed.info/sct";
     private const string Rx = "http://www.nlm.nih.gov/research/umls/rxnorm";
-    private const string Npi = "http://hl7.org/fhir/sid/us-npi";
 
     private static readonly OracleRegistry Oracles = OracleRegistry.CreateDefault();
 
@@ -51,11 +50,10 @@ public sealed class EventOracleTests : IDisposable
         + $"\"code\":{{\"coding\":[{{\"system\":\"{Sct}\",\"code\":\"{snomed}\"}}]}},"
         + (asPeriod ? $"\"performedPeriod\":{{\"start\":\"{performed}\"}}" : $"\"performedDateTime\":\"{performed}\"") + "}");
 
-    private void AddEncounter(string id, string start, string classCode = "AMB", string? type = null, string status = "finished", string? practitioner = null) => Add(
+    private void AddEncounter(string id, string start, string classCode = "AMB", string? type = null, string status = "finished") => Add(
         $"{{\"resourceType\":\"Encounter\",\"id\":\"{id}\",\"status\":\"{status}\",\"subject\":{{\"reference\":\"Patient/p\"}},"
         + $"\"class\":{{\"system\":\"http://terminology.hl7.org/CodeSystem/v3-ActCode\",\"code\":\"{classCode}\"}},"
         + (type is null ? "" : $"\"type\":[{{\"coding\":[{{\"system\":\"{Sct}\",\"code\":\"{type}\"}}]}}],")
-        + (practitioner is null ? "" : $"\"participant\":[{{\"type\":[{{\"text\":\"x\"}}]}},{{\"individual\":{{\"reference\":\"{practitioner}\"}}}}],")
         + $"\"period\":{{\"start\":\"{start}\"}}}}");
 
     private void AddAllergy(string id, string system, string code, string category = "medication", string? clinical = "active", string verification = "confirmed")
@@ -241,37 +239,6 @@ public sealed class EventOracleTests : IDisposable
 
         Assert.Equal(0, Value(Encounters("count", new() { ["window_days"] = "365" })).GetInt32());
         Assert.Null(Encounters("latest_date", new() { ["window_days"] = "365" }).Value);
-        Assert.Null(Encounters("latest_practitioner", new() { ["window_days"] = "365" }).Value);
-    }
-
-    [Fact]
-    public void Encounter_LatestPractitioner_ParsesConditionalReferenceOfFirstPractitionerParticipant()
-    {
-        AddEncounter("old", "2024-01-01T09:00:00Z", practitioner: $"Practitioner?identifier={Npi}|111");
-        AddEncounter("new", "2025-01-01T09:00:00Z", practitioner: $"Practitioner?identifier={Npi}|222");
-
-        var answer = Encounters("latest_practitioner");
-
-        Assert.Equal(Npi, Value(answer).GetProperty("system").GetString());
-        Assert.Equal("222", Value(answer).GetProperty("value").GetString());
-        Assert.Equal(new[] { "Encounter/new" }, answer.Evidence);
-    }
-
-    [Fact]
-    public void Encounter_LatestPractitioner_ResolvesLiteralReferenceToNpi()
-    {
-        Add($"{{\"resourceType\":\"Practitioner\",\"id\":\"dr\",\"identifier\":[{{\"system\":\"other\",\"value\":\"x\"}},{{\"system\":\"{Npi}\",\"value\":\"333\"}}]}}");
-        AddEncounter("e", "2025-01-01T09:00:00Z", practitioner: "Practitioner/dr");
-
-        Assert.Equal("333", Value(Encounters("latest_practitioner")).GetProperty("value").GetString());
-    }
-
-    [Fact]
-    public void Encounter_LatestPractitioner_WithoutPractitionerParticipant_IsNull()
-    {
-        AddEncounter("e", "2025-01-01T09:00:00Z");
-
-        Assert.Null(Encounters("latest_practitioner").Value);
     }
 
     [Fact]

@@ -9,7 +9,11 @@ public sealed class OracleParameters(IReadOnlyDictionary<string, object> values)
     public string GetString(string name) =>
         Get(name) as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a single value.");
 
+    public IEnumerable<string> Keys => values.Keys;
+
     public bool Has(string name) => values.ContainsKey(name);
+
+    public bool IsMap(string name) => Get(name) is Dictionary<object, object>;
 
     public string? GetOptionalString(string name) => Has(name) ? GetString(name) : null;
 
@@ -41,6 +45,16 @@ public sealed class OracleParameters(IReadOnlyDictionary<string, object> values)
                 pair => pair.Key as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a map keyed by names."),
                 pair => pair.Value))
             : throw new InvalidDataException($"Oracle parameter '{name}' must be a map.");
+
+    public IReadOnlyList<OracleParameters> GetNestedList(string name) =>
+        Get(name) is List<object> list
+            ? list.Select(item => item is Dictionary<object, object> map
+                    ? new OracleParameters(map.ToDictionary(
+                        pair => pair.Key as string ?? throw new InvalidDataException($"Oracle parameter '{name}' must be a list of maps keyed by names."),
+                        pair => pair.Value))
+                    : throw new InvalidDataException($"Oracle parameter '{name}' must be a list of maps."))
+                .ToList()
+            : throw new InvalidDataException($"Oracle parameter '{name}' must be a list.");
 
     public IReadOnlyList<string> GetStrings(string name) =>
         Get(name) is List<object> list

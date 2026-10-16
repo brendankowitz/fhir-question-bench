@@ -112,9 +112,12 @@ public static class QuestionLoader
             throw new InvalidDataException($"'{path}': {name} is a quantity answer and must declare a unit.");
         }
 
+        var nameKind = type == AnswerType.Name ? ToNameKind(dto.Kind, name, path) : (NameKind?)null;
+
         return new AnswerSpec
         {
             Type = type,
+            NameKind = nameKind,
             Unit = dto.Unit,
             Tolerance = dto.Tolerance,
             Nullable = dto.Nullable,
@@ -122,6 +125,10 @@ public static class QuestionLoader
                 ?? new Dictionary<string, AnswerSpec>(),
         };
     }
+
+    private static NameKind ToNameKind(string? kind, string name, string path) =>
+        Enum.GetValues<NameKind>().Cast<NameKind?>().FirstOrDefault(k => string.Equals(k.ToString(), kind, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidDataException($"'{path}': {name} is a name answer and its kind must be 'person' or 'text', not '{kind}'.");
 
     private static string ValidDate(string value, string name, string path)
     {
@@ -184,6 +191,8 @@ public static class QuestionLoader
         public decimal Tolerance { get; set; }
 
         public bool Nullable { get; set; }
+
+        public string? Kind { get; set; }
 
         public Dictionary<string, AnswerSpecDto>? Fields { get; set; }
     }

@@ -26,6 +26,7 @@ public static partial class AnswerShape
             AnswerType.Set => v.ValueKind == JsonValueKind.Array
                 && v.EnumerateArray().All(i => i.ValueKind == JsonValueKind.String || HasStrings(i, "system", "code")),
             AnswerType.Boolean => v.ValueKind is JsonValueKind.True or JsonValueKind.False,
+            AnswerType.Name => v.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(v.GetString()),
             AnswerType.Composite => v.ValueKind == JsonValueKind.Object
                 && spec.Fields.All(f => v.TryGetProperty(f.Key, out _) && Conforms(f.Value, Field(v, f.Key))),
             _ => throw new ArgumentOutOfRangeException(nameof(spec), spec.Type, "Unknown answer type."),

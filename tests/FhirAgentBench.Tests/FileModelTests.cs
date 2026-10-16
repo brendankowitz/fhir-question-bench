@@ -121,6 +121,31 @@ public sealed class FileModelTests : IDisposable
         Assert.Contains("unit", ex.Message);
     }
 
+    [Theory]
+    [InlineData("person", NameKind.Person)]
+    [InlineData("text", NameKind.Text)]
+    public void Question_NameAnswer_ParsesKind(string kind, NameKind expected)
+    {
+        var path = WriteQuestion("name-ok", $"{{ type: name, kind: {kind} }}");
+
+        var spec = QuestionLoader.Load(path).Answer;
+
+        Assert.Equal(AnswerType.Name, spec.Type);
+        Assert.Equal(expected, spec.NameKind);
+    }
+
+    [Theory]
+    [InlineData("{ type: name }")]
+    [InlineData("{ type: name, kind: organisation }")]
+    public void Question_NameAnswerWithoutValidKind_IsRejected(string answer)
+    {
+        var path = WriteQuestion("name-bad", answer);
+
+        var ex = Assert.Throws<InvalidDataException>(() => QuestionLoader.Load(path));
+        Assert.Contains("name-bad.yaml", ex.Message);
+        Assert.Contains("kind", ex.Message);
+    }
+
     private string WriteRaw(string id, string questionText, string extra = "") => Write(
         $"questions/{id}.yaml",
         $"id: {id}\ntier: 1\ntemplate: t\npersona: nursing\n{extra}question: {questionText}\nanswer: {{ type: boolean }}\noracle: {{ name: unanswerable }}\n");

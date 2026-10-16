@@ -28,6 +28,11 @@ internal static class FhirElements
         }
     }
 
+    public static IEnumerable<string> CodesIn(JsonElement resource, string property, string system) =>
+        resource.TryGetProperty(property, out var concept)
+            ? Codings(concept).Where(c => c.System == system).Select(c => c.Code)
+            : [];
+
     public static bool HasCoding(JsonElement resource, string property, string system, IReadOnlySet<string> codes) =>
         resource.TryGetProperty(property, out var concept)
         && Codings(concept).Any(c => c.System == system && codes.Contains(c.Code));

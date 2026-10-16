@@ -1,6 +1,4 @@
-using System.Text.Json;
 using FhirAgentBench.Answers;
-using FhirAgentBench.Corpus;
 using FhirAgentBench.Questions;
 
 namespace FhirAgentBench.Oracles;
@@ -22,7 +20,7 @@ public sealed class ProcedureHistoryOracle : IOracle
         foreach (var procedure in context.Corpus.ForPatient(context.PatientKey(question.Patient), "Procedure"))
         {
             if (FhirElements.String(procedure, "status") == "completed"
-                && PerformedAt(procedure) is { } when
+                && Procedures.PerformedAt(procedure) is { } when
                 && Events.IsInWindow(context, when, from)
                 && FhirElements.HasCoding(procedure, "code", FhirElements.Snomed, snomed))
             {
@@ -31,12 +29,5 @@ public sealed class ProcedureHistoryOracle : IOracle
         }
 
         return Events.Summarize(context, returns, matching);
-    }
-
-    private static DateTimeOffset? PerformedAt(JsonElement procedure)
-    {
-        var performed = FhirElements.String(procedure, "performedDateTime")
-            ?? (procedure.TryGetProperty("performedPeriod", out var period) ? FhirElements.String(period, "start") : null);
-        return performed is null ? null : FhirTime.Parse(performed);
     }
 }

@@ -44,6 +44,10 @@ public static class Grader
             AnswerType.Identifier => Text(a, "system") == Text(g, "system") && Text(a, "value") == Text(g, "value"),
             AnswerType.Set => SetOf(a).SetEquals(SetOf(g)),
             AnswerType.Boolean => a.GetBoolean() == g.GetBoolean(),
+            AnswerType.Name => NameMatcher.Matches(
+                spec.NameKind ?? throw new InvalidOperationException("A name answer must declare its kind."),
+                g.GetString()!,
+                a.GetString()!),
             AnswerType.Composite => spec.Fields.All(f =>
                 Matches(f.Value, AnswerShape.Field(g, f.Key), AnswerShape.Field(a, f.Key))),
             _ => throw new ArgumentOutOfRangeException(nameof(spec), spec.Type, "Unknown answer type."),

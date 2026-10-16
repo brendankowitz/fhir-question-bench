@@ -14,6 +14,12 @@ public static class AnswerSpecDescriber
             AnswerType.Identifier => """{"system": "<uri>", "value": "<value>"}""",
             AnswerType.Set => """[{"system": "<uri>", "code": "<code>"}, ...]""",
             AnswerType.Boolean => "true | false",
+            AnswerType.Name => spec.NameKind switch
+            {
+                NameKind.Person => "\"<given name(s)> <family name>\" (a JSON string; titles such as Dr. are optional)",
+                NameKind.Text => "\"<name as recorded>\" (a JSON string)",
+                _ => throw new InvalidOperationException("A name answer must declare its kind."),
+            },
             AnswerType.Composite => "{" + string.Join(", ", spec.Fields.Select(f => $"\"{f.Key}\": {Describe(f.Value)}")) + "}",
             _ => throw new ArgumentOutOfRangeException(nameof(spec), spec.Type, "Unknown answer type."),
         };

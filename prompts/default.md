@@ -20,4 +20,4 @@ If the records cannot answer the question, write:
 
 {"status": "insufficient_data", "answer": null, "evidence": []}
 
-List in "evidence" the resources your answer is based on. Do not modify the record files.
+List in "evidence" up to 10 of the resources your answer rests on (for a count or a cohort, a few representative ones are enough). Evidence is not graded, so do not page through results just to collect it. Do not modify the record files.

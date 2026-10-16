@@ -142,16 +142,16 @@ public sealed class WarmContextTests : IDisposable
         Assert.Equal(["context", "{corpus}", "{patient_id}", "--compact", "--cache-dir", "${FAB_CLI_ON_FHIR_CACHE}"], p2.WarmContext.Args);
         Assert.Equal(p2Base.BuiltinTools, p2.BuiltinTools);
         Assert.Equal(p2Base.McpServers["fhir"].Args, p2.McpServers["fhir"].Args);
-        Assert.Equal(["create"], p3.BuiltinTools);
+        Assert.Equal(["create", "apply_patch"], p3.BuiltinTools);
         Assert.Null(p3.WarmContext);
         Assert.Equal(p2Base.McpServers["fhir"].Tools, p3.McpServers["fhir"].Tools);
         Assert.Equal("p3-v5-warm", p3Warm.Id);
-        Assert.Equal(["create"], p3Warm.BuiltinTools);
+        Assert.Equal(["create", "apply_patch"], p3Warm.BuiltinTools);
         Assert.NotNull(p3Warm.WarmContext);
     }
 
     [Fact]
-    public void P3Profile_OffersOnlyCreateAndTheMcpTools()
+    public void P3Profile_OffersOnlyCreateApplyPatchAndTheMcpTools()
     {
         var profile = ProfileLoader.Load(RepoFile("profiles/p3-v5.yaml"));
         var request = new AttemptRequest(QuestionFor("q"), 1, _directory, _directory, "prompt");
@@ -160,9 +160,10 @@ public sealed class WarmContextTests : IDisposable
 
         var tools = args.Skip(args.IndexOf("--available-tools") + 1).TakeWhile(a => !a.StartsWith("--", StringComparison.Ordinal)).ToList();
         Assert.Contains("create", tools);
+        Assert.Contains("apply_patch", tools);
         Assert.DoesNotContain("powershell", tools);
         Assert.DoesNotContain("view", tools);
-        Assert.All(tools.Where(t => t != "create"), t => Assert.StartsWith("fhir-", t, StringComparison.Ordinal));
+        Assert.All(tools.Where(t => t is not ("create" or "apply_patch")), t => Assert.StartsWith("fhir-", t, StringComparison.Ordinal));
     }
 
     [Fact]

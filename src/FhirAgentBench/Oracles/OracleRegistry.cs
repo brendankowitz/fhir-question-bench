@@ -32,6 +32,7 @@ public sealed class OracleRegistry
         new ClinicalCalculationOracle(),
         new CohortCountOracle(),
         new UnanswerableOracle(),
+        new StaticAnswerOracle(),
     ]);
 
     public Answer Compute(OracleContext context, Question question)
@@ -39,6 +40,6 @@ public sealed class OracleRegistry
         var oracle = _oracles.TryGetValue(question.Oracle.Name, out var found)
             ? found
             : throw new InvalidDataException($"Question '{question.Id}' names unknown oracle '{question.Oracle.Name}'.");
-        return oracle.Compute(context, question);
+        return oracle.Compute(question.Now is { } now ? context with { Now = now } : context, question);
     }
 }

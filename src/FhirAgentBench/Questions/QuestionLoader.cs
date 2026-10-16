@@ -19,6 +19,9 @@ public static class QuestionLoader
         @"https?://|urn:|(?<![A-Za-z])(?:" + string.Join("|", ResourceTypes) + @")/[A-Za-z0-9\-.]+",
         RegexOptions.Compiled);
 
+    private static readonly AnswerType[] SetItemTypes =
+        [AnswerType.Text, AnswerType.Decimal, AnswerType.Integer, AnswerType.DateTime, AnswerType.Date];
+
     public static IReadOnlyList<Question> LoadSet(string questionsDirectory, string setFile)
     {
         var ids = File.ReadLines(setFile)
@@ -77,6 +80,8 @@ public static class QuestionLoader
                     Required(dto.Patient.Name, "patient.name", path),
                     ValidDate(Required(dto.Patient.BirthDate, "patient.birth_date", path), "patient.birth_date", path)),
             Text = text,
+            Now = dto.Now is null ? null : ValidTime(dto.Now, "now", path),
+            Assumption = dto.Assumption?.Trim() ?? "",
             Answer = ToSpec(dto.Answer ?? throw new InvalidDataException($"'{path}': answer is required."), "answer", path),
             Oracle = new OracleCall(
                 Required(dto.Oracle?.Name, "oracle.name", path),
@@ -98,9 +103,27 @@ public static class QuestionLoader
         }
 
         var type = Enum.Parse<AnswerType>(typeName);
-        if (dto.Tolerance < 0)
+        if (dto.Tolerance < 0 || dto.RelativeTolerance < 0)
         {
-            throw new InvalidDataException($"'{path}': {name} tolerance must not be negative, not {dto.Tolerance}.");
+            throw new InvalidDataException(
+                $"'{path}': {name} tolerances must not be negative, not {dto.Tolerance} and relative {dto.RelativeTolerance}.");
+        }
+
+        if (dto.NullAcceptsAbstain && !dto.Nullable)
+        {
+            throw new InvalidDataException($"'{path}': {name} declares null_accepts_abstain, which needs nullable: true.");
+        }
+
+        if (dto.Items is not null && type != AnswerType.Set)
+        {
+            throw new InvalidDataException($"'{path}': {name} declares items, which only a set answer may have.");
+        }
+
+        var items = dto.Items is null ? null : ToSpec(dto.Items, $"{name}.items", path);
+        if (items is not null && (items.Nullable || !SetItemTypes.Contains(items.Type)))
+        {
+            throw new InvalidDataException(
+                $"'{path}': {name}.items must be a non-nullable {string.Join(", ", SetItemTypes).ToLowerInvariant()} answer, not {dto.Items!.Type}.");
         }
 
         if (type == AnswerType.Composite && (dto.Fields is null || dto.Fields.Count == 0))
@@ -121,7 +144,10 @@ public static class QuestionLoader
             NameKind = nameKind,
             Unit = dto.Unit,
             Tolerance = dto.Tolerance,
+            RelativeTolerance = dto.RelativeTolerance,
             Nullable = dto.Nullable,
+            NullAcceptsAbstain = dto.NullAcceptsAbstain,
+            Items = items,
             Fields = dto.Fields?.ToDictionary(f => f.Key, f => ToSpec(f.Value, $"{name}.fields.{f.Key}", path))
                 ?? new Dictionary<string, AnswerSpec>(),
         };
@@ -147,6 +173,18 @@ public static class QuestionLoader
         }
 
         return valid;
+    }
+
+    private static DateTimeOffset ValidTime(string value, string name, string path)
+    {
+        try
+        {
+            return FhirTime.Parse(value);
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            throw new InvalidDataException($"'{path}': {name} '{value}' is not a valid FHIR date or dateTime.", ex);
+        }
     }
 
     private static string ValidDate(string value, string name, string path)
@@ -183,6 +221,10 @@ public static class QuestionLoader
 
         public string? Question { get; set; }
 
+        public string? Now { get; set; }
+
+        public string? Assumption { get; set; }
+
         public AnswerSpecDto? Answer { get; set; }
 
         public OracleDto? Oracle { get; set; }
@@ -211,7 +253,13 @@ public static class QuestionLoader
 
         public decimal Tolerance { get; set; }
 
+        public decimal RelativeTolerance { get; set; }
+
         public bool Nullable { get; set; }
+
+        public bool NullAcceptsAbstain { get; set; }
+
+        public AnswerSpecDto? Items { get; set; }
 
         public string? Kind { get; set; }
 

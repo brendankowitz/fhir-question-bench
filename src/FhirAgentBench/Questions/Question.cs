@@ -25,6 +25,12 @@ public sealed record Question
 
     public required string Text { get; init; }
 
+    /// <summary>The "now" this question is asked at; when absent, the corpus now applies.</summary>
+    public DateTimeOffset? Now { get; init; }
+
+    /// <summary>A note rendered into the prompt beside "now" (e.g. an imported suite's search hint); empty for most questions.</summary>
+    public string Assumption { get; init; } = "";
+
     public required AnswerSpec Answer { get; init; }
 
     public required OracleCall Oracle { get; init; }

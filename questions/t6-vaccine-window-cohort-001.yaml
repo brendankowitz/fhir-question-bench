@@ -1,0 +1,15 @@
+id: t6-vaccine-window-cohort-001
+tier: 6
+template: vaccine-window-cohort
+tags: [AGG, TEMP, TERM]
+tool_groups: [sql-view, search, terminology]
+persona: quality
+question: >-
+  How many living patients aged 40 to 64 had a completed flu shot (any influenza vaccine) in the past 12 months?
+  A flu shot only before that period does not count.
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { age_min: 40, age_max: 64, immunization_any: { cvx: ["140", "141", "150", "158", "88", "135", "153", "155", "166", "168", "171", "185", "186", "197", "205"], window_days: 365 } }
+evidence_searches: ["Patient?deceased=false&birthdate=gt1961-08-17&birthdate=le1986-08-17&_has:Immunization:patient:vaccine-code=http://hl7.org/fhir/sid/cvx|140,http://hl7.org/fhir/sid/cvx|141,http://hl7.org/fhir/sid/cvx|150,http://hl7.org/fhir/sid/cvx|158,http://hl7.org/fhir/sid/cvx|88,http://hl7.org/fhir/sid/cvx|135,http://hl7.org/fhir/sid/cvx|153,http://hl7.org/fhir/sid/cvx|155,http://hl7.org/fhir/sid/cvx|166,http://hl7.org/fhir/sid/cvx|168,http://hl7.org/fhir/sid/cvx|171,http://hl7.org/fhir/sid/cvx|185,http://hl7.org/fhir/sid/cvx|186,http://hl7.org/fhir/sid/cvx|197,http://hl7.org/fhir/sid/cvx|205", "Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|140&status=completed&date=gt2025-08-17"]
+verification: { status: unverified }

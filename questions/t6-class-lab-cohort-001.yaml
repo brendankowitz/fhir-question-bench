@@ -1,0 +1,16 @@
+id: t6-class-lab-cohort-001
+tier: 6
+template: class-lab-cohort
+tags: [AGG, TEMP, TERM]
+tool_groups: [sql-view, search, terminology]
+persona: pharmacist
+question: >-
+  How many living patients with an active order for an ACE inhibitor, an ARB or sacubitril/valsartan had a most
+  recent potassium in the past 12 months above 5.0 mmol/L? Leave out patients with no potassium result in that
+  period.
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { medications_active_any: ["314076", "314077", "979492", "1656356"], lab: { loinc: ["6298-4", "2823-3"], window_days: 365, comparator: "gt", threshold: 5.0, unit: "mmol/L" } }
+evidence_searches: ["Patient?deceased=false&_has:MedicationRequest:patient:code=http://www.nlm.nih.gov/research/umls/rxnorm|314076,http://www.nlm.nih.gov/research/umls/rxnorm|314077,http://www.nlm.nih.gov/research/umls/rxnorm|979492,http://www.nlm.nih.gov/research/umls/rxnorm|1656356", "Observation?code=http://loinc.org|6298-4,http://loinc.org|2823-3&date=gt2025-08-17&_sort=-date"]
+verification: { status: unverified }

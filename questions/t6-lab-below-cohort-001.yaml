@@ -1,0 +1,15 @@
+id: t6-lab-below-cohort-001
+tier: 6
+template: lab-below-cohort
+tags: [AGG, TEMP, UNIT]
+tool_groups: [sql-view, search]
+persona: nephrology
+question: >-
+  How many living adults (18 or older) had a most recent eGFR in the past two years below 60 mL/min/1.73m2?
+  Leave out patients with no eGFR in that period.
+answer: { type: integer }
+oracle:
+  name: cohort-count
+  parameters: { age_min: 18, lab: { loinc: ["33914-3", "48642-3", "48643-1", "62238-1", "98979-8", "69405-9", "50044-7", "88293-6", "88294-4", "77147-7"], window_days: 730, comparator: "lt", threshold: 60, unit: "mL/min/{1.73_m2}" } }
+evidence_searches: ["Patient?deceased=false&birthdate=le2008-08-17&_has:Observation:patient:code-value-quantity=http://loinc.org|33914-3$lt60", "Observation?code=http://loinc.org|33914-3&date=gt2024-08-17&_sort=-date"]
+verification: { status: unverified }

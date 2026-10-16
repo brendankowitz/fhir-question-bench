@@ -159,7 +159,7 @@ Six existing oracles (four of them extended) plus twelve new ones. All parameter
 
 **cohort-count** — generic AND-of-criteria count over living patients.
 - Parameters (all optional, all must hold): `age_min` / `age_max` (inclusive, age at now); `conditions_any` list (≥ 1 active condition listed); `medications_active_any` list (≥ 1 active order listed); `immunization_any` `{cvx: list, window_days?: int}` (≥ 1 matching completed immunization, per immunization-history); `lab` `{loinc, window_days, comparator, threshold, unit, missing?}`: the latest valid reading in the window satisfies the comparison; a patient with no reading is excluded unless `missing: count`.
-- Answer: integer. Used by: t6-icd-cohort-001/002, t6-class-cohort-001, t6-vaccine-cohort-001/002, t6-lab-cohort-001.
+- Answer: integer. Used by: t6-icd-cohort-001/002, t6-class-cohort-001, t6-vaccine-cohort-001/002, t6-lab-cohort-001, t6-sex-specific-cohort-001, t6-class-lab-cohort-001, t6-vaccine-window-cohort-001, t6-comorbidity-cohort-001, t6-lab-below-cohort-001, t6-class-age-cohort-001.
 
 ## Answer type: name
 
@@ -247,7 +247,8 @@ Every list below is used verbatim as an oracle parameter. General rules:
 | "water pill" | 310798 (HCTZ), 313988, 1719286 (furosemide) | Lay term for diuretic, ATC C03 | t2-med-order-date-002 |
 | anticoagulant ("blood thinner such as warfarin or heparin, not an antiplatelet") | 855332 (warfarin); 1659263, 1361048, 1361226 (heparin); 854235, 854252 (enoxaparin) | ATC B01AA / B01AB. Alteplase 1804799 (thrombolytic, B01AD) and antiplatelets excluded, as the question says | t4-ever-on-class-002 |
 | antiplatelet | 309362, 749196 (clopidogrel); 243670, 2563431 (aspirin 81 mg), 212033 (aspirin 325 mg); 855812 (prasugrel) | ATC B01AC | t4-current-class-002 |
-| opioid | 245134, 1735006 (fentanyl); 856987, 857005, 1860491 (hydrocodone); 1049221, 1049625, 1860154 (oxycodone); 861467 (meperidine); 835603 (tramadol); 1723208 (alfentanil); 1729584 (remifentanil); 993770 (codeine); 1728805 (morphine); 351266 (buprenorphine/naloxone) | ATC N02A opioid analgesics, N01AH opioid anaesthetics, and buprenorphine (a partial opioid agonist, ATC N07BC51). Buprenorphine is a deliberate near miss | t3-med-order-count-001, t4-ever-on-class-003 |
+| opioid | 245134, 1735006 (fentanyl); 856987, 857005, 1860491 (hydrocodone); 1049221, 1049625, 1860154 (oxycodone); 861467 (meperidine); 835603 (tramadol); 1723208 (alfentanil); 1729584 (remifentanil); 993770 (codeine); 1728805 (morphine); 351266 (buprenorphine/naloxone) | ATC N02A opioid analgesics, N01AH opioid anaesthetics, and buprenorphine (a partial opioid agonist, ATC N07BC51). Buprenorphine is a deliberate near miss | t3-med-order-count-001, t4-ever-on-class-003, t6-class-age-cohort-001 |
+| ACE inhibitor, ARB or sacubitril/valsartan | 314076, 314077 (lisinopril); 979492 (losartan); 1656356 (sacubitril/valsartan) | ATC C09A, C09C, C09DX04; every renin-angiotensin agent in the corpus | t6-class-lab-cohort-001 |
 | insulin | 106892 (Humulin 70/30), 311034 (regular human insulin) | ATC A10A | t4-med-indication-001, t4-lab-before-med-001 |
 | alendronate | 904419 | Named generic | t4-med-indication-002 |
 | penicillin allergy | RxNorm ingredients 7984 (penicillin V), 7980 (penicillin G) †, 723 (amoxicillin) †, 733 (ampicillin) †, 70618 (penicillin) † | Penicillin-class ingredients as recorded on AllergyIntolerance.code; the corpus records drug allergies by RxNorm ingredient | t4-drug-class-allergy-001 |

@@ -7,7 +7,10 @@ mcp_servers:
   fhir:
     command: "${FAB_CLI_ON_FHIR}"
     args: [mcp, "{corpus}"]
-    tools: [folder_inspect, search_fhir_resources, read_resources]
+    tools: [folder_inspect, folder_code_systems, search_fhir_resources, read_resources,
+            patient_list, context_get_root, context_expand, context_find,
+            terminology_list, terminology_lookup, terminology_search, terminology_validate_code,
+            terminology_subsumes, terminology_navigate, terminology_expand, terminology_translate]
 prompt_template: ../prompts/default.md
 max_ai_credits: 30
 timeout_minutes: 20

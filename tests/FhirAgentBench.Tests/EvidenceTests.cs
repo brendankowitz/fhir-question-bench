@@ -31,6 +31,12 @@ public sealed class EvidenceTests : IDisposable
     [InlineData("Observation?code=a b", EvidenceKind.Invalid)]
     [InlineData("Observation?-x", EvidenceKind.Invalid)]
     [InlineData("observation/o1", EvidenceKind.Invalid)]
+    [InlineData("Foo/bar", EvidenceKind.Invalid)]
+    [InlineData("Foo?a=b", EvidenceKind.Invalid)]
+    [InlineData("Observation?@c:/secret.rsp", EvidenceKind.Invalid)]
+    [InlineData("Observation?1=2", EvidenceKind.Invalid)]
+    [InlineData("Observation?_count=1", EvidenceKind.Search)]
+    [InlineData("Observation?code=a|b&x=$y&z=%26", EvidenceKind.Search)]
     [InlineData("the lab result", EvidenceKind.Invalid)]
     [InlineData("", EvidenceKind.Invalid)]
     public void Entry_IsClassified(string text, EvidenceKind expected)
@@ -84,7 +90,7 @@ public sealed class EvidenceTests : IDisposable
         var nothingCited = EvidenceAnalyzer.Score(["a"], new HashSet<string>());
 
         Assert.Null(noOracleEvidence.Recall);
-        Assert.Equal(0.0, noOracleEvidence.Precision);
+        Assert.Null(noOracleEvidence.Precision);
         Assert.Equal(0.0, nothingCited.Recall);
         Assert.Null(nothingCited.Precision);
     }
@@ -113,7 +119,8 @@ public sealed class EvidenceTests : IDisposable
         Assert.Equal(7, result.Keys.Count);
         Assert.Equal(3, calls.Count);
         var first = calls[0].ToList();
-        Assert.Equal(["search", "/data", "Encounter", "class=EMER"], first.Take(4));
+        Assert.Equal(["search"], first.Take(1));
+        Assert.Equal(["--", "/data", "Encounter", "class=EMER"], first.Skip(first.IndexOf("--")));
         Assert.Equal("Patient/p1", first[first.IndexOf("--compartment") + 1]);
         Assert.Equal("id", first[first.IndexOf("--elements") + 1]);
         Assert.Equal("51200", first[first.IndexOf("--max-bytes") + 1]);
@@ -204,6 +211,11 @@ public sealed class EvidenceTests : IDisposable
     [Fact]
     public async Task Resolver_RunsAnExecutableAsAChildProcess_WithItsCacheOutsideTheCorpus()
     {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
         var recorded = Path.Combine(_directory, "args.txt");
         var script = FakeExecutable("fake-cli", recorded, """{"facts":{"total":1,"resources":[{"resourceType":"Encounter","id":"e1"}]},"issues":[]}""");
         var cache = Path.Combine(_directory, "run", "cache");
@@ -213,9 +225,61 @@ public sealed class EvidenceTests : IDisposable
 
         Assert.Equal(["Encounter/e1"], result.Keys);
         var args = File.ReadAllText(recorded);
-        Assert.Contains("--cache-dir", args);
         Assert.Contains(cache, args);
-        Assert.DoesNotContain(Path.Combine(_directory, "corpus") + Path.DirectorySeparatorChar + "cache", args);
+        Assert.True(args.IndexOf("--cache-dir", StringComparison.Ordinal) < args.IndexOf(" -- ", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("shim.cmd")]
+    [InlineData("shim.bat")]
+    public void Resolver_RefusesCommandShimsOnWindows(string name)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var ex = Assert.Throws<ArgumentException>(
+            () => EvidenceResolver.ForExecutable(name, "/data", Path.Combine(_directory, "c"), Path.Combine(_directory, "s")));
+
+        Assert.Contains(".exe", ex.Message);
+    }
+
+    [Fact]
+    public void SystemOnlyEnvironment_LeavesOutOtherVariables()
+    {
+        Environment.SetEnvironmentVariable("FAB_TEST_SECRET", "x");
+        try
+        {
+            var environment = CopilotEnvironment.SystemOnly();
+
+            Assert.DoesNotContain("FAB_TEST_SECRET", environment.Keys);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("FAB_TEST_SECRET", null);
+        }
+    }
+
+    [Fact]
+    public async Task Resolver_ReportsUnresolved_WhenTheInvokerThrowsAnythingElse()
+    {
+        var resolver = new EvidenceResolver((_, _) => throw new UnauthorizedAccessException("denied"), "/data");
+
+        var result = await resolver.ResolveAsync(EvidenceEntry.Parse("Encounter?class=EMER"));
+
+        Assert.Contains("UnauthorizedAccessException", result.UnresolvedReason);
+    }
+
+    [Fact]
+    public async Task Resolver_StopsAfterTheMaximumPages_WithAnAccurateReason()
+    {
+        var resolver = new EvidenceResolver(Pages(total: 100_000, pageLimit: 50, []), "/data");
+
+        var result = await resolver.ResolveAsync(EvidenceEntry.Parse("Encounter?class=EMER"));
+
+        Assert.False(result.IsResolved);
+        Assert.Contains("stopped after 100 pages with 5000 of 100000 matches read", result.UnresolvedReason);
     }
 
     private string FakeExecutable(string name, string recordArgsPath, string stdout)
@@ -255,8 +319,9 @@ public sealed class EvidenceTests : IDisposable
     private static EvidenceResolver Fixed(Dictionary<string, string[]> keysBySearch) =>
         new((arguments, _) =>
         {
-            var type = arguments[2];
-            var query = arguments[3];
+            var positional = arguments.SkipWhile(a => a != "--").Skip(1).ToList();
+            var type = positional[1];
+            var query = positional[2];
             if (!keysBySearch.TryGetValue($"{type}?{query}", out var ids))
             {
                 return Task.FromResult(new CliOutput(1, false, """{"facts":null,"issues":[{"severity":"error","code":"unknown-search-parameter","diagnostics":"no"}]}"""));
@@ -282,8 +347,73 @@ public sealed class EvidenceTests : IDisposable
         Assert.Equal(1, result.Unresolved);
         Assert.Contains("Observation?bad=1", Assert.Single(result.UnresolvedReasons));
         Assert.Equal(["Observation/o1", "Observation/o2", "Observation/o3", "Observation/zz"], result.ResolvedKeys);
+        Assert.Null(result.Recall);
+        Assert.Null(result.Precision);
+    }
+
+    [Fact]
+    public async Task Analyzer_ScoresWhenEverySearchResolved()
+    {
+        var analyzer = new EvidenceAnalyzer(Fixed(new() { ["Observation?code=a"] = ["o1", "o2"] }), Context);
+
+        var result = await analyzer.AnalyzeAsync(
+            AdaQuestion(), Cited("Observation/o1", "Observation/o2", "Observation/o3", "Observation/o4"), Cited("Observation?code=a", "Observation/o3", "Observation/zz"));
+
+        Assert.Equal(0, result.Unresolved);
         Assert.Equal(0.75, result.Recall);
         Assert.Equal(0.75, result.Precision);
+    }
+
+    [Fact]
+    public async Task Analyzer_AnalysesAtMostTwentyFiveEntries_AndCountsTheRestAsIgnored()
+    {
+        var analyzer = new EvidenceAnalyzer(null, Context);
+        var many = Enumerable.Range(0, 40).Select(i => $"Observation/o{i}").ToArray();
+
+        var result = await analyzer.AnalyzeAsync(AdaQuestion(), Cited("Observation/o0"), Cited(many));
+
+        Assert.Equal(EvidenceAnalyzer.MaxEntries, result.References);
+        Assert.Equal(15, result.Ignored);
+    }
+
+    [Fact]
+    public async Task Analyzer_StopsResolvingWhenTheAnswerBudgetIsUsedUp()
+    {
+        var slow = new EvidenceResolver(async (_, token) =>
+        {
+            await Task.Delay(TimeSpan.FromMinutes(5), token);
+            return new CliOutput(0, false, "");
+        }, "/data");
+        var analyzer = new EvidenceAnalyzer(slow, Context, TimeSpan.FromMilliseconds(200));
+
+        var result = await analyzer.AnalyzeAsync(AdaQuestion(), Cited("Observation/o1"), Cited("Observation?a=1", "Observation?b=2"));
+
+        Assert.Equal(2, result.Unresolved);
+        Assert.All(result.UnresolvedReasons, reason => Assert.Contains("time budget", reason));
+        Assert.Null(result.Recall);
+    }
+
+    [Fact]
+    public async Task Analyzer_RecordsParametersRemovedBeforeResolving()
+    {
+        var analyzer = new EvidenceAnalyzer(Fixed(new() { ["Observation?code=a"] = ["o1"] }), Context);
+
+        var result = await analyzer.AnalyzeAsync(
+            AdaQuestion(), Cited("Observation/o1"), Cited("Observation?code=a&_offset=20&_include=Observation:subject"));
+
+        Assert.Equal(0, result.Unresolved);
+        Assert.Contains(result.Notes, note => note.Contains("removed _offset=20"));
+        Assert.Contains(result.Notes, note => note.Contains("removed _include=Observation:subject"));
+    }
+
+    [Theory]
+    [InlineData("code=a&_offset=5", "code=a")]
+    [InlineData("code=a&_count=0", "code=a")]
+    [InlineData("code=a&_count=5", "code=a&_count=5")]
+    [InlineData("_include:iterate=Observation:subject&_revinclude=Provenance:target&code=a", "code=a")]
+    public void Sanitize_RemovesOnlyPagingAndIncludeParameters(string query, string expected)
+    {
+        Assert.Equal(expected, EvidenceResolver.Sanitize(query).Query);
     }
 
     [Fact]
@@ -296,7 +426,7 @@ public sealed class EvidenceTests : IDisposable
         Assert.Equal(1, result.Unresolved);
         Assert.Contains("no evidence resolver", Assert.Single(result.UnresolvedReasons));
         Assert.Empty(result.ResolvedKeys);
-        Assert.Equal(0.0, result.Recall);
+        Assert.Null(result.Recall);
         Assert.Null(result.Precision);
     }
 
@@ -378,7 +508,7 @@ public sealed class EvidenceTests : IDisposable
     public void Report_ShowsEvidenceSectionWithDescriptiveStatistics()
     {
         EvidenceDiagnostics Diagnostics(int searches, double? recall, int unresolved, int accepted) =>
-            new(1, searches, 0, unresolved, accepted, [], recall, null, []);
+            new(1, searches, 0, unresolved, accepted, 0, [], recall, null, [], []);
         var grades = new[]
         {
             new GradeRecord("a", 1, 1, GradeStatus.Wrong, Diagnostics(1, 1.0, 0, 1)),
@@ -393,6 +523,8 @@ public sealed class EvidenceTests : IDisposable
         Assert.Equal(0.75, summary.Evidence!.MeanRecall);
         Assert.Equal(2 / 3.0, summary.Evidence.SearchShare, precision: 12);
         Assert.Equal(2, summary.Evidence.Unresolved);
+        Assert.Equal(1, summary.Evidence.RecallExcludedAttempts);
+        Assert.Contains("1 attempts with unresolved searches excluded from recall", markdown);
         Assert.Contains("Mean recall 75.0% over 2 attempts", markdown);
         Assert.Contains("66.7% of 3 attempts cited searches (1 cited an accepted search)", markdown);
         Assert.Contains("2 searches unresolved", markdown);
@@ -410,7 +542,7 @@ public sealed class EvidenceTests : IDisposable
     [Fact]
     public void Grades_RoundTripThroughJson()
     {
-        var grade = new GradeRecord("a", 1, 1, GradeStatus.Correct, new EvidenceDiagnostics(1, 2, 3, 4, 5, ["Encounter/e1"], 0.5, null, ["x: y"]));
+        var grade = new GradeRecord("a", 1, 1, GradeStatus.Correct, new EvidenceDiagnostics(1, 2, 3, 4, 5, 6, ["Encounter/e1"], 0.5, null, ["x: y"], ["z"]));
 
         var json = JsonSerializer.Serialize(grade, JsonOptions.Default);
         var back = JsonSerializer.Deserialize<GradeRecord>(json, JsonOptions.Default)!;
@@ -453,6 +585,32 @@ public sealed class EvidenceTests : IDisposable
 
         Assert.Contains("evidence_searches", ex.Message);
         Assert.Contains(entry, ex.Message);
+    }
+
+    [EnvFact]
+    public async Task Integration_PassesSpecialCharactersInTheQueryUnchanged()
+    {
+        var resolver = EvidenceResolver.ForExecutable(
+            Environment.GetEnvironmentVariable("FAB_EVIDENCE_RESOLVER")!, Fixture.CorpusDirectory, Path.Combine(_directory, "cache"), Path.Combine(_directory, "scratch"));
+
+        var result = await resolver.ResolveAsync(EvidenceEntry.Parse("Observation?code=http://loinc.org|4548-4&status=final,amended&value-quantity=ge1$&_tag=a\"b%26c"));
+
+        Assert.DoesNotContain("Unrecognized command", result.UnresolvedReason ?? "");
+        Assert.DoesNotContain("printed no JSON", result.UnresolvedReason ?? "");
+    }
+
+    [EnvFact]
+    public async Task Integration_DoesNotExpandAResponseFileNamedInTheQuery()
+    {
+        var response = Path.Combine(_directory, "args.rsp");
+        File.WriteAllText(response, "--summary\ncount\n");
+        var resolver = EvidenceResolver.ForExecutable(
+            Environment.GetEnvironmentVariable("FAB_EVIDENCE_RESOLVER")!, Fixture.CorpusDirectory, Path.Combine(_directory, "cache"), Path.Combine(_directory, "scratch"));
+
+        var result = await resolver.ResolveAsync(EvidenceEntry.Parse("Observation?_tag=@" + response.Replace('\\', '/')));
+
+        Assert.DoesNotContain("Unrecognized command", result.UnresolvedReason ?? "");
+        Assert.DoesNotContain("printed no JSON", result.UnresolvedReason ?? "");
     }
 
     [EnvFact]

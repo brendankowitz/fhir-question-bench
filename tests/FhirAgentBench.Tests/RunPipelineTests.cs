@@ -116,6 +116,46 @@ public sealed class RunPipelineTests : IDisposable
         Assert.Equal(1.0, grades[1].Evidence!.Recall);
     }
 
+    private const string CitesASearch =
+        "{\"status\":\"answered\",\"answer\":{\"value\":{\"value\":9.4,\"unit\":\"%\"},\"date\":\"2025-12-01\"},\"evidence\":[\"Observation?code=a\"]}";
+
+    [Fact]
+    public async Task Grade_DoesNotDependOnTheResolver_WhenItThrows()
+    {
+        var resolver = new EvidenceResolver((_, _) => throw new UnauthorizedAccessException("denied"), "/data");
+        var harness = new ScriptedHarness(new Dictionary<int, (AttemptEnd, string?)> { [1] = (AttemptEnd.Completed, CitesASearch) });
+        var attempts = await NewOrchestrator(harness).RunAsync([LatestA1c], 1, _runDirectory);
+        var grader = new RunGrader(
+            new Dictionary<string, Answer> { [LatestA1c.Id] = Oracles.Compute(Context, LatestA1c) }, new EvidenceAnalyzer(resolver, Context));
+
+        var grades = await grader.GradeAsync([LatestA1c], attempts, _runDirectory);
+        await File.WriteAllLinesAsync(
+            Path.Combine(_runDirectory, "grades.jsonl"), grades.Select(g => System.Text.Json.JsonSerializer.Serialize(g, JsonOptions.Default)));
+
+        var grade = grades.Single();
+        Assert.Equal(GradeStatus.Correct, grade.Status);
+        Assert.Equal(1, grade.Evidence!.Unresolved);
+        Assert.Contains("UnauthorizedAccessException", grade.Evidence.UnresolvedReasons.Single());
+        Assert.True(File.Exists(Path.Combine(_runDirectory, "grades.jsonl")));
+    }
+
+    [Fact]
+    public async Task Grade_KeepsItsStatus_WhenTheEvidenceAnalysisItselfFails()
+    {
+        var unknownPatient = LatestA1c with { Patient = new PatientContext("MRN-NOBODY", "No Body", "1960-03-01") };
+        var harness = new ScriptedHarness(new Dictionary<int, (AttemptEnd, string?)> { [1] = (AttemptEnd.Completed, CitesASearch) });
+        var attempts = await NewOrchestrator(harness).RunAsync([unknownPatient], 1, _runDirectory);
+        var gold = Oracles.Compute(Context, LatestA1c);
+        var grader = new RunGrader(new Dictionary<string, Answer> { [LatestA1c.Id] = gold }, new EvidenceAnalyzer(null, Context));
+
+        var grades = await grader.GradeAsync([unknownPatient], attempts, _runDirectory);
+
+        var grade = grades.Single();
+        Assert.Equal(GradeStatus.Correct, grade.Status);
+        Assert.Null(grade.Evidence);
+        Assert.Contains("MRN-NOBODY", grade.EvidenceUnavailable);
+    }
+
     [Fact]
     public async Task Orchestrator_WritesPromptAndAttemptLog()
     {

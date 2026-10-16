@@ -4,7 +4,7 @@ using FhirAgentBench.Questions;
 
 namespace FhirAgentBench.Execution;
 
-public sealed record GradeRecord(string QuestionId, int Tier, int Repeat, GradeStatus Status, EvidenceDiagnostics? Evidence = null);
+public sealed record GradeRecord(string QuestionId, int Tier, int Repeat, GradeStatus Status, EvidenceDiagnostics? Evidence = null, string? EvidenceUnavailable = null);
 
 /// <summary>Grades attempts against gold that was computed and checked against the gold lock before the run started.</summary>
 public sealed class RunGrader(IReadOnlyDictionary<string, Answer> gold, EvidenceAnalyzer? evidence = null)
@@ -37,7 +37,8 @@ public sealed class RunGrader(IReadOnlyDictionary<string, Answer> gold, Evidence
     private async Task<GradeRecord> GradeOneAsync(
         Question question, Answer gold, AttemptRecord attempt, string attemptDirectory, CancellationToken cancellationToken)
     {
-        GradeRecord Record(GradeStatus status, EvidenceDiagnostics? diagnostics = null) => new(question.Id, question.Tier, attempt.Repeat, status, diagnostics);
+        GradeRecord Record(GradeStatus status, EvidenceDiagnostics? diagnostics = null, string? unavailable = null) =>
+            new(question.Id, question.Tier, attempt.Repeat, status, diagnostics, unavailable);
 
         if (attempt.End != AttemptEnd.Completed)
         {
@@ -63,18 +64,29 @@ public sealed class RunGrader(IReadOnlyDictionary<string, Answer> gold, Evidence
             return Record(GradeStatus.HarnessError);
         }
 
+        GradeStatus status;
         try
         {
-            var status = Grader.Grade(question.Answer, gold, agent);
-            var diagnostics = evidence is null
-                ? null
-                : await evidence.AnalyzeAsync(question, gold, agent, cancellationToken).ConfigureAwait(false);
-            return Record(status, diagnostics);
+            status = Grader.Grade(question.Answer, gold, agent);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new InvalidOperationException(
                 $"Grading failed for question '{question.Id}' attempt r{attempt.Repeat}; the gold answer or answer spec is likely malformed: {ex.Message}", ex);
+        }
+
+        if (evidence is null)
+        {
+            return Record(status);
+        }
+
+        try
+        {
+            return Record(status, await evidence.AnalyzeAsync(question, gold, agent, cancellationToken).ConfigureAwait(false));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Record(status, unavailable: $"{ex.GetType().Name}: {ex.Message}");
         }
     }
 }

@@ -15,9 +15,19 @@ public static class CopilotEnvironment
 
     private static readonly string[] AllowedPrefixes = ["LC_", "CommonProgramFiles"];
 
+    public static IReadOnlyDictionary<string, string> SystemOnly() => Collect([]);
+
     public static IReadOnlyDictionary<string, string> Build(Profile profile, string copilotHome, string token)
     {
         var referenced = McpConfig.ReferencedVariables(profile).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var environment = new Dictionary<string, string>(Collect(referenced), StringComparer.OrdinalIgnoreCase);
+        environment["COPILOT_HOME"] = copilotHome;
+        environment[CopilotArguments.TokenVariable] = token;
+        return environment;
+    }
+
+    private static Dictionary<string, string> Collect(HashSet<string> referenced)
+    {
         var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
         {
@@ -27,8 +37,6 @@ public static class CopilotEnvironment
             }
         }
 
-        environment["COPILOT_HOME"] = copilotHome;
-        environment[CopilotArguments.TokenVariable] = token;
         return environment;
     }
 

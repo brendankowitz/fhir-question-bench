@@ -84,6 +84,7 @@ resources (`Type?params`, or `Patient/<id>/Type?params`). Evidence is a diagnost
 - The resolver is `--evidence-resolver <exe>` on `run` and `admit`, else `FAB_EVIDENCE_RESOLVER` (and
   `FAB_EVIDENCE_RESOLVER_COMMIT`, recorded with the path in `run.json`). `report --evidence-resolver <exe> --corpus <dir>`
   re-resolves a finished run without changing it. Its index cache is `<run-dir>/evidence/cache`, outside the corpus.
+- Limits: at most 25 entries per answer are analysed (the rest are counted as `ignored`), resolver time per answer is capped, `_offset`, `_count=0`, `_include` and `_revinclude` are removed from a cited search before it is run (recorded in `notes`), and the resolver must be an `.exe` on Windows. If any search in an attempt is unresolved, its recall and precision are null and the report counts it as excluded. A failure of the evidence analysis never changes a grade; it is recorded as `evidenceUnavailable`.
 - `grades.jsonl` records per attempt the counts by kind, the resolved key set, recall and precision against the oracle's
   evidence keys, and how many cited searches were accepted ones. The report adds a short evidence section.
 - A question may declare `evidence_searches: ["Encounter?class=EMER&date=gt..."]`: searches the bench accepts as

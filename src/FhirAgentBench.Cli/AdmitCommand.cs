@@ -53,7 +53,7 @@ internal static class AdmitCommand
             }
             finally
             {
-                Directory.Delete(work, recursive: true);
+                EvidenceResolverSetup.TryDelete(work);
             }
         });
         return command;

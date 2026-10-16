@@ -1,4 +1,3 @@
-using System.Collections;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
@@ -8,13 +7,14 @@ using FhirAgentBench.Execution;
 
 namespace FhirAgentBench.Evidence;
 
-public sealed record SearchResolution(IReadOnlyList<string> Keys, string? UnresolvedReason)
+/// <summary>The resource keys a cited search returned, or why they could not be found; <see cref="Notes"/> records parameters removed before running it.</summary>
+public sealed record SearchResolution(IReadOnlyList<string> Keys, string? UnresolvedReason, IReadOnlyList<string> Notes)
 {
     public bool IsResolved => UnresolvedReason is null;
 
-    public static SearchResolution Resolved(IReadOnlyList<string> keys) => new(keys, null);
+    public static SearchResolution Resolved(IReadOnlyList<string> keys, IReadOnlyList<string> notes) => new(keys, null, notes);
 
-    public static SearchResolution Unresolved(string reason) => new([], reason);
+    public static SearchResolution Unresolved(string reason, IReadOnlyList<string>? notes = null) => new([], reason, notes ?? []);
 }
 
 public sealed record CliOutput(int ExitCode, bool TimedOut, string Stdout, string Stderr = "");
@@ -27,11 +27,15 @@ public delegate Task<CliOutput> CliInvoker(IReadOnlyList<string> arguments, Canc
 /// </summary>
 public sealed partial class EvidenceResolver
 {
+    public const string PositionalSeparator = "--";
+
     private const int PageSize = 50;
 
     private const int MaxPages = 100;
 
-    private static readonly TimeSpan CallTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan ColdCallTimeout = TimeSpan.FromMinutes(10);
+
+    private static readonly TimeSpan WarmCallTimeout = TimeSpan.FromMinutes(2);
 
     private readonly CliInvoker _invoke;
 
@@ -47,13 +51,22 @@ public sealed partial class EvidenceResolver
         _corpusDataDirectory = corpusDataDirectory;
     }
 
-    /// <summary>Runs <paramref name="executable"/> as a child process; its index cache lives in <paramref name="cacheDirectory"/>, never in the corpus.</summary>
+    /// <summary>
+    /// Runs <paramref name="executable"/> as a child process with a system-only environment; its index cache lives in
+    /// <paramref name="cacheDirectory"/>, never in the corpus. The first call builds the index and gets a longer timeout.
+    /// </summary>
     public static EvidenceResolver ForExecutable(string executable, string corpusDataDirectory, string cacheDirectory, string scratchDirectory)
     {
+        if (OperatingSystem.IsWindows() && !string.Equals(Path.GetExtension(executable), ".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"The evidence resolver '{executable}' must be an .exe on Windows: a .cmd or .bat shim is re-parsed by cmd.exe, which would interpret & | % ^ in a cited search.",
+                nameof(executable));
+        }
+
         Directory.CreateDirectory(scratchDirectory);
         Directory.CreateDirectory(cacheDirectory);
-        var environment = Environment.GetEnvironmentVariables().Cast<DictionaryEntry>()
-            .ToDictionary(e => (string)e.Key, e => (string)(e.Value ?? string.Empty), StringComparer.OrdinalIgnoreCase);
+        var environment = CopilotEnvironment.SystemOnly();
         var calls = 0;
         return new EvidenceResolver(
             async (arguments, cancellationToken) =>
@@ -61,9 +74,11 @@ public sealed partial class EvidenceResolver
                 var call = Interlocked.Increment(ref calls);
                 var stdoutPath = Path.Combine(scratchDirectory, $"call-{call}.stdout.json");
                 var stderrPath = Path.Combine(scratchDirectory, $"call-{call}.stderr.txt");
+                var separator = arguments.ToList().IndexOf(PositionalSeparator);
+                string[] full = [.. arguments.Take(separator), "--cache-dir", cacheDirectory, .. arguments.Skip(separator)];
                 var result = await ProcessRunner.RunAsync(
-                    executable, [.. arguments, "--cache-dir", cacheDirectory], environment, scratchDirectory,
-                    stdoutPath, stderrPath, CallTimeout, cancellationToken).ConfigureAwait(false);
+                    executable, full, environment, scratchDirectory, stdoutPath, stderrPath,
+                    call == 1 ? ColdCallTimeout : WarmCallTimeout, cancellationToken).ConfigureAwait(false);
                 var stdout = await File.ReadAllTextAsync(stdoutPath, cancellationToken).ConfigureAwait(false);
                 var stderr = await File.ReadAllTextAsync(stderrPath, cancellationToken).ConfigureAwait(false);
                 File.Delete(stdoutPath);
@@ -83,21 +98,53 @@ public sealed partial class EvidenceResolver
             return cached;
         }
 
-        var resolution = await RunPagesAsync(search, search.Compartment ?? defaultCompartment, cancellationToken).ConfigureAwait(false);
+        var (query, notes) = Sanitize(search.Query!);
+        var resolution = await RunPagesAsync(search.ResourceType!, query, search.Compartment ?? defaultCompartment, notes, cancellationToken)
+            .ConfigureAwait(false);
         _resolved[key] = resolution;
         return resolution;
     }
 
-    private async Task<SearchResolution> RunPagesAsync(EvidenceEntry search, string? compartment, CancellationToken cancellationToken)
+    /// <summary>
+    /// Removes parameters that would change how many matches are paged or pull in other resources (<c>_offset</c>,
+    /// <c>_count=0</c>, <c>_include</c>, <c>_revinclude</c>); each removal is returned as a note.
+    /// </summary>
+    internal static (string Query, IReadOnlyList<string> Notes) Sanitize(string query)
+    {
+        var kept = new List<string>();
+        var notes = new List<string>();
+        foreach (var parameter in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var name = parameter.Split('=', 2)[0];
+            var removed = name == "_offset"
+                || parameter == "_count=0"
+                || name == "_include" || name.StartsWith("_include:", StringComparison.Ordinal)
+                || name == "_revinclude" || name.StartsWith("_revinclude:", StringComparison.Ordinal);
+            if (removed)
+            {
+                notes.Add($"removed {parameter}");
+            }
+            else
+            {
+                kept.Add(parameter);
+            }
+        }
+
+        return (string.Join('&', kept), notes);
+    }
+
+    private async Task<SearchResolution> RunPagesAsync(
+        string resourceType, string query, string? compartment, IReadOnlyList<string> notes, CancellationToken cancellationToken)
     {
         var keys = new HashSet<string>(StringComparer.Ordinal);
         var offset = 0;
-        var limit = CountParameter().Match(search.Query!) is { Success: true } count && int.TryParse(count.Groups[1].ValueSpan, out var requested) && requested > 0
+        var total = 0;
+        var limit = CountParameter().Match(query) is { Success: true } count && int.TryParse(count.Groups[1].ValueSpan, out var requested) && requested > 0
             ? requested
             : int.MaxValue;
         for (var page = 0; page < MaxPages; page++)
         {
-            var arguments = new List<string> { "search", _corpusDataDirectory, search.ResourceType!, search.Query! };
+            List<string> arguments = ["search"];
             if (compartment is not null)
             {
                 arguments.AddRange(["--compartment", compartment]);
@@ -108,6 +155,7 @@ public sealed partial class EvidenceResolver
                 "--elements", "id", "--max-bytes", "51200",
                 "--count", Math.Min(PageSize, limit - offset).ToString(CultureInfo.InvariantCulture),
                 "--offset", offset.ToString(CultureInfo.InvariantCulture),
+                PositionalSeparator, _corpusDataDirectory, resourceType, query,
             ]);
 
             CliOutput output;
@@ -115,31 +163,32 @@ public sealed partial class EvidenceResolver
             {
                 output = await _invoke(arguments, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is InvalidOperationException or IOException or Win32Exception)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                return SearchResolution.Unresolved($"could not run the resolver: {ex.Message}");
+                return SearchResolution.Unresolved($"could not run the resolver: {ex.GetType().Name}: {ex.Message}", notes);
             }
 
             var parsed = ReadPage(output);
             if (parsed.Failure is not null)
             {
-                return SearchResolution.Unresolved(parsed.Failure);
+                return SearchResolution.Unresolved(parsed.Failure, notes);
             }
 
             keys.UnionWith(parsed.Keys);
             offset += parsed.Keys.Count;
-            if (offset >= Math.Min(parsed.Total, limit))
+            total = parsed.Total;
+            if (offset >= Math.Min(total, limit))
             {
-                return SearchResolution.Resolved(keys.Order(StringComparer.Ordinal).ToList());
+                return SearchResolution.Resolved(keys.Order(StringComparer.Ordinal).ToList(), notes);
             }
 
             if (parsed.Keys.Count == 0)
             {
-                return SearchResolution.Unresolved($"the resolver reported {parsed.Total} matches but returned none at offset {offset}");
+                return SearchResolution.Unresolved($"the resolver reported {total} matches but returned none at offset {offset}", notes);
             }
         }
 
-        return SearchResolution.Unresolved($"more than {MaxPages * PageSize} matches; not paged to the end");
+        return SearchResolution.Unresolved($"stopped after {MaxPages} pages with {offset} of {total} matches read", notes);
     }
 
     [GeneratedRegex(@"(?:^|&)_count=(\d+)(?:&|$)")]
@@ -149,7 +198,7 @@ public sealed partial class EvidenceResolver
     {
         if (output.TimedOut)
         {
-            return Page.Failed($"the resolver timed out after {CallTimeout.TotalSeconds:0} seconds");
+            return Page.Failed("the resolver timed out");
         }
 
         JsonDocument document;

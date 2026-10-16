@@ -12,6 +12,38 @@ public enum EvidenceKind
 /// <summary>One string from an agent's evidence list: a <c>Type/id</c> reference, a FHIR search, or neither.</summary>
 public sealed partial record EvidenceEntry
 {
+    private static readonly HashSet<string> ResourceTypes = new(StringComparer.Ordinal)
+    {
+        "Account", "ActivityDefinition", "AdverseEvent", "AllergyIntolerance", "Appointment", "AppointmentResponse",
+        "AuditEvent", "Basic", "Binary", "BiologicallyDerivedProduct", "BodyStructure", "Bundle",
+        "CapabilityStatement", "CarePlan", "CareTeam", "CatalogEntry", "ChargeItem", "ChargeItemDefinition", "Claim",
+        "ClaimResponse", "ClinicalImpression", "CodeSystem", "Communication", "CommunicationRequest",
+        "CompartmentDefinition", "Composition", "ConceptMap", "Condition", "Consent", "Contract", "Coverage",
+        "CoverageEligibilityRequest", "CoverageEligibilityResponse", "DetectedIssue", "Device", "DeviceDefinition",
+        "DeviceMetric", "DeviceRequest", "DeviceUseStatement", "DiagnosticReport", "DocumentManifest",
+        "DocumentReference", "EffectEvidenceSynthesis", "Encounter", "Endpoint", "EnrollmentRequest",
+        "EnrollmentResponse", "EpisodeOfCare", "EventDefinition", "Evidence", "EvidenceVariable", "ExampleScenario",
+        "ExplanationOfBenefit", "FamilyMemberHistory", "Flag", "Goal", "GraphDefinition", "Group",
+        "GuidanceResponse", "HealthcareService", "ImagingStudy", "Immunization", "ImmunizationEvaluation",
+        "ImmunizationRecommendation", "ImplementationGuide", "InsurancePlan", "Invoice", "Library", "Linkage",
+        "List", "Location", "Measure", "MeasureReport", "Media", "Medication", "MedicationAdministration",
+        "MedicationDispense", "MedicationKnowledge", "MedicationRequest", "MedicationStatement", "MedicinalProduct",
+        "MedicinalProductAuthorization", "MedicinalProductContraindication", "MedicinalProductIndication",
+        "MedicinalProductIngredient", "MedicinalProductInteraction", "MedicinalProductManufactured",
+        "MedicinalProductPackaged", "MedicinalProductPharmaceutical", "MedicinalProductUndesirableEffect",
+        "MessageDefinition", "MessageHeader", "MolecularSequence", "NamingSystem", "NutritionOrder", "Observation",
+        "ObservationDefinition", "OperationDefinition", "OperationOutcome", "Organization",
+        "OrganizationAffiliation", "Parameters", "Patient", "PaymentNotice", "PaymentReconciliation", "Person",
+        "PlanDefinition", "Practitioner", "PractitionerRole", "Procedure", "Provenance", "Questionnaire",
+        "QuestionnaireResponse", "RelatedPerson", "RequestGroup", "ResearchDefinition", "ResearchElementDefinition",
+        "ResearchStudy", "ResearchSubject", "RiskAssessment", "RiskEvidenceSynthesis", "Schedule", "SearchParameter",
+        "ServiceRequest", "Slot", "Specimen", "SpecimenDefinition", "StructureDefinition", "StructureMap",
+        "Subscription", "Substance", "SubstanceNucleicAcid", "SubstancePolymer", "SubstanceProtein",
+        "SubstanceReferenceInformation", "SubstanceSourceMaterial", "SubstanceSpecification", "SupplyDelivery",
+        "SupplyRequest", "Task", "TerminologyCapabilities", "TestReport", "TestScript", "ValueSet",
+        "VerificationResult", "VisionPrescription",
+    };
+
     private EvidenceEntry(string text, EvidenceKind kind, string? compartment, string? resourceType, string? query)
     {
         Text = text;
@@ -35,12 +67,12 @@ public sealed partial record EvidenceEntry
     {
         ArgumentNullException.ThrowIfNull(text);
         var trimmed = text.Trim();
-        if (ReferencePattern().Match(trimmed) is { Success: true } reference)
+        if (ReferencePattern().Match(trimmed) is { Success: true } reference && ResourceTypes.Contains(reference.Groups["type"].Value))
         {
             return new EvidenceEntry(trimmed, EvidenceKind.Reference, null, reference.Groups["type"].Value, null);
         }
 
-        if (SearchPattern().Match(trimmed) is { Success: true } search)
+        if (SearchPattern().Match(trimmed) is { Success: true } search && ResourceTypes.Contains(search.Groups["type"].Value))
         {
             var compartment = search.Groups["compartment"].Success ? search.Groups["compartment"].Value : null;
             return new EvidenceEntry(trimmed, EvidenceKind.Search, compartment, search.Groups["type"].Value, search.Groups["query"].Value);
@@ -65,6 +97,6 @@ public sealed partial record EvidenceEntry
     [GeneratedRegex(@"^(?<type>[A-Z][A-Za-z]+)/[A-Za-z0-9\-.]{1,64}$")]
     private static partial Regex ReferencePattern();
 
-    [GeneratedRegex(@"^(?:(?<compartment>Patient/[A-Za-z0-9\-.]{1,64})/)?(?<type>[A-Z][A-Za-z]+)\?(?<query>[^\s\p{C}\-][^\s\p{C}]*)$")]
+    [GeneratedRegex(@"^(?:(?<compartment>Patient/[A-Za-z0-9\-.]{1,64})/)?(?<type>[A-Z][A-Za-z]+)\?(?<query>[A-Za-z_][^\s\p{C}]*)$")]
     private static partial Regex SearchPattern();
 }

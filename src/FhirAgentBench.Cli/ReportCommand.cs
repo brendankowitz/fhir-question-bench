@@ -87,6 +87,12 @@ internal static class ReportCommand
                     $"The questions or gold lock in '{questionsDirectory}' differ from the ones run {snapshot.RunId} used; its evidence cannot be re-resolved against them.");
             }
 
+            if (RunCommand.VerifiedManifest(corpus).Sha256 != snapshot.CorpusManifestSha256)
+            {
+                throw new InvalidOperationException(
+                    $"Corpus '{corpus.Id}' differs from the one run {snapshot.RunId} used (manifest {snapshot.CorpusManifestSha256}); its evidence cannot be re-resolved against it.");
+            }
+
             var context = new OracleContext(CorpusIndex.Load(corpus.DataDirectory), corpus.Now, corpus.MrnSystem);
             var gold = new GoldAdmitter(OracleRegistry.CreateDefault(), context)
                 .ComputeLockedGold(questions, GoldLock.Load(lockPath), lockPath);
@@ -104,7 +110,7 @@ internal static class ReportCommand
             }
             finally
             {
-                Directory.Delete(work, recursive: true);
+                EvidenceResolverSetup.TryDelete(work);
             }
         }
     }

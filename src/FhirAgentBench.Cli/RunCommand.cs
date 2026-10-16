@@ -98,7 +98,7 @@ internal static class RunCommand
         return command;
     }
 
-    private static CorpusManifest VerifiedManifest(CorpusDefinition corpus)
+    internal static CorpusManifest VerifiedManifest(CorpusDefinition corpus)
     {
         var manifest = CorpusManifest.Load(corpus.ManifestPath);
         var problems = manifest.Verify(corpus.DataDirectory);

@@ -20,6 +20,7 @@ public sealed record EvidenceSummary(
     int Attempts,
     double? MeanRecall,
     int RecallAttempts,
+    int RecallExcludedAttempts,
     double SearchShare,
     int AcceptedSearchAttempts,
     int References,
@@ -57,6 +58,7 @@ public static class RunReport
             analysed.Count,
             recalls.Count == 0 ? null : recalls.Average(),
             recalls.Count,
+            analysed.Count(d => d.Unresolved > 0),
             analysed.Count(d => d.Searches > 0) / (double)analysed.Count,
             analysed.Count(d => d.AcceptedSearches > 0),
             analysed.Sum(d => d.References),
@@ -168,8 +170,11 @@ public static class RunReport
         text.AppendLine();
         text.AppendLine("Evidence (diagnostic; not graded)");
         text.AppendLine();
+        var excluded = evidence.RecallExcludedAttempts > 0
+            ? $" ({evidence.RecallExcludedAttempts} attempts with unresolved searches excluded from recall)"
+            : "";
         text.AppendLine(CultureInfo.InvariantCulture,
-            $"{recall}. {Percent(evidence.SearchShare)} of {evidence.Attempts} attempts cited searches ({evidence.AcceptedSearchAttempts} cited an accepted search). Entries: {evidence.References} references, {evidence.Searches} searches, {evidence.Invalid} invalid; {evidence.Unresolved} searches unresolved.");
+            $"{recall}{excluded}. {Percent(evidence.SearchShare)} of {evidence.Attempts} attempts cited searches ({evidence.AcceptedSearchAttempts} cited an accepted search). Entries: {evidence.References} references, {evidence.Searches} searches, {evidence.Invalid} invalid; {evidence.Unresolved} searches unresolved.");
     }
 
     public static string ToMarkdown(RunSummary a, RunSummary b, PairedComparison comparison)

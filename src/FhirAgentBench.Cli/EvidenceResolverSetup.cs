@@ -27,6 +27,18 @@ internal static class EvidenceResolverSetup
             : throw new FileNotFoundException($"The evidence resolver '{path}' does not exist.", path);
     }
 
+    public static void TryDelete(string directory)
+    {
+        try
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"Could not delete the scratch folder '{directory}': {ex.Message}");
+        }
+    }
+
     public static string? ConfiguredCommit() => Environment.GetEnvironmentVariable(CommitVariable);
 
     public static EvidenceResolver? Create(string? executable, string corpusDataDirectory, string workDirectory) =>

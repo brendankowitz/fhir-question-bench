@@ -181,8 +181,9 @@ Earlier milestones: with 1–3 in place (cli-on-fhir V7 plus the warm map, MCP o
 
 ## Next steps
 
-1. Build an NDJSON-by-type corpus variant (same answers, no file-per-patient shortcut).
-2. Report T6 (cohorts) separately in `fab report`.
-3. Extend the bench oracle with `gender` and `conditions_all`, then write the two real cohort shapes.
-4. Run K=3 for Haiku and Luna on the held-out sample, freeze a dev split for further tool tuning, and add a second corpus seed as a true holdout.
-5. Add a few narrative (DocumentReference note) questions.
+1. Add a separate **strong-prompt shell** arm, and iterate on its prompt to see how close a shell agent can get to 100% without the tool. The current shell baseline stays as it is, because it represents a naive deployment today. The first candidate is a line telling the agent to report FHIR dates as recorded; PowerShell `ConvertFrom-Json` converts UTC timestamps to local time, which caused every shell date miss on the held-out set.
+2. Build an NDJSON-by-type corpus variant (same answers, no file-per-patient shortcut).
+3. Report T6 (cohorts) separately in `fab report`.
+4. Extend the bench oracle with `gender` and `conditions_all`, then write the two real cohort shapes.
+5. Run K=3 for Haiku and Luna on the held-out sample, freeze a dev split for further tool tuning, and add a second corpus seed as a true holdout.
+6. Add a few narrative (DocumentReference note) questions.

@@ -6,7 +6,7 @@ builtin_tools: [view, rg, glob, powershell, read_powershell, stop_powershell, ap
 mcp_servers:
   fhir:
     command: "${FAB_CLI_ON_FHIR}"
-    args: [mcp, "{corpus}"]
+    args: [mcp, "{corpus}", --cache-dir, "${FAB_CLI_ON_FHIR_CACHE}"]
     tools: [patient_list, search_fhir_resources, read_resources]
 prompt_template: ../prompts/default.md
 max_ai_credits: 30

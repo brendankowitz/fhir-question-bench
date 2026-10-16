@@ -54,6 +54,24 @@ On the held-out sample, the remaining accuracy gap is one question net:
   - two ICD-10 → SNOMED cohort judgements, E11 and I25;
   - one KDIGO stage code: it gave the generic "CKD stage 3" code instead of G3a, and did not check the code with the terminology tool it had.
 
+### Held-out sample, two runs per profile, three models
+
+All runs below are on sample C (58 held-out questions) with cli-on-fhir V8. Sonnet has two runs per profile; Haiku and Luna have one.
+
+| Model | Profile | Correct | Credits per question | Tokens per question | Time per question | Spills |
+|---|---|---|---|---|---|---|
+| Sonnet 5.5 | Shell only | 96.6% | 4.94 | 70K | 19.2 s | 9 |
+| Sonnet 5.5 | **MCP + map** | 96.6% | **3.94** | **55K** | **12.4 s** | **0** |
+| Haiku 5.5 | Shell only | 75.9% | 0.55 | 117K | 35.8 s | 7 |
+| Haiku 5.5 | **MCP + map** | **96.6%** | **0.32** | **65K** | **18.1 s** | 1 |
+| GPT-6 Luna | Shell only | 91.4% | 0.26 | 57K | 28.0 s | 29 |
+| GPT-6 Luna | **MCP + map** | **94.8%** | **0.21** | **47K** | **22.9 s** | 1 |
+
+- **Patient-context tiers (T1–T5, T7):** the tool used fewer tokens and less time in **every tier, for every model**. Accuracy was equal or higher in every tier and model, with one exception: Sonnet on T5, where it got 15 of 16 against the shell's 16 of 16.
+- **Sonnet on the patient-context tiers:** 109 of 110 correct with the tool, against 106 of 110 with the shell.
+- **The weaker the model, the bigger the gain.** Haiku with the tool matched Sonnet with a shell on accuracy (96.6% against 96.6%) at about 1/15 of the credits. Shell-only Haiku and Luna spend turns parsing large Bundles; Luna spilled 29 times.
+- **Cohorts (T6) are the consistent exception.** With the tool, every model used more tokens there and got 1–2 of 3 right, against 3 of 3 with the shell. A shell agent writes one script over 109 files; the tool agent needs several FHIRPath calls. This is the PatientIQ "out of scope / SQL-on-FHIR views" route, and it needs its own tool.
+
 ## How the tool got there
 
 Every change below came from a transcript of a run that went wrong. All were measured on samples A and B.
@@ -96,7 +114,7 @@ Other caveats:
 - Synthea data quirks (A1c values below 4%, creatinine LOINCs that disagree with each other) limit which questions are clinically sound.
 - Cohorts are small: about 100 living patients.
 - Samples A and B were used for tuning. Only C (58 questions) is held out, and it was run once (K=1) on the tool side.
-- One model was tested (Sonnet 5.5). The test with cheaper models (Haiku, Luna) is still to run. A smaller model should benefit more from small, exact tool answers.
+- Most tuning used Sonnet 5.5. Haiku 5.5 and GPT-6 Luna were each run once, on the held-out sample only.
 
 ## Recommendation
 
@@ -120,8 +138,8 @@ With 1–3 in place (cli-on-fhir V7 plus the warm map, MCP only), the agent used
 
 ## Next steps
 
-1. Run cheaper models (Haiku, Luna) with P1 against P3-warm.
+1. Add a cohort route (SQL-on-FHIR views or DuckDB over SQL-on-FHIR output), so T6 also beats the shell.
 2. Build an NDJSON-by-type corpus variant (same answers, no file-per-patient shortcut).
-3. Add a cohort and analytics route, and report T6 separately.
+3. Report T6 separately from the patient-context score.
 4. Run K=3 on the held-out sample, and freeze a dev split for further tool tuning.
 5. Add a few narrative (DocumentReference note) questions.

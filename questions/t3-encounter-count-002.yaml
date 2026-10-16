@@ -10,4 +10,5 @@ answer: { type: integer }
 oracle:
   name: encounter-query
   parameters: { type_snomed: ["702927004"], window_days: 1095, return: "count" }
+evidence_searches: ["Encounter?type=http://snomed.info/sct|702927004&date=gt2023-08-18T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

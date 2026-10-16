@@ -14,4 +14,5 @@ answer:
 oracle:
   name: ever-on-medication
   parameters: { rxnorm: ["314231", "312961", "617310", "617311", "859747", "859751", "904475"] }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|314231,http://www.nlm.nih.gov/research/umls/rxnorm|312961,http://www.nlm.nih.gov/research/umls/rxnorm|617310,http://www.nlm.nih.gov/research/umls/rxnorm|617311,http://www.nlm.nih.gov/research/umls/rxnorm|859747,http://www.nlm.nih.gov/research/umls/rxnorm|859751,http://www.nlm.nih.gov/research/umls/rxnorm|904475", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|314231,http://www.nlm.nih.gov/research/umls/rxnorm|312961,http://www.nlm.nih.gov/research/umls/rxnorm|617310,http://www.nlm.nih.gov/research/umls/rxnorm|617311,http://www.nlm.nih.gov/research/umls/rxnorm|859747,http://www.nlm.nih.gov/research/umls/rxnorm|859751,http://www.nlm.nih.gov/research/umls/rxnorm|904475"]
 verification: { status: unverified }

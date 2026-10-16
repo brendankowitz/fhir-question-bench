@@ -10,4 +10,5 @@ answer: { type: set }
 oracle:
   name: allergy-check
   parameters: { category: "medication", return: "codes" }
+evidence_searches: ["AllergyIntolerance?category=medication&clinical-status=active"]
 verification: { status: unverified }

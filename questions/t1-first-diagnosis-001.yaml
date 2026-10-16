@@ -10,4 +10,5 @@ answer: { type: date }
 oracle:
   name: condition-status
   parameters: { snomed: ["59621000"], return: "first_onset" }
+evidence_searches: ["Condition?code=http://snomed.info/sct|59621000&_sort=onset-date&_count=1"]
 verification: { status: unverified }

@@ -10,4 +10,5 @@ answer: { type: date }
 oracle:
   name: ever-on-medication
   parameters: { rxnorm: ["617310", "617311"], return: "first_date" }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|617310,http://www.nlm.nih.gov/research/umls/rxnorm|617311", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|617310,http://www.nlm.nih.gov/research/umls/rxnorm|617311"]
 verification: { status: unverified }

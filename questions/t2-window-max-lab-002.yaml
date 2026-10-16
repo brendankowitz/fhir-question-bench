@@ -10,4 +10,5 @@ answer: { type: decimal, tolerance: 0.5 }
 oracle:
   name: observation-window-stats
   parameters: { loinc: "8480-6", window_days: 730, statistic: "max", unit: "mm[Hg]" }
+evidence_searches: ["Observation?component-code=http://loinc.org|8480-6&date=gt2024-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

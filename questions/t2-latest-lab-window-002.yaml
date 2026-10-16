@@ -17,4 +17,5 @@ answer:
 oracle:
   name: latest-observation
   parameters: { loinc: "14959-1", window_days: 365 }
+evidence_searches: ["Observation?code=http://loinc.org|14959-1&date=gt2025-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z&_sort=-date&_count=1"]
 verification: { status: unverified }

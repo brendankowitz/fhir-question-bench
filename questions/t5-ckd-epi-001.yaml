@@ -12,4 +12,5 @@ answer: { type: decimal, tolerance: 1.0 }
 oracle:
   name: clinical-calculation
   parameters: { formula: "ckd-epi-2021" }
+evidence_searches: ["Observation?code=http://loinc.org|38483-4,http://loinc.org|2160-0&_sort=-date&_count=1"]
 verification: { status: unverified }

@@ -10,4 +10,5 @@ answer: { type: code }
 oracle:
   name: condition-crosswalk
   parameters: { source_snomed: ["714628002"], target_system: "http://hl7.org/fhir/sid/icd-10-cm", target_code: "R73.03" }
+evidence_searches: ["Condition?code=http://snomed.info/sct|714628002&clinical-status=active"]
 verification: { status: unverified }

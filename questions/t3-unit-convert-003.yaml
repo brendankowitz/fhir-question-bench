@@ -10,4 +10,5 @@ answer: { type: quantity, unit: "umol/L", tolerance: 1 }
 oracle:
   name: latest-observation
   parameters: { loinc: ["38483-4", "2160-0"], unit: "umol/L", return: "value" }
+evidence_searches: ["Observation?code=http://loinc.org|38483-4,http://loinc.org|2160-0&_sort=-date&_count=1"]
 verification: { status: unverified }

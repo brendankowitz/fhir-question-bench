@@ -14,4 +14,5 @@ answer:
 oracle:
   name: latest-observation
   parameters: { loinc: ["33914-3", "48642-3", "48643-1", "62238-1", "98979-8", "69405-9", "50044-7", "88293-6", "88294-4", "77147-7"], unit: "mL/min/{1.73_m2}" }
+evidence_searches: ["Observation?code=http://loinc.org|33914-3,http://loinc.org|48642-3,http://loinc.org|48643-1,http://loinc.org|62238-1,http://loinc.org|98979-8,http://loinc.org|69405-9,http://loinc.org|50044-7,http://loinc.org|88293-6,http://loinc.org|88294-4,http://loinc.org|77147-7&_sort=-date&_count=1"]
 verification: { status: unverified }

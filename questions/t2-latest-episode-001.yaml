@@ -10,4 +10,5 @@ answer: { type: date }
 oracle:
   name: condition-status
   parameters: { snomed: ["444814009", "75498004", "36971009"], return: "latest_onset" }
+evidence_searches: ["Condition?code=http://snomed.info/sct|444814009,http://snomed.info/sct|75498004,http://snomed.info/sct|36971009&_sort=-onset-date&_count=1"]
 verification: { status: unverified }

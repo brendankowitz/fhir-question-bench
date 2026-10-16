@@ -10,4 +10,5 @@ answer: { type: integer }
 oracle:
   name: observation-window-stats
   parameters: { loinc: ["18262-6", "13457-7", "2089-1"], window_days: 1826, statistic: "count", unit: "mg/dL" }
+evidence_searches: ["Observation?code=http://loinc.org|18262-6,http://loinc.org|13457-7,http://loinc.org|2089-1&date=gt2021-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

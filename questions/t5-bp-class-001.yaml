@@ -18,4 +18,5 @@ answer:
 oracle:
   name: clinical-calculation
   parameters: { formula: "acc-aha-2017-bp", readings: 3, window_days: 730 }
+evidence_searches: ["Observation?code=http://loinc.org|85354-9&date=gt2024-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z&_sort=-date&_count=3"]
 verification: { status: unverified }

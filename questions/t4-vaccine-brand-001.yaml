@@ -10,4 +10,5 @@ answer: { type: date }
 oracle:
   name: immunization-history
   parameters: { cvx: ["33"], return: "latest_date" }
+evidence_searches: ["Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|33&_sort=-date&_count=1"]
 verification: { status: unverified }

@@ -10,4 +10,5 @@ answer: { type: set }
 oracle:
   name: medications-started-within
   parameters: { window_days: 365 }
+evidence_searches: ["MedicationRequest?authoredon=gt2025-08-17T00:00:00Z&authoredon=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

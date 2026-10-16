@@ -15,4 +15,5 @@ answer:
 oracle:
   name: latest-observation
   parameters: { loinc: "85354-9", return: "components", components: { systolic: "8480-6", diastolic: "8462-4" } }
+evidence_searches: ["Observation?code=http://loinc.org|85354-9&_sort=-date&_count=1"]
 verification: { status: unverified }

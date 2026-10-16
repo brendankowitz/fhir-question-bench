@@ -10,4 +10,5 @@ answer: { type: integer }
 oracle:
   name: observation-window-stats
   parameters: { loinc: "8480-6", window_days: 1095, statistic: "count", unit: "mm[Hg]", comparator: "ge", threshold: 140 }
+evidence_searches: ["Observation?component-code-value-quantity=http://loinc.org|8480-6$ge140&date=gt2023-08-18T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

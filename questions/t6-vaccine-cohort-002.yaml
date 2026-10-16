@@ -9,4 +9,5 @@ answer: { type: integer }
 oracle:
   name: cohort-count
   parameters: { age_min: 50, immunization_any: { cvx: ["121", "187", "188"] } }
+evidence_searches: ["Patient?deceased=false&birthdate=le1976-08-17&_has:Immunization:patient:vaccine-code=http://hl7.org/fhir/sid/cvx|121,http://hl7.org/fhir/sid/cvx|187,http://hl7.org/fhir/sid/cvx|188"]
 verification: { status: unverified }

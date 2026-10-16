@@ -10,4 +10,5 @@ answer: { type: decimal, tolerance: 0.2 }
 oracle:
   name: clinical-calculation
   parameters: { formula: "bmi" }
+evidence_searches: ["Observation?code=http://loinc.org|29463-7&_sort=-date&_count=1", "Observation?code=http://loinc.org|8302-2&_sort=-date&_count=1"]
 verification: { status: unverified }

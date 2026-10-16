@@ -10,4 +10,5 @@ answer: { type: decimal, tolerance: 0.1 }
 oracle:
   name: observation-window-stats
   parameters: { loinc: "33914-3", window_days: 730, statistic: "min", unit: "mL/min/{1.73_m2}" }
+evidence_searches: ["Observation?code=http://loinc.org|33914-3&date=gt2024-08-17T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

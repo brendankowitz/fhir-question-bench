@@ -11,4 +11,5 @@ answer: { type: boolean }
 oracle:
   name: allergy-check
   parameters: { substances: ["http://www.nlm.nih.gov/research/umls/rxnorm|7984", "http://www.nlm.nih.gov/research/umls/rxnorm|7980", "http://www.nlm.nih.gov/research/umls/rxnorm|723", "http://www.nlm.nih.gov/research/umls/rxnorm|733", "http://www.nlm.nih.gov/research/umls/rxnorm|70618"], return: "any" }
+evidence_searches: ["AllergyIntolerance?code=http://www.nlm.nih.gov/research/umls/rxnorm|7984,http://www.nlm.nih.gov/research/umls/rxnorm|7980,http://www.nlm.nih.gov/research/umls/rxnorm|723,http://www.nlm.nih.gov/research/umls/rxnorm|733,http://www.nlm.nih.gov/research/umls/rxnorm|70618&clinical-status=active"]
 verification: { status: unverified }

@@ -10,4 +10,5 @@ answer: { type: integer }
 oracle:
   name: condition-status
   parameters: { snomed: ["43878008"], return: "count" }
+evidence_searches: ["Condition?code=http://snomed.info/sct|43878008"]
 verification: { status: unverified }

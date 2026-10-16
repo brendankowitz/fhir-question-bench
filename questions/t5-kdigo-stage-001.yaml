@@ -12,4 +12,5 @@ answer: { type: code }
 oracle:
   name: clinical-calculation
   parameters: { formula: "kdigo-g-stage", source: "observed" }
+evidence_searches: ["Observation?code=http://loinc.org|33914-3&_sort=-date&_count=1"]
 verification: { status: unverified }

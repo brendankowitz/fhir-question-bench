@@ -12,4 +12,5 @@ answer: { type: decimal, tolerance: 0.2 }
 oracle:
   name: observation-window-stats
   parameters: { loinc: "29463-7", window_days: 1095, statistic: "change", unit: "kg" }
+evidence_searches: ["Observation?code=http://loinc.org|29463-7&date=gt2023-08-18T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

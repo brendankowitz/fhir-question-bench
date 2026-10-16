@@ -10,4 +10,5 @@ answer: { type: integer }
 oracle:
   name: immunization-history
   parameters: { cvx: ["43", "08", "44", "45", "189", "220"], return: "count" }
+evidence_searches: ["Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|43,http://hl7.org/fhir/sid/cvx|08,http://hl7.org/fhir/sid/cvx|44,http://hl7.org/fhir/sid/cvx|45,http://hl7.org/fhir/sid/cvx|189,http://hl7.org/fhir/sid/cvx|220"]
 verification: { status: unverified }

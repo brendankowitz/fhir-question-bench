@@ -10,4 +10,5 @@ answer: { type: integer }
 oracle:
   name: procedure-history
   parameters: { snomed: ["265764009", "302497006", "71192002"], window_days: 90, return: "count" }
+evidence_searches: ["Procedure?code=http://snomed.info/sct|265764009,http://snomed.info/sct|302497006,http://snomed.info/sct|71192002&date=gt2026-05-19T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

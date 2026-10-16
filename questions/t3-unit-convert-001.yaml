@@ -10,4 +10,5 @@ answer: { type: quantity, unit: "[lb_av]", tolerance: 0.5 }
 oracle:
   name: latest-observation
   parameters: { loinc: "29463-7", unit: "[lb_av]", return: "value" }
+evidence_searches: ["Observation?code=http://loinc.org|29463-7&_sort=-date&_count=1"]
 verification: { status: unverified }

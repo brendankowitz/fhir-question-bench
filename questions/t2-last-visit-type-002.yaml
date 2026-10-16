@@ -10,4 +10,5 @@ answer: { type: date }
 oracle:
   name: encounter-query
   parameters: { class: ["IMP"], return: "latest_date" }
+evidence_searches: ["Encounter?class=IMP&_sort=-date&_count=1"]
 verification: { status: unverified }

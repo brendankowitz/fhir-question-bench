@@ -12,4 +12,5 @@ answer: { type: integer }
 oracle:
   name: cohort-lab-above-or-missing
   parameters: { snomed: ["414545008", "399211009"], loinc: ["18262-6", "13457-7", "2089-1"], comparator: "ge", threshold: 70, window_days: 1095, age_min: 18, age_max: 150, unit: "mg/dL" }
+evidence_searches: ["Patient?deceased=false&birthdate=le2008-08-17&_has:Condition:patient:code=http://snomed.info/sct|414545008,http://snomed.info/sct|399211009"]
 verification: { status: unverified }

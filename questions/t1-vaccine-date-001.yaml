@@ -10,4 +10,5 @@ answer: { type: date }
 oracle:
   name: immunization-history
   parameters: { cvx: ["113", "115", "09", "138", "139", "196", "20", "01", "22", "50", "102", "106", "107", "110", "120", "146", "28", "35", "112", "142", "130", "132", "170"], return: "latest_date" }
+evidence_searches: ["Immunization?vaccine-code=http://hl7.org/fhir/sid/cvx|113,http://hl7.org/fhir/sid/cvx|115,http://hl7.org/fhir/sid/cvx|09,http://hl7.org/fhir/sid/cvx|138,http://hl7.org/fhir/sid/cvx|139,http://hl7.org/fhir/sid/cvx|196,http://hl7.org/fhir/sid/cvx|20,http://hl7.org/fhir/sid/cvx|01,http://hl7.org/fhir/sid/cvx|22,http://hl7.org/fhir/sid/cvx|50,http://hl7.org/fhir/sid/cvx|102,http://hl7.org/fhir/sid/cvx|106,http://hl7.org/fhir/sid/cvx|107,http://hl7.org/fhir/sid/cvx|110,http://hl7.org/fhir/sid/cvx|120,http://hl7.org/fhir/sid/cvx|146,http://hl7.org/fhir/sid/cvx|28,http://hl7.org/fhir/sid/cvx|35,http://hl7.org/fhir/sid/cvx|112,http://hl7.org/fhir/sid/cvx|142,http://hl7.org/fhir/sid/cvx|130,http://hl7.org/fhir/sid/cvx|132,http://hl7.org/fhir/sid/cvx|170&_sort=-date&_count=1"]
 verification: { status: unverified }

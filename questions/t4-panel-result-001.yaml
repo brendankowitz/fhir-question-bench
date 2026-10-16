@@ -13,4 +13,5 @@ oracle:
     start: { type: DiagnosticReport, loinc: ["24323-8"], pick: latest }
     path: [{ ref: result, type: Observation, loinc: ["6298-4", "2823-3"] }]
     project: value
+evidence_searches: ["DiagnosticReport?code=http://loinc.org|24323-8&_sort=-date&_count=1", "Observation?code=http://loinc.org|6298-4,http://loinc.org|2823-3&_has:DiagnosticReport:result:code=http://loinc.org|24323-8&_sort=-date&_count=1"]
 verification: { status: unverified }

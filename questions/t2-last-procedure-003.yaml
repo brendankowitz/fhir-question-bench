@@ -10,4 +10,5 @@ answer: { type: date }
 oracle:
   name: procedure-history
   parameters: { snomed: ["265764009", "302497006", "71192002"], return: "latest_date" }
+evidence_searches: ["Procedure?code=http://snomed.info/sct|265764009,http://snomed.info/sct|302497006,http://snomed.info/sct|71192002&_sort=-date&_count=1"]
 verification: { status: unverified }

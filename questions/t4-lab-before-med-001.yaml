@@ -16,4 +16,5 @@ answer:
 oracle:
   name: observation-before-medication
   parameters: { loinc: "4548-4", rxnorm: ["106892", "311034"] }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|106892,http://www.nlm.nih.gov/research/umls/rxnorm|311034&_sort=authoredon&_count=1", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|106892,http://www.nlm.nih.gov/research/umls/rxnorm|311034&_sort=authoredon&_count=1", "Observation?code=http://loinc.org|4548-4&date=le2016-12-25T08:54:57Z&_sort=-date&_count=1"]
 verification: { status: unverified }

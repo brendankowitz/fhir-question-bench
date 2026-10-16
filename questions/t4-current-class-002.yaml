@@ -10,4 +10,5 @@ answer: { type: set }
 oracle:
   name: active-medications
   parameters: { rxnorm: ["309362", "749196", "243670", "212033", "2563431", "855812"], return: "codes" }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|309362,http://www.nlm.nih.gov/research/umls/rxnorm|749196,http://www.nlm.nih.gov/research/umls/rxnorm|243670,http://www.nlm.nih.gov/research/umls/rxnorm|212033,http://www.nlm.nih.gov/research/umls/rxnorm|2563431,http://www.nlm.nih.gov/research/umls/rxnorm|855812&status=active", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|309362,http://www.nlm.nih.gov/research/umls/rxnorm|749196,http://www.nlm.nih.gov/research/umls/rxnorm|243670,http://www.nlm.nih.gov/research/umls/rxnorm|212033,http://www.nlm.nih.gov/research/umls/rxnorm|2563431,http://www.nlm.nih.gov/research/umls/rxnorm|855812&status=active"]
 verification: { status: unverified }

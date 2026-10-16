@@ -11,4 +11,5 @@ answer: { type: integer }
 oracle:
   name: cohort-count
   parameters: { conditions_any: ["414545008", "399211009"] }
+evidence_searches: ["Patient?deceased=false&_has:Condition:patient:code=http://snomed.info/sct|414545008,http://snomed.info/sct|399211009"]
 verification: { status: unverified }

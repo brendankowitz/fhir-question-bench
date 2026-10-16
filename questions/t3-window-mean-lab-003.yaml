@@ -10,4 +10,5 @@ answer: { type: decimal, tolerance: 0.05 }
 oracle:
   name: observation-window-stats
   parameters: { loinc: ["2339-0", "2345-7"], window_days: 1095, statistic: "mean", unit: "mmol/L" }
+evidence_searches: ["Observation?code=http://loinc.org|2339-0,http://loinc.org|2345-7&date=gt2023-08-18T00:00:00Z&date=le2026-08-17T00:00:00Z"]
 verification: { status: unverified }

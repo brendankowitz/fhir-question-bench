@@ -13,4 +13,5 @@ oracle:
     start: { type: Encounter, class: ["IMP"], type_snomed: ["305351004", "397821002"], pick: latest }
     path: [{ rev: DiagnosticReport.encounter, loinc: ["24323-8", "51990-0", "24321-2"], pick: latest }, { ref: result, type: Observation, loinc: ["6298-4", "2823-3"] }]
     project: value
+evidence_searches: ["Encounter?class=IMP&type=http://snomed.info/sct|305351004,http://snomed.info/sct|397821002&_sort=-date&_count=1", "DiagnosticReport?encounter=Encounter/5693c080-f485-91e7-df4a-bdb8522d08d3&code=http://loinc.org|24323-8,http://loinc.org|51990-0,http://loinc.org|24321-2&_sort=-date&_count=1", "Observation?code=http://loinc.org|6298-4,http://loinc.org|2823-3&_has:DiagnosticReport:result:encounter=Encounter/5693c080-f485-91e7-df4a-bdb8522d08d3&_sort=-date&_count=1"]
 verification: { status: unverified }

@@ -10,4 +10,5 @@ answer: { type: code }
 oracle:
   name: medication-reason
   parameters: { rxnorm: ["106892", "311034"] }
+evidence_searches: ["MedicationRequest?code=http://www.nlm.nih.gov/research/umls/rxnorm|106892,http://www.nlm.nih.gov/research/umls/rxnorm|311034&_sort=-authoredon&_count=1", "MedicationRequest?medication.code=http://www.nlm.nih.gov/research/umls/rxnorm|106892,http://www.nlm.nih.gov/research/umls/rxnorm|311034&_sort=-authoredon&_count=1", "Condition?_id=5693c080-f485-91e7-387e-f0f4ab249a73"]
 verification: { status: unverified }

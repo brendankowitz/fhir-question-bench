@@ -38,6 +38,9 @@ By sample:
 | A (tuned) | 91.7% | 97.9% | −5% | −5% | −40% |
 | B (tuned) | 97.9% | 100% | −18% | −24% | −46% |
 | **C (held out)** | 96.6% (two runs) | 94.8% | −19% | −19% | −32% |
+| **C (held out), V8** | 96.6% (two runs) | **98.3%** | **−21%** | **−22%** (55.8K vs 71.1K) | **−36%** |
+
+V8 is V7 plus one instruction line: "Before answering with a code, check it: terminology operation=lookup (or search) confirms the display matches what was asked." With it, the KDIGO miss became correct. On the held-out sample, the tool now beats the shell on all four measures. Its only miss is the E11 cohort (T6).
 
 **Per question:** P3-warm used fewer tokens on 82 of 106 questions and was faster on 98. The expected number of correct answers is 102.5 for P3-warm against 101.5 for P1.
 
@@ -109,7 +112,11 @@ Build the agent surface the way PatientIQ describes, and the way the V7 results 
 4. **Make terminology first-class**: RxClass drug classes, SNOMED hierarchy through a tx server, and code verification. The remaining held-out errors are terminology judgements (ICD-10 → SNOMED, choosing the G3a code). Adding a "verify a code before you answer with it" line to the instructions is cheap.
 5. **Route cohorts elsewhere**: a SQL-on-FHIR view or analytics tool. Do not stretch patient-context search to cover them.
 
-With 1–3 in place (cli-on-fhir V7 plus the warm map, MCP only), the agent used 18% fewer tokens, was 38% faster and answered slightly more questions correctly over all 106 questions. On the held-out 58 it was 19% cheaper and 32% faster, at accuracy within one question of the shell.
+With 1–3 in place (cli-on-fhir V7 plus the warm map, MCP only), the agent used 18% fewer tokens, was 38% faster and answered slightly more questions correctly over all 106 questions. With the step 4 instruction line added (V8, the head of ignixa-fhir#507), the held-out 58 questions came out at:
+- 98.3% correct, against 96.6% for the shell;
+- 22% fewer tokens;
+- 36% less time;
+- no spills.
 
 ## Next steps
 

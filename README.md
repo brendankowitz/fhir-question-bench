@@ -30,11 +30,33 @@ the lock for new questions or to accept intentional gold changes.
 Caution: run the B0 oracle baseline into a separate `--runs-dir` (as above). Its `answer.json` files
 are the gold answers, and an agent run must never be able to browse them.
 
+## Second suite: FHIR-AgentBench over MIMIC-IV on FHIR
+
+`suites/fhir-agentbench/` adapts [FHIR-AgentBench](https://github.com/glee4810/FHIR-AgentBench) (CC-BY-4.0) to the
+MIMIC-IV Clinical Database Demo on FHIR 2.1.0 (100 real, de-identified patients; ODbL), to test whether `cli-on-fhir`
+helps on real records too. Gold is upstream's (derived with SQL over MIMIC-IV) and graded deterministically, without an
+LLM judge. Neither the data nor the questions and gold are committed: fetch and import them.
+
+    dotnet run --project src/FhirAgentBench.Cli -- corpus fetch corpora/mimic-iv-fhir-demo-2.1.0
+    dotnet run --project src/FhirAgentBench.Cli -- corpus verify corpora/mimic-iv-fhir-demo-2.1.0
+    dotnet run --project src/FhirAgentBench.Cli -- import fhir-agentbench --split test
+    dotnet run --project src/FhirAgentBench.Cli -- admit --corpus corpora/mimic-iv-fhir-demo-2.1.0 --questions-dir suites/fhir-agentbench/generated/questions --set suites/fhir-agentbench/generated/test-80.txt --update-lock
+
+`import` downloads the questions CSV at the commit pinned in `suites/fhir-agentbench/import.yaml`, checks its sha256 and
+writes question YAMLs, a gold file for the `static-answer` oracle, `test-all.txt` (every importable test question) and
+`test-80.txt` (80 stratified by source table, fixed seed) under the gitignored `suites/fhir-agentbench/generated/`. Run
+profiles with `--corpus corpora/mimic-iv-fhir-demo-2.1.0 --questions-dir suites/fhir-agentbench/generated/questions`.
+Each question carries its own `now` (rendered as `{{now}}`) and upstream's assumption note, which the renderer puts in
+`{{assumption}}` as a space and the note, or nothing; a template shows it by writing `Treat now as {{now}}.{{assumption}}`.
+Typing rules, skips and attribution: `suites/fhir-agentbench/README.md`; data licence and citation:
+`corpora/mimic-iv-fhir-demo-2.1.0/README.md`.
+
 ## Commands
 
 - `fab corpus fetch <corpus-dir>`: download the pinned source, check its sha256, extract it read-only.
 - `fab corpus verify <corpus-dir>`: check every data file against `data.manifest.json`.
 - `fab corpus stats|patients|codes <corpus-dir>`: authoring helpers for exploring the corpus.
+- `fab import fhir-agentbench [--split S] [--sample N] [--seed S] [--csv <file>]`: import the external FHIR-AgentBench suite (see above).
 - `fab admit [--check-searches]`: recompute gold for a question set and check it against the answer spec and gold lock; optionally cross-check declared evidence searches.
 - `fab run`: run a profile over a question set, then grade and summarise it.
 - `fab report <run-dir> [<compare-run-dir>] [--evidence-resolver <exe> --corpus <dir>]`: summarise a run, or compare two runs pairwise (exact
@@ -108,12 +130,13 @@ resources (`Type?params`, or `Patient/<id>/Type?params`). Evidence is a diagnost
 
 ## Layout
 
-- `corpora/<id>/corpus.yaml`: pinned source, frozen "now", MRN system; `data/` is fetched, not committed.
+- `corpora/<id>/corpus.yaml`: pinned source, frozen "now", MRN system; `data/` is fetched, not committed (gzipped NDJSON is stored decompressed).
 - `corpora/<id>/data.manifest.json`: size and sha256 of every data file.
 - `questions/*.yaml`: one question each (tier, tags, tool groups, patient context, answer spec, oracle).
 - `questions/gold.lock.json`: gold hashes; `fab admit` and `fab run` fail on drift.
 - `question-sets/*.txt`: question ids per run.
 - `profiles/*.yaml`: harness, model, tools, MCP servers, prompt, budget.
 - `prompts/*.md`: prompt templates.
+- `suites/<suite>/`: an external suite's import config and README; its questions, gold and lock go to the gitignored `generated/`.
 - `src/FhirAgentBench`: corpus index, oracles, grader, harnesses, reports (no Ignixa dependency).
 - `src/FhirAgentBench.Cli`: the `fab` command line.

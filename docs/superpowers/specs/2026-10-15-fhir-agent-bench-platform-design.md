@@ -130,6 +130,23 @@ questions are stated in clinical shorthand.
 - **Holdout:** 50 private questions on a second corpus seed, never published.
   A large gap between test and holdout scores means a profile has overfit.
 
+### 5.4 External suite: FHIR-AgentBench
+
+A second suite runs over an external corpus, the MIMIC-IV Clinical Database Demo
+on FHIR 2.1.0 (`corpora/mimic-iv-fhir-demo-2.1.0`, ODbL), with questions and
+answers adapted from FHIR-AgentBench (Lee et al., 2025; CC-BY-4.0), to test whether
+a tool such as `cli-on-fhir` helps on real, messier records. Its gold is upstream:
+FHIR-AgentBench derived it with SQL over MIMIC-IV, the bench does not recompute it,
+and `fab import fhir-agentbench` (`suites/fhir-agentbench/`) only types it. The
+importer downloads the CSV at a pinned commit, checks its sha256, infers a typed
+answer spec per row from its SQL and template, and writes question YAMLs, a gold
+file for the `static-answer` oracle (`true_fhir_ids` become its evidence) and
+question sets, all gitignored; rows it cannot type faithfully are skipped and
+counted. Grading stays deterministic, with the rules below and no LLM judge
+(upstream uses one). Questions carry their own `now` and an assumption note from
+upstream, rendered beside `now` in the prompt. These questions are not voiced as in
+§5.2: they name the patient by MIMIC subject_id, which the corpus carries as the MRN.
+
 ## 6. Answers and grading
 
 The agent writes `answer.json` into its output directory:
@@ -146,20 +163,25 @@ section of the prompt, never in the clinical wording.
 | Type | JSON shape | Rule |
 |---|---|---|
 | integer | number | exact |
-| decimal | number | absolute tolerance declared per question |
+| decimal | number | absolute tolerance declared per question; optionally also a `relative_tolerance`, passing within the larger of the two |
 | quantity | `{value, unit}` | unit must equal the declared UCUM unit after normalising equivalent spellings; value within tolerance |
 | date | `"YYYY-MM-DD"` | exact at declared precision |
 | code | `{system, code}` | tuple equality, display ignored |
 | identifier | `{system, value}` | tuple equality (MRN, NPI) |
 | name | non-empty string, declared `kind: person` or `kind: text` | equal after normalisation: case, accents, titles, name order and suffixes for a person; `&` and legal forms for an organisation or place. No abbreviation expansion. Rules in `docs/questions/oracle-semantics.md` |
-| set | array of strings or of `{system, code}` | strict set equality; precision and recall logged |
+| set | array of strings or of `{system, code}`; or of `items` of one declared type (text, decimal, integer, datetime, date) | strict set equality; with `items`, every gold item matches some answer item, every answer item matches some gold item under the item rule, and the answer has as many distinct items as the gold (exact repeats ignored); a nullable set treats `[]` as null; precision and recall logged |
 | boolean | true/false | exact |
 | composite | object of named fields, each with its own spec | all fields correct; per-field logged |
+| datetime | `"YYYY-MM-DD HH:MM[:SS]"` (`T` also accepted) | same wall-clock minute; seconds and any trailing `Z`/offset are ignored, so a time converted to another zone is wrong |
+| text | non-empty string | equal after trimming, collapsing runs of whitespace and ignoring case; no other normalisation |
 
 Any type may be declared `nullable`, meaning "no such result" is a valid
 answer, given as `answer: null`. This is distinct from `insufficient_data`.
 Abstaining is correct only when the gold is `insufficient_data`; on answerable
-questions it is counted as **abstained**, not wrong.
+questions it is counted as **abstained**, not wrong. The one exception is a spec
+declaring `null_accepts_abstain` (only with `nullable`): when its gold is null,
+`insufficient_data` is also correct. Imported suites use it where the upstream
+gold cannot tell "nothing recorded" from "no such result" (§5.4).
 
 Every attempt ends in exactly one status: `correct`, `wrong`, `abstained`,
 `format_invalid`, `turn_limit` or `harness_error`. Harness errors are re-run
@@ -180,6 +202,8 @@ oracle profile at 100%, and the always-abstain profile at about 5%.
 ## 7. Oracles
 
 The v1 set uses 18 oracles (6 from phase 0, 4 of them extended, plus 12 new).
+An external suite (§5.4) uses one more, `static-answer`, which reads upstream gold
+from a file keyed by question id instead of computing it from the corpus.
 
 An oracle is a C# class keyed by name with typed parameters from the question
 file. It reads a `CorpusIndex` that the bench owns. The index:

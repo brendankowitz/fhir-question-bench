@@ -101,6 +101,21 @@ public sealed class QuestionContextTests : IDisposable
         Assert.Equal("Treat now as 2026-01-15T00:00:00+00:00.\nnext", prompt);
     }
 
+    [Theory]
+    [InlineData("default.md")]
+    [InlineData("warm.md")]
+    [InlineData("map.md")]
+    public void PromptTemplates_RenderTheAssumptionBesideNow(string template)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(directory!.FullName, "FhirAgentBench.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.Contains("Treat now as {{now}}.{{assumption}}", File.ReadAllText(Path.Combine(directory.FullName, "prompts", template)));
+    }
+
     [Fact]
     public void Registry_GivesOraclesTheQuestionsNow()
     {

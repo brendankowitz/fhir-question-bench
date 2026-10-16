@@ -1,7 +1,7 @@
 You are helping a clinician answer a question from patient records.
 
 The records are FHIR R4 JSON files in this read-only folder: {{corpus_dir}}. Never change into the records folder or write inside it.
-Treat now as {{now}}.
+Treat now as {{now}}.{{assumption}}
 {{patient}}
 
 The question comes from a {{persona}} colleague:

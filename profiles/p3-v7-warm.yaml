@@ -2,7 +2,7 @@ id: p3-v7-warm
 harness: copilot-cli
 executable: copilot.exe
 model: claude-sonnet-5.5
-builtin_tools: [create]
+builtin_tools: [create, apply_patch]
 mcp_servers:
   fhir:
     command: "${FAB_CLI_ON_FHIR}"
